@@ -18,6 +18,7 @@ type Config struct {
 	Addr       string // listen address, e.g. ":8080"
 	StorageDir string // path to site files storage
 	DBPath     string // path to SQLite database
+	BaseURL    string // base URL path prefix for reverse proxy (e.g. "/vibecast"), empty for root
 	Version    string // build version (injected via ldflags)
 }
 
@@ -44,6 +45,17 @@ func New(cfg *Config) (*Server, error) {
 // Close closes the database connection.
 func (s *Server) Close() error {
 	return s.database.Close()
+}
+
+// baseURL returns the configured base URL prefix (empty for root deployment).
+// All generated URLs (API responses, redirects, directory listings) should use this.
+func (s *Server) baseURL() string {
+	return s.config.BaseURL
+}
+
+// prefURL prepends the base URL to a path. e.g. ("/s/foo/") → "/vibecast/s/foo/".
+func (s *Server) prefURL(p string) string {
+	return s.config.BaseURL + p
 }
 
 // SetHTTPServer stores a reference to the running http.Server, used for
@@ -100,7 +112,9 @@ func (s *Server) Router() http.Handler {
 	// Landing page
 	mux.HandleFunc("/", s.handleIndex)
 
-	return s.recoverMiddleware(s.logMiddleware(mux))
+	// Wrap with base URL prefix stripping (for reverse proxy sub-path deployment)
+	handler := s.stripBaseURL(mux)
+	return s.recoverMiddleware(s.logMiddleware(handler))
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
@@ -120,6 +134,36 @@ func (s *Server) logMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// stripBaseURL strips the configured base URL prefix from incoming requests
+// so that internal route matching works without knowing the prefix.
+// e.g. GET /vibecast/s/foo/ → /s/foo/ for the mux.
+// When BaseURL is empty, this is a pass-through.
+func (s *Server) stripBaseURL(next http.Handler) http.Handler {
+	base := s.config.BaseURL
+	if base == "" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(r.URL.Path) >= len(base) && r.URL.Path[:len(base)] == base {
+			// Strip the prefix. Ensure we don't turn "/vibecast" into "" — keep at least "/".
+			r.URL.Path = r.URL.Path[len(base):]
+			if r.URL.Path == "" {
+				r.URL.Path = "/"
+			}
+			// Also strip from RawPath if present
+			if r.URL.RawPath != "" {
+				if len(r.URL.RawPath) >= len(base) && r.URL.RawPath[:len(base)] == base {
+					r.URL.RawPath = r.URL.RawPath[len(base):]
+					if r.URL.RawPath == "" {
+						r.URL.RawPath = "/"
+					}
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // handleIndex serves the landing page.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -127,13 +171,15 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, landingPageHTML)
+	html := strings.ReplaceAll(landingPageHTML, "__BASE_URL__", s.baseURL())
+	fmt.Fprint(w, html)
 }
 
 // handleDashboard serves the admin dashboard SPA.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, dashboardHTML)
+	html := strings.ReplaceAll(dashboardHTML, "__BASE_URL__", s.baseURL())
+	fmt.Fprint(w, html)
 }
 
 // handleVersion returns the build version.

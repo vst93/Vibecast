@@ -47,7 +47,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 <div class="hero">
 <div class="logo">Vibe<span class="accent">cast</span></div>
 <p class="tagline" data-i="tagline">Build with vibe. Cast instantly.</p>
-<a href="dashboard" class="cta" data-i="getStarted">Get Started</a>
+<a href="__BASE_URL__/dashboard" class="cta" data-i="getStarted">Get Started</a>
 <div class="features">
 <div class="feature"><div class="icon">$ deploy</div><h3 data-i="feat1Title">Instant Deploy</h3><p data-i="feat1Desc">Upload a ZIP, get a live URL in seconds.</p></div>
 <div class="feature"><div class="icon">****</div><h3 data-i="feat2Title">Password Protect</h3><p data-i="feat2Desc">Keep your site private with password gating.</p></div>
@@ -203,7 +203,7 @@ input,button,select{font-family:inherit}
 <body>
 <div id="app"></div>
 <script>
-var BASE=location.pathname.replace(/\/(?:dashboard|admin)\/?$/,"/")||"/";var API=BASE+"api";
+var BASE="__BASE_URL__/";var API=BASE+"api";
 var currentUser=null;
 function getTheme(){return document.documentElement.getAttribute("data-theme")||"light"}
 function setTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("theme",t)}catch(e){}var b=document.getElementById("theme-toggle");if(b)b.textContent=t==="dark"?"☀":"🌙"}
@@ -214,7 +214,7 @@ var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",slug:"URL Slug
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();else renderAuth();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function siteUrl(u){return BASE+(u||"").replace(/^\//,"")}
+function siteUrl(u){return u||"/"}
 function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);var ms=type==="error"?5000:2500;setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},200)},ms)}
 function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
 function setToken(tk){try{localStorage.setItem("vibecast_token",tk)}catch(e){}}
@@ -474,7 +474,7 @@ textarea{font-family:var(--mono);background:var(--ink);color:var(--text);border:
 <body>
 <div id="app"></div>
 <script>
-var BASE=location.pathname.replace(/\/(?:dashboard|admin)\/?$/,"/")||"/";var API=BASE+"api";
+var BASE="__BASE_URL__/";var API=BASE+"api";
 function getTheme(){return document.documentElement.getAttribute("data-theme")||"light"}
 function setTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("theme",t)}catch(e){}var b=document.getElementById("theme-toggle");if(b)b.textContent=t==="dark"?"☀":"🌙"}
 function toggleTheme(){setTheme(getTheme()==="dark"?"light":"dark")}
@@ -485,7 +485,7 @@ var i18n={en:{overview:"Overview",settings:"Settings",users:"Users",allSites:"Al
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}renderAdmin()}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function siteUrl(u){return BASE+(u||"").replace(/^\//,"")}
+function siteUrl(u){return u||"/"}
 function fmtDate(s){if(!s)return"-";var d=new Date(s);return d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
 function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);var ms=type==="error"?5000:2500;setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},200)},ms)}
 function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}

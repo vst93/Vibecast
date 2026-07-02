@@ -110,7 +110,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 			ss, err := db.GetSiteSession(s.database, token)
 			return err != nil || ss == nil || ss.ID != site.ID
 		}() {
-			http.Redirect(w, r, "/p/"+slug, http.StatusSeeOther)
+			http.Redirect(w, r, s.prefURL("/p/"+slug), http.StatusSeeOther)
 			return
 		}
 	}
@@ -231,7 +231,7 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 	}
 
 	// Build breadcrumb
-	baseURL := "/s/" + slug + "/"
+	baseURL := s.prefURL("/s/" + slug + "/")
 	parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/")
 	var crumbs []string
 	crumbs = append(crumbs, `<a href="`+baseURL+`">/</a>`)

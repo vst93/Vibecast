@@ -150,6 +150,9 @@ input,button,select{font-family:inherit}
 .pagination button:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1}
 .pagination button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .pagination button:disabled{opacity:.4;cursor:default}
+.captcha-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem}
+.captcha-row img{height:42px;border-radius:6px;cursor:pointer;border:1px solid var(--border)}
+.captcha-row input{flex:1;margin-bottom:0}
 </style>
 </head>
 <body>
@@ -159,11 +162,11 @@ var API="/api";
 var currentUser=null;
 var lang="en";
 var sitePage=1,sitePerPage=10,siteTotal=0,siteSearch="";
-var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"Access Password",sitePwdPh:"Leave empty for public",create:"Create Site",yourSites:"Your Sites",noSites:"No sites yet. Create one above.",deployZip:"Deploy ZIP",delete:"Delete",deleteConfirm:"Delete this site? This removes all files.",protected:"Protected",public:"Public",login:"Login",register:"Register",email:"Email",password:"Password",pwdHint:"At least 6 characters",noAccount:"No account?",haveAccount:"Have an account?",logout:"Logout",adminPanel:"Admin Panel",deployed:"Deployed!",siteCreated:"Site created",deleted:"Deleted",incorrectPwd:"Incorrect password",loginFailed:"Login failed",registerFailed:"Registration failed",slugDesc:"The URL path of your site. Auto-generated from name if left blank. Only lowercase letters, numbers, and hyphens.",pwdDesc:"If set, visitors must enter this password to access your site.",sitesHint:"Click a site to expand details.",deployHint:"Upload a .zip file to deploy or update your site.",storagePath:"Storage Path",accessPassword:"Access Password",none:"None",details:"Details",expand:"Expand",filesSkipped:"Dangerous files skipped",accessDisabled:"Access Disabled",pwdRequired:"Public access is disabled — password is required",pwdOptional:"If set, visitors must enter this password to access your site.",search:"Search",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of"},zh:{siteName:"站点名称",siteNamePh:"例如：我的作品集",slug:"URL Slug",slugPh:"my-site",sitePwd:"访问密码",sitePwdPh:"留空则公开访问",create:"创建站点",yourSites:"我的站点",noSites:"还没有站点，在上方创建一个。",deployZip:"部署 ZIP",delete:"删除",deleteConfirm:"确定删除此站点？所有文件将被移除。",protected:"已保护",public:"公开",login:"登录",register:"注册",email:"邮箱",password:"密码",pwdHint:"至少 6 个字符",noAccount:"没有账号？",haveAccount:"已有账号？",logout:"退出",adminPanel:"管理后台",deployed:"部署成功！",siteCreated:"站点已创建",deleted:"已删除",incorrectPwd:"密码错误",loginFailed:"登录失败",registerFailed:"注册失败",slugDesc:"站点的 URL 路径。留空则根据名称自动生成。只允许小写字母、数字和连字符。",pwdDesc:"设置后，访问者需要输入此密码才能查看站点。",sitesHint:"点击站点展开详情。",deployHint:"上传 .zip 文件来部署或更新站点。",storagePath:"存储路径",accessPassword:"访问密码",none:"无",details:"详情",expand:"展开",filesSkipped:"已跳过危险文件",accessDisabled:"已禁止访问",pwdRequired:"公开访问已关闭 — 必须设置密码",pwdOptional:"设置后，访问者需要输入此密码才能查看站点。",search:"搜索",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共"}};
+var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"Access Password",sitePwdPh:"Leave empty for public",create:"Create Site",yourSites:"Your Sites",noSites:"No sites yet. Create one above.",deployZip:"Deploy ZIP",delete:"Delete",deleteConfirm:"Delete this site? This removes all files.",protected:"Protected",public:"Public",login:"Login",register:"Register",email:"Email",password:"Password",pwdHint:"At least 6 characters",noAccount:"No account?",haveAccount:"Have an account?",logout:"Logout",adminPanel:"Admin Panel",deployed:"Deployed!",siteCreated:"Site created",deleted:"Deleted",incorrectPwd:"Incorrect password",loginFailed:"Login failed",registerFailed:"Registration failed",slugDesc:"The URL path of your site. Auto-generated from name if left blank. Only lowercase letters, numbers, and hyphens.",pwdDesc:"If set, visitors must enter this password to access your site.",sitesHint:"Click a site to expand details.",deployHint:"Upload a .zip file to deploy or update your site.",storagePath:"Storage Path",accessPassword:"Access Password",none:"None",details:"Details",expand:"Expand",filesSkipped:"Dangerous files skipped",accessDisabled:"Access Disabled",pwdRequired:"Public access is disabled — password is required",pwdOptional:"If set, visitors must enter this password to access your site.",search:"Search",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",captcha:"Captcha",captchaPh:"Enter code",confirmPassword:"Confirm Password",pwdMismatch:"Passwords do not match",changePassword:"Change Password",currentPassword:"Current Password",newPassword:"New Password",passwordChanged:"Password changed"},zh:{siteName:"站点名称",siteNamePh:"例如：我的作品集",slug:"URL Slug",slugPh:"my-site",sitePwd:"访问密码",sitePwdPh:"留空则公开访问",create:"创建站点",yourSites:"我的站点",noSites:"还没有站点，在上方创建一个。",deployZip:"部署 ZIP",delete:"删除",deleteConfirm:"确定删除此站点？所有文件将被移除。",protected:"已保护",public:"公开",login:"登录",register:"注册",email:"邮箱",password:"密码",pwdHint:"至少 6 个字符",noAccount:"没有账号？",haveAccount:"已有账号？",logout:"退出",adminPanel:"管理后台",deployed:"部署成功！",siteCreated:"站点已创建",deleted:"已删除",incorrectPwd:"密码错误",loginFailed:"登录失败",registerFailed:"注册失败",slugDesc:"站点的 URL 路径。留空则根据名称自动生成。只允许小写字母、数字和连字符。",pwdDesc:"设置后，访问者需要输入此密码才能查看站点。",sitesHint:"点击站点展开详情。",deployHint:"上传 .zip 文件来部署或更新站点。",storagePath:"存储路径",accessPassword:"访问密码",none:"无",details:"详情",expand:"展开",filesSkipped:"已跳过危险文件",accessDisabled:"已禁止访问",pwdRequired:"公开访问已关闭 — 必须设置密码",pwdOptional:"设置后，访问者需要输入此密码才能查看站点。",search:"搜索",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共",captcha:"验证码",captchaPh:"输入验证码",confirmPassword:"确认密码",pwdMismatch:"两次密码不一致",changePassword:"修改密码",currentPassword:"当前密码",newPassword:"新密码",passwordChanged:"密码已修改"}};
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
-function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();}
+function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();else renderAuth();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},300)},2500)}
+function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);var ms=type==="error"?5000:2500;setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},300)},ms)}
 function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
 function setToken(tk){try{localStorage.setItem("vibecast_token",tk)}catch(e){}}
 function clearToken(){try{localStorage.removeItem("vibecast_token")}catch(e){}}
@@ -174,30 +177,36 @@ function api(path,opts){
   if(token)headers["Authorization"]="Bearer "+token;
   if(opts.headers)Object.assign(headers,opts.headers);
   return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
-    if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}location.reload();}
+    if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}var onAuthPage=location.pathname==="/dashboard"||location.pathname==="/admin";if(!onAuthPage||getToken()){location.reload()}}
     return r.json().catch(function(){return{error:"network error"}}).then(function(data){if(!r.ok)throw new Error(data.error||"request failed");return data})
   })
 }
 function checkAuth(){if(!getToken())return Promise.resolve(false);return api("/auth/me").then(function(d){currentUser=d.data;return true}).catch(function(){clearToken();return false})}
+
+var loginCaptchaId="",registerCaptchaId="";
+function loadCaptcha(varName){
+  return fetch("/api/auth/captcha").then(function(r){return r.json()}).then(function(d){
+    if(varName==="login"){loginCaptchaId=d.data.id;var img=document.getElementById("login-captcha-img");if(img)img.src=d.data.image}
+    else{registerCaptchaId=d.data.id;var img=document.getElementById("register-captcha-img");if(img)img.src=d.data.image}
+  }).catch(function(){})
+}
 
 function renderAuth(){
 var langHtml='<div class="lang-toggle" style="position:absolute;top:1rem;right:1rem"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a> <a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
 document.getElementById("app").innerHTML=langHtml+'<div class="auth-screen"><div class="auth-card"><h1><span>Vibecast</span></h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
 showLogin();}
 function showLogin(){
-document.getElementById("auth-form").innerHTML='<input id="email" type="email" placeholder="'+t("email")+'" autocomplete="email"><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="current-password"><button class="btn btn-primary" onclick="doLogin()">'+t("login")+'</button><p class="switch">'+t("noAccount")+' <a onclick="showRegister()">'+t("register")+'</a></p>';}
+document.getElementById("auth-form").innerHTML='<form onsubmit="doLogin();return false"><input id="email" type="email" placeholder="'+t("email")+'" autocomplete="email"><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="current-password"><div class="captcha-row"><img id="login-captcha-img" onclick="loadCaptcha(\'login\')" title="Click to refresh"><button type="button" class="btn btn-outline btn-sm" onclick="loadCaptcha(\'login\')">&#8634;</button><input id="login-captcha" type="text" placeholder="'+t("captchaPh")+'"></div><button class="btn btn-primary" type="submit">'+t("login")+'</button></form><p class="switch">'+t("noAccount")+' <a onclick="showRegister()">'+t("register")+'</a></p>';loadCaptcha("login");}
 function showRegister(){
-document.getElementById("auth-form").innerHTML='<input id="email" type="email" placeholder="'+t("email")+'" autocomplete="email"><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="new-password"><div class="field-hint">'+t("pwdHint")+'</div><button class="btn btn-primary" onclick="doRegister()">'+t("register")+'</button><p class="switch">'+t("haveAccount")+' <a onclick="showLogin()">'+t("login")+'</a></p>';}
-function doLogin(){
-api("/auth/login",{method:"POST",body:JSON.stringify({email:document.getElementById("email").value,password:document.getElementById("password").value})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast("Login failed","error")}}).catch(function(e){toast(e.message,"error")});}
-function doRegister(){
-api("/auth/register",{method:"POST",body:JSON.stringify({email:document.getElementById("email").value,password:document.getElementById("password").value})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast("Registration failed","error")}}).catch(function(e){toast(e.message,"error")});}
+document.getElementById("auth-form").innerHTML='<form onsubmit="doRegister();return false"><input id="email" type="email" placeholder="'+t("email")+'" autocomplete="email"><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="new-password"><div class="field-hint">'+t("pwdHint")+'</div><input id="confirm-pwd" type="password" placeholder="'+t("confirmPassword")+'" autocomplete="new-password"><div class="captcha-row"><img id="register-captcha-img" onclick="loadCaptcha(\'register\')" title="Click to refresh"><button type="button" class="btn btn-outline btn-sm" onclick="loadCaptcha(\'register\')">&#8634;</button><input id="register-captcha" type="text" placeholder="'+t("captchaPh")+'"></div><button class="btn btn-primary" type="submit">'+t("register")+'</button></form><p class="switch">'+t("haveAccount")+' <a onclick="showLogin()">'+t("login")+'</a></p>';loadCaptcha("register");}
+function doLogin(){var email=document.getElementById("email").value.trim();var pwd=document.getElementById("password").value;var cap=document.getElementById("login-captcha").value;if(!email||!pwd||!cap){toast(t("email")+" & "+t("password")+" & "+t("captcha"),"error");return}api("/auth/login",{method:"POST",body:JSON.stringify({email:email,password:pwd,captchaId:loginCaptchaId,captchaCode:cap})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast(t("loginFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("login")});}
+function doRegister(){var email=document.getElementById("email").value.trim();var pwd=document.getElementById("password").value;var conf=document.getElementById("confirm-pwd").value;var cap=document.getElementById("register-captcha").value;if(!email||!pwd||!conf||!cap){toast(t("email")+" & "+t("password")+" & "+t("confirmPassword")+" & "+t("captcha"),"error");return}if(pwd!==conf){toast(t("pwdMismatch"),"error");return}api("/auth/register",{method:"POST",body:JSON.stringify({email:email,password:pwd,confirm:conf,captchaId:registerCaptchaId,captchaCode:cap})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast(t("registerFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("register")});}
 function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href="/"}).catch(function(){clearToken();location.href="/"})}
 
 function renderDashboard(){
 var adminLink=currentUser.isAdmin?'<a class="admin-link" href="/admin">'+t("adminPanel")+'</a>':'';
 var langHtml='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a> <a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="brand"><div class="logo">Vibecast</div></div><div class="nav-right">'+adminLink+langHtml+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-grid"><div class="form-field full"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("slug")+'</label><input id="site-slug" placeholder="'+t("slugPh")+'"><div class="desc">'+t("slugDesc")+'</div></div><div class="form-field"><label>'+t("sitePwd")+'</label><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div></div><div class="form-actions"><button class="btn btn-primary" onclick="createSite()">'+t("create")+'</button></div></div></div><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="brand"><div class="logo">Vibecast</div></div><div class="nav-right">'+adminLink+langHtml+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-grid"><div class="form-field full"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("slug")+'</label><input id="site-slug" placeholder="'+t("slugPh")+'"><div class="desc">'+t("slugDesc")+'</div></div><div class="form-field"><label>'+t("sitePwd")+'</label><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div></div><div class="form-actions"><button class="btn btn-primary" onclick="createSite()">'+t("create")+'</button></div></div></div><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div><div class="card"><div class="card-header"><h2>'+t("changePassword")+'</h2></div><div class="card-body"><div class="form-field" style="max-width:400px"><label>'+t("currentPassword")+'</label><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><label style="margin-top:.6rem">'+t("newPassword")+'</label><input id="new-pwd" type="password" placeholder="'+t("newPassword")+' (min 6)"></div><div class="form-actions"><button class="btn btn-primary" onclick="changePassword()">'+t("changePassword")+'</button></div></div></div></div>';
 loadSites();}
 
 function searchSites(){siteSearch=document.getElementById("site-search").value;sitePage=1;loadSites()}
@@ -284,6 +293,17 @@ function delSite(id){
 if(!confirm(t("deleteConfirm")))return;
 api("/sites/"+id,{method:"DELETE"}).then(function(){toast(t("deleted"));loadSites()}).catch(function(e){toast(e.message,"error")});}
 
+function changePassword(){
+var old=document.getElementById("old-pwd").value;
+var np=document.getElementById("new-pwd").value;
+if(!old||!np){toast(t("currentPassword")+" & "+t("newPassword"),"error");return}
+if(np.length<6){toast(t("pwdHint"),"error");return}
+api("/auth/change-password",{method:"PUT",body:JSON.stringify({oldPassword:old,newPassword:np})}).then(function(){
+toast(t("passwordChanged"));
+document.getElementById("old-pwd").value="";document.getElementById("new-pwd").value="";
+}).catch(function(e){toast(e.message,"error")})
+}
+
 var savedLang="en";try{savedLang=localStorage.getItem("lang")||"en"}catch(e){}
 lang=savedLang;
 checkAuth().then(function(ok){if(ok)renderDashboard();else renderAuth()});
@@ -359,6 +379,7 @@ td{font-size:.85rem}
 .pagination button:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1}
 .pagination button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .pagination button:disabled{opacity:.4;cursor:default}
+textarea{font-family:inherit}
 </style>
 </head>
 <body>
@@ -368,12 +389,12 @@ var API="/api";
 var lang="en";
 var userPage=1,userPerPage=10,userTotal=0,userSearch="";
 var adminSitePage=1,adminSitePerPage=10,adminSiteTotal=0,adminSiteSearch="";
-var i18n={en:{overview:"Overview",settings:"Settings",users:"Users",allSites:"All Sites",userCount:"Users",siteCount:"Sites",adminCount:"Admins",openReg:"Open Registration",openRegDesc:"When enabled, anyone can register a new account.",publicAccess:"Public Site Access",publicAccessDesc:"When disabled, all deployed sites return 403 to visitors.",dashboard:"Dashboard",logout:"Logout",role:"Role",created:"Created",actions:"Actions",promote:"Promote",demote:"Demote",delete:"Delete",deleteUserConfirm:"Delete this user and all their sites?",deleteSiteConfirm:"Delete this site?",name:"Name",slug:"Slug",owner:"Owner",protected:"Protected",public:"Public",password:"Password",storagePath:"Storage",url:"URL",noUsers:"No users",noSites:"No sites",updated:"Updated",deleted:"Deleted",roleUpdated:"Role updated",userDeleted:"User deleted",siteDeleted:"Site deleted",settingsSaved:"Settings saved",none:"None",accessDisabled:"Access Disabled",search:"Search",searchUsersPh:"Search users...",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",ownerEmail:"Owner Email"},zh:{overview:"概览",settings:"设置",users:"用户",allSites:"全部站点",userCount:"用户",siteCount:"站点",adminCount:"管理员",openReg:"开放注册",openRegDesc:"开启后，任何人都可以注册新账号。",publicAccess:"公开站点访问",publicAccessDesc:"关闭后，所有已部署站点对访问者返回 403。",dashboard:"Dashboard",logout:"退出",role:"角色",created:"创建时间",actions:"操作",promote:"提升",demote:"降级",delete:"删除",deleteUserConfirm:"删除此用户及其所有站点？",deleteSiteConfirm:"删除此站点？",name:"名称",slug:"Slug",owner:"所有者",protected:"已保护",public:"公开",password:"密码",storagePath:"存储路径",url:"URL",noUsers:"暂无用户",noSites:"暂无站点",updated:"已更新",deleted:"已删除",roleUpdated:"角色已更新",userDeleted:"用户已删除",siteDeleted:"站点已删除",settingsSaved:"设置已保存",none:"无",accessDisabled:"已禁止访问",search:"搜索",searchUsersPh:"搜索用户...",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共",ownerEmail:"所有者邮箱"}};
+var i18n={en:{overview:"Overview",settings:"Settings",users:"Users",allSites:"All Sites",userCount:"Users",siteCount:"Sites",adminCount:"Admins",openReg:"Open Registration",openRegDesc:"When enabled, anyone can register a new account.",publicAccess:"Public Site Access",publicAccessDesc:"When disabled, all deployed sites return 403 to visitors.",dashboard:"Dashboard",logout:"Logout",role:"Role",created:"Created",actions:"Actions",promote:"Promote",demote:"Demote",delete:"Delete",deleteUserConfirm:"Delete this user and all their sites?",deleteSiteConfirm:"Delete this site?",name:"Name",slug:"Slug",owner:"Owner",protected:"Protected",public:"Public",password:"Password",storagePath:"Storage",url:"URL",noUsers:"No users",noSites:"No sites",updated:"Updated",deleted:"Deleted",roleUpdated:"Role updated",userDeleted:"User deleted",siteDeleted:"Site deleted",settingsSaved:"Settings saved",none:"None",accessDisabled:"Access Disabled",search:"Search",searchUsersPh:"Search users...",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",ownerEmail:"Owner Email",domainRestriction:"Email Domain Restriction",domainRestrictionDesc:"Only allow registration from specified domains (one per line).",save:"Save"},zh:{overview:"概览",settings:"设置",users:"用户",allSites:"全部站点",userCount:"用户",siteCount:"站点",adminCount:"管理员",openReg:"开放注册",openRegDesc:"开启后，任何人都可以注册新账号。",publicAccess:"公开站点访问",publicAccessDesc:"关闭后，所有已部署站点对访问者返回 403。",dashboard:"Dashboard",logout:"退出",role:"角色",created:"创建时间",actions:"操作",promote:"提升",demote:"降级",delete:"删除",deleteUserConfirm:"删除此用户及其所有站点？",deleteSiteConfirm:"删除此站点？",name:"名称",slug:"Slug",owner:"所有者",protected:"已保护",public:"公开",password:"密码",storagePath:"存储路径",url:"URL",noUsers:"暂无用户",noSites:"暂无站点",updated:"已更新",deleted:"已删除",roleUpdated:"角色已更新",userDeleted:"用户已删除",siteDeleted:"站点已删除",settingsSaved:"设置已保存",none:"无",accessDisabled:"已禁止访问",search:"搜索",searchUsersPh:"搜索用户...",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共",ownerEmail:"所有者邮箱",domainRestriction:"邮箱域名限制",domainRestrictionDesc:"仅允许指定域名的邮箱注册（每行一个）。",save:"保存"}};
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}renderAdmin();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function fmtDate(s){if(!s)return"-";var d=new Date(s);return d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
-function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},300)},2500)}
+function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);var ms=type==="error"?5000:2500;setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},300)},ms)}
 function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
 function clearToken(){try{localStorage.removeItem("vibecast_token")}catch(e){}}
 function api(path,opts){
@@ -402,14 +423,38 @@ function loadSettings(){
 api("/admin/settings").then(function(d){var s=d.data;
 var regOn=s.openRegistration;
 var pubOn=s.allowPublicAccess!==false;
-document.getElementById("settings").innerHTML='<div class="toggle-row"><div class="toggle-info"><div class="toggle-label">'+t("openReg")+'</div><div class="toggle-desc">'+t("openRegDesc")+'</div></div><div class="toggle-switch '+(regOn?"on":"")+'" onclick="toggleReg()"></div></div><div class="toggle-row"><div class="toggle-info"><div class="toggle-label">'+t("publicAccess")+'</div><div class="toggle-desc">'+t("publicAccessDesc")+'</div></div><div class="toggle-switch '+(pubOn?"on":"")+'" onclick="togglePub()"></div></div>';
+var drOn=s.domainRestriction;
+var html='<div class="toggle-row"><div class="toggle-info"><div class="toggle-label">'+t("openReg")+'</div><div class="toggle-desc">'+t("openRegDesc")+'</div></div><div class="toggle-switch '+(regOn?"on":"")+'" onclick="toggleReg()"></div></div><div class="toggle-row"><div class="toggle-info"><div class="toggle-label">'+t("publicAccess")+'</div><div class="toggle-desc">'+t("publicAccessDesc")+'</div></div><div class="toggle-switch '+(pubOn?"on":"")+'" onclick="togglePub()"></div></div><div class="toggle-row"><div class="toggle-info"><div class="toggle-label">'+t("domainRestriction")+'</div><div class="toggle-desc">'+t("domainRestrictionDesc")+'</div></div><div class="toggle-switch '+(drOn?"on":"")+'" onclick="toggleDomainRestriction()"></div></div>';
+if(drOn){
+html+='<div style="padding:.6rem 0"><textarea id="allowed-domains" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace" placeholder="example.com&#10;gmail.com&#10;company.org">'+esc(s.allowedDomains||"")+'</textarea><div style="margin-top:.5rem"><button class="btn btn-primary btn-sm" onclick="saveDomains()">'+t("save")+'</button></div></div>';
+}
+document.getElementById("settings").innerHTML=html;
 }).catch(function(e){toast(e.message,"error")});}
 
 function toggleReg(){
-api("/admin/settings").then(function(d){var newVal=!d.data.openRegistration;return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:newVal,allowPublicAccess:d.data.allowPublicAccess!==false})}).then(function(){toast(t("settingsSaved"));loadSettings()})}).catch(function(e){toast(e.message,"error")});}
+api("/admin/settings").then(function(d){var cur=d.data;var newVal=!cur.openRegistration;return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:newVal,allowPublicAccess:cur.allowPublicAccess!==false,domainRestriction:cur.domainRestriction,allowedDomains:cur.allowedDomains||""})}).then(function(){toast(t("settingsSaved"));loadSettings()})}).catch(function(e){toast(e.message,"error")});}
 
 function togglePub(){
-api("/admin/settings").then(function(d){var cur=d.data;var pubOn=cur.allowPublicAccess!==false;var newVal=!pubOn;return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:cur.openRegistration,allowPublicAccess:newVal})}).then(function(){toast(t("settingsSaved"));loadSettings()})}).catch(function(e){toast(e.message,"error")});}
+api("/admin/settings").then(function(d){var cur=d.data;var pubOn=cur.allowPublicAccess!==false;var newVal=!pubOn;return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:cur.openRegistration,allowPublicAccess:newVal,domainRestriction:cur.domainRestriction,allowedDomains:cur.allowedDomains||""})}).then(function(){toast(t("settingsSaved"));loadSettings()})}).catch(function(e){toast(e.message,"error")});}
+
+function toggleDomainRestriction(){
+api("/admin/settings").then(function(d){
+var cur=d.data;
+var newVal=!cur.domainRestriction;
+return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:cur.openRegistration,allowPublicAccess:cur.allowPublicAccess!==false,domainRestriction:newVal,allowedDomains:cur.allowedDomains||""})}).then(function(){
+toast(t("settingsSaved"));loadSettings()
+})
+}).catch(function(e){toast(e.message,"error")})
+}
+
+function saveDomains(){
+var val=document.getElementById("allowed-domains").value;
+api("/admin/settings").then(function(d){
+return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:d.data.openRegistration,allowPublicAccess:d.data.allowPublicAccess!==false,domainRestriction:d.data.domainRestriction,allowedDomains:val})}).then(function(){
+toast(t("settingsSaved"));loadSettings()
+})
+}).catch(function(e){toast(e.message,"error")})
+}
 
 function searchUsers(){userSearch=document.getElementById("user-search").value;userPage=1;loadUsers()}
 function userPageGo(p){userPage=p;loadUsers()}

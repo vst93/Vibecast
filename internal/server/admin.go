@@ -200,8 +200,10 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 		writeJSON(w, 200, jsonResp{Data: settings})
 	case http.MethodPut:
 		var body struct {
-			OpenRegistration  bool `json:"openRegistration"`
-			AllowPublicAccess bool `json:"allowPublicAccess"`
+			OpenRegistration  bool   `json:"openRegistration"`
+			AllowPublicAccess bool   `json:"allowPublicAccess"`
+			DomainRestriction bool   `json:"domainRestriction"`
+			AllowedDomains    string `json:"allowedDomains"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
@@ -212,6 +214,14 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 			return
 		}
 		if err := db.SetSetting(s.database, "allow_public_access", strconv.FormatBool(body.AllowPublicAccess)); err != nil {
+			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
+			return
+		}
+		if err := db.SetSetting(s.database, "domain_restriction", strconv.FormatBool(body.DomainRestriction)); err != nil {
+			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
+			return
+		}
+		if err := db.SetSetting(s.database, "allowed_domains", body.AllowedDomains); err != nil {
 			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
 			return
 		}

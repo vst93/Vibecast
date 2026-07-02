@@ -36,8 +36,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email      string `json:"email"`
+		Password   string `json:"password"`
+		Confirm    string `json:"confirm"`
+		CaptchaID  string `json:"captchaId"`
+		CaptchaCode string `json:"captchaCode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
@@ -52,6 +55,15 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, jsonResp{Error: "password too long (max 72 chars)"})
 		return
 	}
+	if body.Password != body.Confirm {
+		writeJSON(w, 400, jsonResp{Error: "passwords do not match"})
+		return
+	}
+	// Verify captcha
+	if !verifyCaptcha(body.CaptchaID, body.CaptchaCode) {
+		writeJSON(w, 400, jsonResp{Error: "captcha incorrect"})
+		return
+	}
 
 	// Check if registration is open (unless this is the first user — first user becomes admin)
 	userCount, _ := db.CountUsers(s.database)
@@ -60,6 +72,14 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		if !db.GetSettingBool(s.database, "open_registration", true) {
 			writeJSON(w, 403, jsonResp{Error: "registration is closed"})
 			return
+		}
+		// Check domain restriction
+		if db.GetSettingBool(s.database, "domain_restriction", false) {
+			allowedDomains, _ := db.GetSetting(s.database, "allowed_domains")
+			if !isEmailDomainAllowed(body.Email, allowedDomains) {
+				writeJSON(w, 403, jsonResp{Error: "email domain not allowed"})
+				return
+			}
 		}
 	}
 
@@ -103,14 +123,21 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		CaptchaID   string `json:"captchaId"`
+		CaptchaCode string `json:"captchaCode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
 		return
 	}
 	body.Email = strings.TrimSpace(strings.ToLower(body.Email))
+	// Verify captcha
+	if !verifyCaptcha(body.CaptchaID, body.CaptchaCode) {
+		writeJSON(w, 400, jsonResp{Error: "captcha incorrect"})
+		return
+	}
 
 	user, err := db.GetUserByEmail(s.database, body.Email)
 	if err != nil {
@@ -165,6 +192,60 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 			"isAdmin": user.IsAdmin,
 		},
 	})
+}
+
+// handleCaptcha generates and returns a captcha image as SVG data URI.
+func (s *Server) handleCaptcha(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		return
+	}
+	id, svg := generateCaptcha()
+	writeJSON(w, 200, jsonResp{
+		Data: map[string]interface{}{
+			"id":   id,
+			"image": svg,
+		},
+	})
+}
+
+// handleChangePassword handles PUT /api/auth/change-password.
+// Requires current password + new password. Also validates captcha.
+func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, user *db.User) {
+	if r.Method != http.MethodPut {
+		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		return
+	}
+	var body struct {
+		OldPassword string `json:"oldPassword"`
+		NewPassword string `json:"newPassword"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+		return
+	}
+	if len(body.NewPassword) < 6 {
+		writeJSON(w, 400, jsonResp{Error: "new password must be at least 6 characters"})
+		return
+	}
+	if len(body.NewPassword) > 72 {
+		writeJSON(w, 400, jsonResp{Error: "password too long (max 72 chars)"})
+		return
+	}
+	if !auth.CheckPassword(user.Password, body.OldPassword) {
+		writeJSON(w, 403, jsonResp{Error: "current password is incorrect"})
+		return
+	}
+	hashed, err := auth.HashPassword(body.NewPassword)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to hash password"})
+		return
+	}
+	if err := db.UpdateUserPassword(s.database, user.ID, hashed); err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to update password"})
+		return
+	}
+	writeJSON(w, 200, jsonResp{Message: "password changed"})
 }
 
 // --- Sites API ---
@@ -467,4 +548,27 @@ func (b bytesReaderType) ReadAt(p []byte, off int64) (int, error) {
 	}
 	n := copy(p, b.data[off:])
 	return n, nil
+}
+
+// isEmailDomainAllowed checks if the email's domain is in the allowed list.
+// allowedDomains is a comma/newline separated list of domains.
+func isEmailDomainAllowed(email, allowedDomains string) bool {
+	if allowedDomains == "" {
+		return false // restriction is on but no domains configured → block all
+	}
+	at := strings.LastIndex(email, "@")
+	if at < 0 {
+		return false
+	}
+	domain := strings.ToLower(email[at+1:])
+	for _, d := range strings.Split(allowedDomains, "\n") {
+		d = strings.TrimSpace(strings.ToLower(d))
+		if d == "" {
+			continue
+		}
+		if d == domain {
+			return true
+		}
+	}
+	return false
 }

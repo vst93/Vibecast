@@ -79,6 +79,8 @@ func migrate(db *sql.DB) error {
 	// Step 3: seed default settings
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('open_registration', '1')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allow_public_access', '1')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('domain_restriction', '0')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allowed_domains', '')`)
 
 	return nil
 }

@@ -147,6 +147,11 @@ func UpdateUserAdmin(db *sql.DB, id int64, isAdmin bool) error {
 	return err
 }
 
+func UpdateUserPassword(db *sql.DB, id int64, hashedPassword string) error {
+	_, err := db.Exec(`UPDATE users SET password = ? WHERE id = ?`, hashedPassword, id)
+	return err
+}
+
 func DeleteUser(db *sql.DB, id int64) error {
 	_, err := db.Exec(`DELETE FROM users WHERE id = ?`, id)
 	return err
@@ -449,8 +454,10 @@ func GetStats(db *sql.DB) (*Stats, error) {
 
 // GetSettings returns a structured settings object.
 type Settings struct {
-	OpenRegistration bool `json:"openRegistration"`
-	AllowPublicAccess bool `json:"allowPublicAccess"`
+	OpenRegistration  bool   `json:"openRegistration"`
+	AllowPublicAccess bool   `json:"allowPublicAccess"`
+	DomainRestriction bool   `json:"domainRestriction"`
+	AllowedDomains    string `json:"allowedDomains"`
 }
 
 func GetSettings(db *sql.DB) (*Settings, error) {
@@ -465,5 +472,15 @@ func GetSettings(db *sql.DB) (*Settings, error) {
 		return nil, err
 	}
 	s.AllowPublicAccess = val2 == "1" || val2 == "true"
+	val3, err := GetSetting(db, "domain_restriction")
+	if err != nil {
+		return nil, err
+	}
+	s.DomainRestriction = val3 == "1" || val3 == "true"
+	val4, err := GetSetting(db, "allowed_domains")
+	if err != nil {
+		return nil, err
+	}
+	s.AllowedDomains = val4
 	return s, nil
 }

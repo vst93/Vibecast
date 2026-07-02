@@ -21,6 +21,7 @@ No Nginx, no external web server — one binary handles everything: auth, site m
 - **Bilingual EN / 中文** — Full i18n across UI and API errors
 - **Captcha** — SVG math captcha on login and registration
 - **Settings Control** — Toggle open registration, public access, email domain restriction
+- **Version Info** — `vibecast --version` prints the version; admin panel shows it in the navbar
 - **Zero external dependencies** — Pure Go + SQLite, no CGO
 
 ## Installation
@@ -130,6 +131,7 @@ MIT
 - **中英文双语** — UI 和 API 错误提示全面支持
 - **验证码** — SVG 数学验证码，登录注册保护
 - **设置控制** — 开关注册、公开访问、邮箱域名限制
+- **版本信息** — `vibecast --version` 查看版本号，管理后台导航栏显示版本
 - **零外部依赖** — 纯 Go + SQLite，无需 CGO
 
 ## 安装

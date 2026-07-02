@@ -114,7 +114,7 @@ MIT
 
 # Vibecast 中文说明
 
-> Build with vibe. Cast instantly.
+> 随心构建，即刻发布。
 
 一个自托管的纯 Go 多用户静态站点托管平台。
 不依赖 Nginx 或任何外部 Web Server —— 一个二进制搞定一切：认证、站点管理、ZIP 部署、静态文件服务。

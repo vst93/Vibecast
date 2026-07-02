@@ -47,7 +47,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 <div class="hero">
 <div class="logo">Vibe<span class="accent">cast</span></div>
 <p class="tagline" data-i="tagline">Build with vibe. Cast instantly.</p>
-<a href="/dashboard" class="cta" data-i="getStarted">Get Started</a>
+<a href="dashboard" class="cta" data-i="getStarted">Get Started</a>
 <div class="features">
 <div class="feature"><div class="icon">$ deploy</div><h3 data-i="feat1Title">Instant Deploy</h3><p data-i="feat1Desc">Upload a ZIP, get a live URL in seconds.</p></div>
 <div class="feature"><div class="icon">****</div><h3 data-i="feat2Title">Password Protect</h3><p data-i="feat2Desc">Keep your site private with password gating.</p></div>
@@ -203,7 +203,7 @@ input,button,select{font-family:inherit}
 <body>
 <div id="app"></div>
 <script>
-var API="/api";
+var BASE=location.pathname.replace(/\/(?:dashboard|admin)\/?$/,"/")||"/";var API=BASE+"api";
 var currentUser=null;
 function getTheme(){return document.documentElement.getAttribute("data-theme")||"light"}
 function setTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("theme",t)}catch(e){}var b=document.getElementById("theme-toggle");if(b)b.textContent=t==="dark"?"☀":"🌙"}
@@ -234,14 +234,14 @@ var headers={"Content-Type":"application/json","Accept-Language":lang||"en"};
 if(token)headers["Authorization"]="Bearer "+token;
 if(opts.headers)Object.assign(headers,opts.headers);
 return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
-if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}var onAuth=location.pathname==="/dashboard"||location.pathname==="/admin";if(!onAuth||getToken()){location.reload()}}
+if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}var onAuth=/\/(dashboard|admin)\/?$/.test(location.pathname);if(!onAuth||getToken()){location.reload()}}
 return r.json().catch(function(){return{error:"network error"}}).then(function(data){if(!r.ok)throw new Error(data.error||"request failed");return data})
 })
 }
 function checkAuth(){if(!getToken())return Promise.resolve(false);return api("/auth/me").then(function(d){currentUser=d.data;return true}).catch(function(){clearToken();return false})}
 var loginCaptchaId="",registerCaptchaId="";var regOpen=true;
 function loadCaptcha(v){
-return fetch("/api/auth/captcha").then(function(r){return r.json()}).then(function(d){
+return fetch(BASE+"api/auth/captcha").then(function(r){return r.json()}).then(function(d){
 if(v==="login"){loginCaptchaId=d.data.id;var img=document.getElementById("login-captcha-img");if(img)img.src=d.data.image}
 else{registerCaptchaId=d.data.id;var img=document.getElementById("register-captcha-img");if(img)img.src=d.data.image}
 }).catch(function(){})
@@ -249,7 +249,7 @@ else{registerCaptchaId=d.data.id;var img=document.getElementById("register-captc
 function renderAuth(){
 var lh='<div class="lang-toggle" style="position:absolute;top:1rem;right:1rem"><a id="theme-toggle" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
 document.getElementById("app").innerHTML=lh+'<div class="auth-screen"><div class="auth-card"><h1>Vibe<span class="accent">cast</span></h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
-fetch("/api/settings").then(function(r){return r.json()}).then(function(d){regOpen=d.data&&d.data.openRegistration!==false;showLogin()}).catch(function(){regOpen=true;showLogin()});
+fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){regOpen=d.data&&d.data.openRegistration!==false;showLogin()}).catch(function(){regOpen=true;showLogin()});
 }
 function showLogin(){
 document.getElementById("auth-form").innerHTML='<form onsubmit="doLogin();return false"><div class="auth-field"><label>'+t("email")+'</label><input id="email" type="email" placeholder="'+t("emailPh")+'" autocomplete="email"></div><div class="auth-field"><label>'+t("password")+'</label><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="current-password"></div><div class="auth-field"><label class="captcha-label">'+t("captchaLabel")+'</label><div class="captcha-row"><img class="captcha-img" id="login-captcha-img" src="" alt="captcha" width="150" height="40" onclick="loadCaptcha(\'login\')" title="'+t("captcha")+'"><input id="login-captcha" type="text" placeholder="'+t("captchaPh")+'"></div></div><button class="btn btn-primary" type="submit">'+t("login")+'</button></form>'+(regOpen?'<p class="switch">'+t("noAccount")+' <a onclick="showRegister()">'+t("register")+'</a></p>':'');
@@ -269,9 +269,9 @@ var em=document.getElementById("email").value.trim(),pw=document.getElementById(
 if(!em){toast(t("emailRequired"),"error");return}if(!pw){toast(t("pwdRequired"),"error");return}if(!cf){toast(t("confirmRequired"),"error");return}if(!ca){toast(t("captchaRequired"),"error");return}if(pw!==cf){toast(t("pwdMismatch"),"error");return}
 api("/auth/register",{method:"POST",body:JSON.stringify({email:em,password:pw,confirm:cf,captchaId:registerCaptchaId,captchaCode:ca})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast(t("registerFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("register")})
 }
-function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href="/"}).catch(function(){clearToken();location.href="/"})}
+function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href=BASE}).catch(function(){clearToken();location.href=BASE})}
 function renderDashboard(){
-var al=currentUser.isAdmin?'<a class="admin-link" href="/admin">'+t("adminPanel")+'</a>':'';
+var al=currentUser.isAdmin?'<a class="admin-link" href="'+BASE+'admin">'+t("adminPanel")+'</a>':'';
 var th='<a id="theme-toggle" class="btn-icon" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a>';
 var lh='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
 document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"></div><div class="modal-field"><label>'+t("newPassword")+'</label><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
@@ -441,7 +441,7 @@ textarea{font-family:var(--mono);background:var(--ink);color:var(--text);border:
 <body>
 <div id="app"></div>
 <script>
-var API="/api";
+var BASE=location.pathname.replace(/\/(?:dashboard|admin)\/?$/,"/")||"/";var API=BASE+"api";
 function getTheme(){return document.documentElement.getAttribute("data-theme")||"light"}
 function setTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("theme",t)}catch(e){}var b=document.getElementById("theme-toggle");if(b)b.textContent=t==="dark"?"☀":"🌙"}
 function toggleTheme(){setTheme(getTheme()==="dark"?"light":"dark")}
@@ -472,17 +472,17 @@ var headers={"Content-Type":"application/json","Accept-Language":lang||"en"};
 if(token)headers["Authorization"]="Bearer "+token;
 if(opts.headers)Object.assign(headers,opts.headers);
 return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
-if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}location.href="/dashboard"}
+if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}location.href=BASE+"dashboard"}
 return r.json().catch(function(){return{error:"network error"}}).then(function(data){if(!r.ok)throw new Error(data.error||"request failed");return data})
 })
 }
-function checkAuth(){if(!getToken())return Promise.reject(new Error("no token"));return api("/auth/me").then(function(d){if(!d.data||!d.data.isAdmin)throw new Error("not admin");return d.data}).catch(function(){clearToken();location.href="/dashboard"})}
-function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href="/"}).catch(function(){clearToken();location.href="/"})}
+function checkAuth(){if(!getToken())return Promise.reject(new Error("no token"));return api("/auth/me").then(function(d){if(!d.data||!d.data.isAdmin)throw new Error("not admin");return d.data}).catch(function(){clearToken();location.href=BASE+"dashboard"})}
+function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href=BASE}).catch(function(){clearToken();location.href=BASE})}
 function renderAdmin(){
 var lh='<div class="lang-toggle"><a id="theme-toggle" class="btn-icon" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibecast Admin <span id="ver" style="font-size:.6rem;color:var(--dim);font-weight:400"></span></div><div class="nav-right">'+lh+'<a href="/dashboard" style="font-size:.8rem;color:var(--dim)">'+t("dashboard")+'</a><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card"><div class="card-header"><h2>'+t("overview")+'</h2></div><div class="card-body"><div id="stats" class="stats-grid"></div></div></div><div class="card"><div class="card-header"><h2>'+t("settings")+'</h2></div><div class="card-body"><div id="settings"></div></div></div><div class="card"><div class="card-header"><h2>'+t("cleanup")+'</h2></div><div class="card-body"><div id="cleanup-section"><p style="font-size:.8rem;color:var(--dim);margin-bottom:.8rem">'+t("cleanupDesc")+'</p><button class="btn btn-outline" onclick="checkCleanup()">'+t("checkOrphans")+'</button><div id="cleanup-result" style="margin-top:.8rem"></div></div></div></div><div class="card"><div class="card-header"><h2>'+t("users")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="user-search" placeholder="'+t("searchUsersPh")+'" onkeydown="if(event.key===\'Enter\')searchUsers()" value="'+esc(userSearch)+'"></div><div id="users"></div></div></div><div class="card"><div class="card-header"><h2>'+t("allSites")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="admin-site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchAdminSites()" value="'+esc(adminSiteSearch)+'"></div><div id="sites"></div></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibecast Admin <span id="ver" style="font-size:.6rem;color:var(--dim);font-weight:400"></span></div><div class="nav-right">'+lh+'<a href="'+BASE+'dashboard" style="font-size:.8rem;color:var(--dim)">'+t("dashboard")+'</a><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card"><div class="card-header"><h2>'+t("overview")+'</h2></div><div class="card-body"><div id="stats" class="stats-grid"></div></div></div><div class="card"><div class="card-header"><h2>'+t("settings")+'</h2></div><div class="card-body"><div id="settings"></div></div></div><div class="card"><div class="card-header"><h2>'+t("cleanup")+'</h2></div><div class="card-body"><div id="cleanup-section"><p style="font-size:.8rem;color:var(--dim);margin-bottom:.8rem">'+t("cleanupDesc")+'</p><button class="btn btn-outline" onclick="checkCleanup()">'+t("checkOrphans")+'</button><div id="cleanup-result" style="margin-top:.8rem"></div></div></div></div><div class="card"><div class="card-header"><h2>'+t("users")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="user-search" placeholder="'+t("searchUsersPh")+'" onkeydown="if(event.key===\'Enter\')searchUsers()" value="'+esc(userSearch)+'"></div><div id="users"></div></div></div><div class="card"><div class="card-header"><h2>'+t("allSites")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="admin-site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchAdminSites()" value="'+esc(adminSiteSearch)+'"></div><div id="sites"></div></div></div></div>';
 loadStats();loadSettings();loadUsers();loadSites();
-fetch("/api/version").then(function(r){return r.json()}).then(function(d){var v=document.getElementById("ver");if(v)v.textContent="v"+(d.data?d.data.version:"dev")}).catch(function(){})
+fetch(BASE+"api/version").then(function(r){return r.json()}).then(function(d){var v=document.getElementById("ver");if(v)v.textContent="v"+(d.data?d.data.version:"dev")}).catch(function(){})
 }
 function loadStats(){
 api("/admin/stats").then(function(d){var s=d.data;document.getElementById("stats").innerHTML='<div class="stat-card"><div class="num">'+s.users+'</div><div class="label">'+t("userCount")+'</div></div><div class="stat-card"><div class="num">'+s.sites+'</div><div class="label">'+t("siteCount")+'</div></div><div class="stat-card"><div class="num">'+s.admins+'</div><div class="label">'+t("adminCount")+'</div></div>'}).catch(function(e){toast(e.message,"error")})
@@ -590,7 +590,7 @@ button:hover{background:var(--accent-dim)}
 <div class="card">
 <h1>🔒 <span class="site-name">%s</span></h1>
 <p>This site is password-protected. Enter the password to continue.</p>
-<form method="POST" action="/p/%s">
+<form method="POST" action="">
 <input type="password" id="password" name="password" placeholder="Password" autofocus required>
 <button type="submit">Enter Site</button>
 </form>
@@ -599,7 +599,7 @@ button:hover{background:var(--accent-dim)}
 document.querySelector("form").addEventListener("submit",function(e){e.preventDefault();e.target.submit()});
 </script>
 </body>
-</html>`, escHTML(siteName), escHTML(siteName), slug)
+</html>`, escHTML(siteName), escHTML(siteName))
 }
 
 // passwordPageHTMLWithErr returns the password gate page with an error message.
@@ -634,13 +634,13 @@ button:hover{background:var(--accent-dim)}
 <h1>🔒 <span class="site-name">%s</span></h1>
 <p>This site is password-protected. Enter the password to continue.</p>
 <div class="err">%s</div>
-<form method="POST" action="/p/%s">
+<form method="POST" action="">
 <input type="password" name="password" placeholder="Password" autofocus required>
 <button type="submit">Enter Site</button>
 </form>
 </div>
 </body>
-</html>`, escHTML(siteName), escHTML(siteName), escHTML(errMsg), slug)
+</html>`, escHTML(siteName), escHTML(errMsg))
 }
 
 // escHTML escapes HTML special characters to prevent XSS.

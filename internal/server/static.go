@@ -94,13 +94,29 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	// Password protection check — token from Authorization header or ?token= query param
 	if site.Password != "" {
 		token := auth.GetSiteToken(r)
-		if token == "" {
-			http.Redirect(w, r, "/p/"+slug, http.StatusSeeOther)
-			return
-		}
-		ss, err := db.GetSiteSession(s.database, token)
-		if err != nil || ss == nil || ss.ID != site.ID {
-			http.Redirect(w, r, "/p/"+slug, http.StatusSeeOther)
+		if token == "" || func() bool {
+			ss, err := db.GetSiteSession(s.database, token)
+			return err != nil || ss == nil || ss.ID != site.ID
+		}() {
+			// Compute relative redirect from /s/{slug}/{subPath} → /p/{slug}
+			// Browser resolves relative URL against current page URL.
+			// /s/{slug}/          → need ../../      → /p/{slug}
+			// /s/{slug}/sub/      → need ../../../  → /p/{slug}
+			// /s/{slug}/sub/file  → need ../../../  → /p/{slug} (file is stripped, same as dir)
+			subPath := ""
+			if len(pathParts) > 1 {
+				subPath = pathParts[1]
+			}
+			depth := 2 // up past slug + up past /s/
+			if subPath != "" {
+				seg := strings.Split(strings.TrimSuffix(subPath, "/"), "/")
+				for _, s := range seg {
+					if s != "" {
+						depth++
+					}
+				}
+			}
+			http.Redirect(w, r, strings.Repeat("../", depth)+"p/"+slug, http.StatusSeeOther)
 			return
 		}
 	}
@@ -214,22 +230,26 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 		return
 	}
 
-	// Build breadcrumb
-	baseURL := "/s/" + slug + "/"
+	// Build breadcrumb using relative paths from the current page.
+	// Current URL is /s/{slug}/{subPath} — we link relative to that.
+	// The listing page is at /s/{slug}/ (or /s/{slug}/{subPath}/),
+	// so "Name" links are just "name" or "name/" relative.
+	// Breadcrumb needs to navigate up, so we use relative "../" paths.
 	parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/")
 	var crumbs []string
-	crumbs = append(crumbs, `<a href="`+baseURL+`">/</a>`)
-	acc := ""
+	crumbs = append(crumbs, `<a href="./">/</a>`)
 	for i, p := range parts {
 		if p == "" {
 			continue
 		}
-		acc += p + "/"
+		// Navigate up to root, then down to this part
+		upCount := len(parts) - 1 - i
+		href := strings.Repeat("../", upCount) + p + "/"
 		sep := ""
 		if i > 0 || subPath != "" {
 			sep = "/"
 		}
-		crumbs = append(crumbs, `<a href="`+baseURL+acc+`">`+p+`</a>`+sep)
+		crumbs = append(crumbs, `<a href="`+href+`">`+p+`</a>`+sep)
 	}
 
 	var b strings.Builder
@@ -246,13 +266,9 @@ th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
 	b.WriteString(strings.Join(crumbs, " / "))
 	b.WriteString(`</h1><table><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>`)
 
-	// ".." link for subdirectories
+	// ".." link for subdirectories — always relative "../"
 	if subPath != "" {
-		parent := baseURL
-		if parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/"); len(parts) > 1 {
-			parent = baseURL + strings.Join(parts[:len(parts)-1], "/") + "/"
-		}
-		b.WriteString(`<tr><td class="dir"><a href="` + parent + `">../</a></td><td>-</td></tr>`)
+		b.WriteString(`<tr><td class="dir"><a href="../">../</a></td><td>-</td></tr>`)
 	}
 
 	for _, e := range entries {
@@ -266,22 +282,11 @@ th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
 			size = formatSize(info.Size())
 		}
 		displayName := name
-		if e.IsDir() {
-			displayName += "/"
-		}
-		href := baseURL
-		if subPath != "" {
-			href += subPath
-			if !strings.HasSuffix(href, "/") {
-				href += "/"
-			}
-		}
-		href += name
-		if e.IsDir() {
-			href += "/"
-		}
+		href := name
 		cls := ""
 		if e.IsDir() {
+			displayName += "/"
+			href += "/"
 			cls = ` class="dir"`
 		}
 		b.WriteString(`<tr><td` + cls + `><a href="` + href + `">` + displayName + `</a></td><td class="size">` + size + `</td></tr>`)

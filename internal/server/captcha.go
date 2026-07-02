@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"strings"
@@ -9,27 +10,44 @@ import (
 	"time"
 )
 
-// captchaStore holds captcha codes in memory with expiry.
+// captchaStore holds captcha answers in memory with expiry.
 type captchaEntry struct {
-	code    string
+	answer  string
 	expires time.Time
 }
 
 var (
-	captchaMu    sync.Mutex
-	captchaStore  = make(map[string]captchaEntry)
-	captchaRunes  = []rune("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789")
-	captchaColors = []string{"#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#3b82f6"}
+	captchaMu   sync.Mutex
+	captchaStore = make(map[string]captchaEntry)
 )
 
-// generateCaptcha creates a new captcha, stores it, and returns (id, svgImage).
-// The SVG is a data URI string ready to use as <img src>.
+// generateCaptcha creates a new arithmetic captcha, stores it, and returns (id, svgDataURI).
+// The SVG image renders a math problem with visual noise to prevent simple OCR.
 func generateCaptcha() (string, string) {
-	code := randomCaptchaCode(4)
+	a := randIntRange(9) + 1 // 1-9
+	b := randIntRange(9) + 1 // 1-9
+	var question, answer string
+
+	op := randIntRange(2)
+	if op == 0 {
+		// Addition
+		question = fmt.Sprintf("%d + %d = ?", a, b)
+		answer = fmt.Sprintf("%d", a+b)
+	} else {
+		// Subtraction (ensure non-negative)
+		if a < b {
+			a, b = b, a
+		}
+		question = fmt.Sprintf("%d − %d = ?", a, b)
+		answer = fmt.Sprintf("%d", a-b)
+	}
+
+	svgDataURI := renderCaptchaSVG(question)
+
 	id := randomToken(16)
 
 	captchaMu.Lock()
-	captchaStore[id] = captchaEntry{code: code, expires: time.Now().Add(5 * time.Minute)}
+	captchaStore[id] = captchaEntry{answer: answer, expires: time.Now().Add(5 * time.Minute)}
 	// Clean expired entries
 	now := time.Now()
 	for k, v := range captchaStore {
@@ -39,8 +57,110 @@ func generateCaptcha() (string, string) {
 	}
 	captchaMu.Unlock()
 
-	svg := renderCaptchaSVG(code)
-	return id, svg
+	return id, svgDataURI
+}
+
+// renderCaptchaSVG generates an SVG image with the captcha text, noise lines, and distortion.
+// Returns a base64 data URI suitable for use in <img src="...">.
+func renderCaptchaSVG(text string) string {
+	const (
+		width  = 150
+		height = 40
+	)
+
+	// Remove spaces — they waste horizontal space and add nothing
+	text = strings.ReplaceAll(text, " ", "")
+
+	var b strings.Builder
+
+	// Generate random noise lines (3-5 lines)
+	numLines := 3 + randIntRange(3)
+	var lines strings.Builder
+	for i := 0; i < numLines; i++ {
+		x1 := randIntRange(width)
+		y1 := randIntRange(height)
+		x2 := randIntRange(width)
+		y2 := randIntRange(height)
+		color := randomColor()
+		opacity := 0.2 + float64(randIntRange(30))/100.0
+		lines.WriteString(fmt.Sprintf(
+			`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1" opacity="%.2f"/>`,
+			x1, y1, x2, y2, color, opacity,
+		))
+	}
+
+	// Generate noise dots (15-25)
+	numDots := 15 + randIntRange(11)
+	var dots strings.Builder
+	for i := 0; i < numDots; i++ {
+		x := randIntRange(width)
+		y := randIntRange(height)
+		r := 1 + randIntRange(2)
+		color := randomColor()
+		dots.WriteString(fmt.Sprintf(
+			`<circle cx="%d" cy="%d" r="%d" fill="%s" opacity="0.3"/>`,
+			x, y, r, color,
+		))
+	}
+
+	// Render each character with slight rotation and vertical offset
+	chars := strings.Split(text, "")
+	charW := 22
+	totalW := charW * len(chars)
+	startX := (width - totalW) / 2 + 6
+	var charSVG strings.Builder
+	for i, ch := range chars {
+		x := startX + i*charW
+		y := 27 + randIntRange(5) - 2 // vertical jitter ±2px
+		rotation := randIntRange(24) - 12 // ±12 degrees
+		color := randomDarkColor()
+		charSVG.WriteString(fmt.Sprintf(
+			`<text x="%d" y="%d" font-family="'JetBrains Mono','Fira Code',monospace" font-size="20" font-weight="700" fill="%s" transform="rotate(%d %d %d)">%s</text>`,
+			x, y, color, rotation, x, y, escapeXML(ch),
+		))
+	}
+
+	// Build full SVG
+	b.WriteString(fmt.Sprintf(
+		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`+
+			`<rect width="%d" height="%d" fill="transparent"/>`+
+			`%s`+ // noise dots
+			`%s`+ // noise lines
+			`%s`+ // characters
+			`</svg>`,
+		width, height, width, height,
+		width, height,
+		dots.String(),
+		lines.String(),
+		charSVG.String(),
+	))
+
+	svgBytes := []byte(b.String())
+	dataURI := "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString(svgBytes)
+	return dataURI
+}
+
+// randomColor returns a random hex color string.
+func randomColor() string {
+	colors := []string{"#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#e84393"}
+	return colors[randIntRange(len(colors))]
+}
+
+// randomDarkColor returns a random dark color for text (ensures readability).
+func randomDarkColor() string {
+	colors := []string{"#2c3e50", "#c0392b", "#16a085", "#8e44ad", "#2980b9", "#d35400", "#27ae60"}
+	return colors[randIntRange(len(colors))]
+}
+
+// escapeXML escapes special XML characters.
+func escapeXML(s string) string {
+	return strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		`"`, "&quot;",
+		"'", "&#39;",
+	).Replace(s)
 }
 
 // verifyCaptcha checks and removes the captcha. Returns true if matched.
@@ -57,16 +177,9 @@ func verifyCaptcha(id, code string) bool {
 	if time.Now().After(entry.expires) {
 		return false
 	}
-	return strings.EqualFold(entry.code, code)
-}
-
-func randomCaptchaCode(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(captchaRunes))))
-		b[i] = captchaRunes[idx.Int64()]
-	}
-	return string(b)
+	// Normalize: trim spaces
+	code = strings.TrimSpace(code)
+	return strings.EqualFold(entry.answer, code)
 }
 
 func randomToken(n int) string {
@@ -78,47 +191,4 @@ func randomToken(n int) string {
 func randIntRange(max int) int {
 	n, _ := rand.Int(rand.Reader, big.NewInt(int64(max)))
 	return int(n.Int64())
-}
-
-// renderCaptchaSVG generates an SVG captcha image as a data URI.
-func renderCaptchaSVG(code string) string {
-	var b strings.Builder
-	b.WriteString("data:image/svg+xml;utf8,")
-	b.WriteString("<svg xmlns='http://www.w3.org/2000/svg' width='150' height='50'>")
-
-	// Background
-	b.WriteString("<rect width='150' height='50' fill='#f1f5f9' rx='8'/>")
-
-	// Noise lines
-	for i := 0; i < 6; i++ {
-		x1 := randIntRange(150)
-		y1 := randIntRange(50)
-		x2 := randIntRange(150)
-		y2 := randIntRange(50)
-		color := captchaColors[randIntRange(len(captchaColors))]
-		b.WriteString(fmt.Sprintf("<line x1='%d' y1='%d' x2='%d' y2='%d' stroke='%s' stroke-width='1' opacity='0.3'/>", x1, y1, x2, y2, color))
-	}
-
-	// Noise dots
-	for i := 0; i < 15; i++ {
-		x := randIntRange(150)
-		y := randIntRange(50)
-		b.WriteString(fmt.Sprintf("<circle cx='%d' cy='%d' r='1' fill='#94a3b8' opacity='0.5'/>", x, y))
-	}
-
-	// Characters
-	charWidth := 30
-	startX := 15
-	for i, ch := range code {
-		x := startX + i*charWidth
-		y := 30 + randIntRange(10) - 5
-		rotation := randIntRange(30) - 15
-		color := captchaColors[randIntRange(len(captchaColors))]
-		fontSize := 22 + randIntRange(6)
-		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='%d' font-family='monospace' fill='%s' transform='rotate(%d %d %d)' font-weight='bold'>%c</text>",
-			x, y, fontSize, color, rotation, x, y, ch))
-	}
-
-	b.WriteString("</svg>")
-	return b.String()
 }

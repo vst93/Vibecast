@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -32,7 +34,7 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	var body struct {
@@ -43,25 +45,25 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		CaptchaCode string `json:"captchaCode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 		return
 	}
 	body.Email = strings.TrimSpace(strings.ToLower(body.Email))
 	if body.Email == "" || len(body.Password) < 6 {
-		writeJSON(w, 400, jsonResp{Error: "email required and password must be at least 6 characters"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "email_password_invalid")})
 		return
 	}
 	if len(body.Password) > 72 {
-		writeJSON(w, 400, jsonResp{Error: "password too long (max 72 chars)"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "password_too_long")})
 		return
 	}
 	if body.Password != body.Confirm {
-		writeJSON(w, 400, jsonResp{Error: "passwords do not match"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "password_mismatch")})
 		return
 	}
 	// Verify captcha
 	if !verifyCaptcha(body.CaptchaID, body.CaptchaCode) {
-		writeJSON(w, 400, jsonResp{Error: "captcha incorrect"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "captcha_incorrect")})
 		return
 	}
 
@@ -70,14 +72,14 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	isFirstUser := userCount == 0
 	if !isFirstUser {
 		if !db.GetSettingBool(s.database, "open_registration", true) {
-			writeJSON(w, 403, jsonResp{Error: "registration is closed"})
+			writeJSON(w, 403, jsonResp{Error: tMsg(r, "registration_closed")})
 			return
 		}
 		// Check domain restriction
 		if db.GetSettingBool(s.database, "domain_restriction", false) {
 			allowedDomains, _ := db.GetSetting(s.database, "allowed_domains")
 			if !isEmailDomainAllowed(body.Email, allowedDomains) {
-				writeJSON(w, 403, jsonResp{Error: "email domain not allowed"})
+				writeJSON(w, 403, jsonResp{Error: tMsg(r, "domain_not_allowed")})
 				return
 			}
 		}
@@ -85,16 +87,16 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	hashed, err := auth.HashPassword(body.Password)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to hash password"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "hash_failed")})
 		return
 	}
 	user, err := db.CreateUser(s.database, body.Email, hashed, isFirstUser)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
-			writeJSON(w, 409, jsonResp{Error: "email already registered"})
+			writeJSON(w, 409, jsonResp{Error: tMsg(r, "email_taken")})
 			return
 		}
-		writeJSON(w, 500, jsonResp{Error: "failed to create user"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_user_failed")})
 		return
 	}
 
@@ -102,7 +104,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	token := auth.GenerateToken()
 	expires := time.Now().Add(auth.SessionDuration)
 	if err := db.CreateSession(s.database, user.ID, token, expires); err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to create session"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_session_failed")})
 		return
 	}
 
@@ -119,7 +121,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	var body struct {
@@ -129,30 +131,30 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		CaptchaCode string `json:"captchaCode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 		return
 	}
 	body.Email = strings.TrimSpace(strings.ToLower(body.Email))
 	// Verify captcha
 	if !verifyCaptcha(body.CaptchaID, body.CaptchaCode) {
-		writeJSON(w, 400, jsonResp{Error: "captcha incorrect"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "captcha_incorrect")})
 		return
 	}
 
 	user, err := db.GetUserByEmail(s.database, body.Email)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "internal error"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
 		return
 	}
 	if user == nil || !auth.CheckPassword(user.Password, body.Password) {
-		writeJSON(w, 401, jsonResp{Error: "invalid email or password"})
+		writeJSON(w, 401, jsonResp{Error: tMsg(r, "invalid_credentials")})
 		return
 	}
 
 	token := auth.GenerateToken()
 	expires := time.Now().Add(auth.SessionDuration)
 	if err := db.CreateSession(s.database, user.ID, token, expires); err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to create session"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_session_failed")})
 		return
 	}
 
@@ -169,7 +171,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	token := auth.GetSessionToken(r)
@@ -182,7 +184,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	user := auth.CurrentUser(r, s.database)
 	if user == nil {
-		writeJSON(w, 401, jsonResp{Error: "unauthorized"})
+		writeJSON(w, 401, jsonResp{Error: tMsg(r, "unauthorized")})
 		return
 	}
 	writeJSON(w, 200, jsonResp{
@@ -194,17 +196,17 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleCaptcha generates and returns a captcha image as SVG data URI.
+// handleCaptcha generates and returns an arithmetic captcha question.
 func (s *Server) handleCaptcha(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
-	id, svg := generateCaptcha()
+	id, img := generateCaptcha()
 	writeJSON(w, 200, jsonResp{
 		Data: map[string]interface{}{
-			"id":   id,
-			"image": svg,
+			"id":    id,
+			"image": img,
 		},
 	})
 }
@@ -213,7 +215,7 @@ func (s *Server) handleCaptcha(w http.ResponseWriter, r *http.Request) {
 // Requires current password + new password. Also validates captcha.
 func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodPut {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	var body struct {
@@ -221,28 +223,28 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, us
 		NewPassword string `json:"newPassword"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 		return
 	}
 	if len(body.NewPassword) < 6 {
-		writeJSON(w, 400, jsonResp{Error: "new password must be at least 6 characters"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "new_password_too_short")})
 		return
 	}
 	if len(body.NewPassword) > 72 {
-		writeJSON(w, 400, jsonResp{Error: "password too long (max 72 chars)"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "password_too_long")})
 		return
 	}
 	if !auth.CheckPassword(user.Password, body.OldPassword) {
-		writeJSON(w, 403, jsonResp{Error: "current password is incorrect"})
+		writeJSON(w, 403, jsonResp{Error: tMsg(r, "current_password_wrong")})
 		return
 	}
 	hashed, err := auth.HashPassword(body.NewPassword)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to hash password"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "hash_failed")})
 		return
 	}
 	if err := db.UpdateUserPassword(s.database, user.ID, hashed); err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to update password"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_password_failed")})
 		return
 	}
 	writeJSON(w, 200, jsonResp{Message: "password changed"})
@@ -257,7 +259,7 @@ func (s *Server) handleSites(w http.ResponseWriter, r *http.Request, user *db.Us
 	case http.MethodPost:
 		s.createSite(w, r, user)
 	default:
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 	}
 }
 
@@ -266,7 +268,7 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/api/sites/"), "/", 2)
 	siteIDStr := pathParts[0]
 	if siteIDStr == "" {
-		writeJSON(w, 400, jsonResp{Error: "site ID required"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "site_id_required")})
 		return
 	}
 
@@ -275,21 +277,31 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	site, err := db.GetSiteByID(s.database, siteID)
 	if err != nil || site == nil {
-		writeJSON(w, 404, jsonResp{Error: "site not found"})
+		writeJSON(w, 404, jsonResp{Error: tMsg(r, "site_not_found")})
 		return
 	}
 	if site.UserID != user.ID {
-		writeJSON(w, 403, jsonResp{Error: "forbidden"})
+		writeJSON(w, 403, jsonResp{Error: tMsg(r, "forbidden")})
 		return
 	}
 
 	// Check for /deploy sub-action
 	if len(pathParts) > 1 && pathParts[1] == "deploy" {
 		if r.Method != http.MethodPost {
-			writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 			return
 		}
 		s.deploySite(w, r, user, site)
+		return
+	}
+
+	// Check for /files sub-action (file tree listing)
+	if len(pathParts) > 1 && pathParts[1] == "files" {
+		if r.Method != http.MethodGet {
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+			return
+		}
+		s.siteFileTree(w, r, site)
 		return
 	}
 
@@ -301,7 +313,7 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	case http.MethodDelete:
 		s.deleteSite(w, r, user, site)
 	default:
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 	}
 }
 
@@ -320,12 +332,12 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 	offset := (page - 1) * perPage
 	sites, err := db.ListSitesByUserPaged(s.database, user.ID, search, perPage, offset)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to list sites"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "list_sites_failed")})
 		return
 	}
 	total, err := db.CountSitesByUser(s.database, user.ID, search)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to count sites"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "count_sites_failed")})
 		return
 	}
 	var list []map[string]interface{}
@@ -346,53 +358,34 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.User) {
 	var body struct {
 		Name     string `json:"name"`
-		Slug     string `json:"slug"`
 		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 		return
 	}
 	body.Name = strings.TrimSpace(body.Name)
 	if body.Name == "" {
-		writeJSON(w, 400, jsonResp{Error: "name required"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "name_required")})
 		return
 	}
 
-	slug := strings.TrimSpace(body.Slug)
-	if slug == "" {
-		var err error
-		slug, err = s.generateUniqueSlug(body.Name)
-		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to generate slug"})
-			return
-		}
-	} else {
-		slug = slugify(slug)
-		if !isValidSlug(slug) {
-			writeJSON(w, 400, jsonResp{Error: "invalid slug (2-63 chars, a-z0-9- only)"})
-			return
-		}
-		existing, err := db.GetSiteBySlug(s.database, slug)
-		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to check slug"})
-			return
-		}
-		if existing != nil {
-			writeJSON(w, 409, jsonResp{Error: "slug already taken"})
-			return
-		}
+	// Slug is always auto-generated — 12 random chars, no user input
+	slug, err := s.generateUniqueSlug("")
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "generate_slug_failed")})
+		return
 	}
 
 	hashedPwd := ""
 	if body.Password != "" {
 		if len(body.Password) < 4 {
-			writeJSON(w, 400, jsonResp{Error: "site password must be at least 4 characters"})
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "site_password_too_short")})
 			return
 		}
 		h, err := auth.HashPassword(body.Password)
 		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to hash password"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "hash_failed")})
 			return
 		}
 		hashedPwd = h
@@ -401,14 +394,14 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	// If public access is disabled, sites must have password protection
 	if body.Password == "" {
 		if !db.GetSettingBool(s.database, "allow_public_access", true) {
-			writeJSON(w, 403, jsonResp{Error: "public access is disabled: site must have a password"})
+			writeJSON(w, 403, jsonResp{Error: tMsg(r, "public_access_disabled")})
 			return
 		}
 	}
 
 	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to create site"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_site_failed")})
 		return
 	}
 
@@ -424,7 +417,7 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 		return
 	}
 	name := strings.TrimSpace(body.Name)
@@ -435,12 +428,12 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	plainPwd := site.PasswordPlain
 	if body.Password != "" {
 		if len(body.Password) < 4 {
-			writeJSON(w, 400, jsonResp{Error: "site password must be at least 4 characters"})
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "site_password_too_short")})
 			return
 		}
 		h, err := auth.HashPassword(body.Password)
 		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to hash password"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "hash_failed")})
 			return
 		}
 		hashedPwd = h
@@ -448,12 +441,12 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	} else if site.Password == "" {
 		// Trying to keep a site public when public access is disabled
 		if !db.GetSettingBool(s.database, "allow_public_access", true) {
-			writeJSON(w, 403, jsonResp{Error: "public access is disabled: site must have a password"})
+			writeJSON(w, 403, jsonResp{Error: tMsg(r, "public_access_disabled")})
 			return
 		}
 	}
 	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd, plainPwd); err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to update site"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_site_failed")})
 		return
 	}
 	writeJSON(w, 200, jsonResp{Message: "updated"})
@@ -461,7 +454,7 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 func (s *Server) deleteSite(w http.ResponseWriter, r *http.Request, user *db.User, site *db.Site) {
 	if err := db.DeleteSite(s.database, site.ID); err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to delete site"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "delete_site_failed")})
 		return
 	}
 	_ = storage.DeleteSiteDir(s.config.StorageDir, site.Slug)
@@ -474,27 +467,27 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeJSON(w, 400, jsonResp{Error: "file upload required (field name: 'file')"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "file_required")})
 		return
 	}
 	defer file.Close()
 
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
-		writeJSON(w, 400, jsonResp{Error: "only .zip files are accepted"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "zip_only")})
 		return
 	}
 
 	// Read file into memory (we need size for zip.NewReader)
 	data, err := io.ReadAll(file)
 	if err != nil {
-		writeJSON(w, 400, jsonResp{Error: "failed to read upload"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "read_upload_failed")})
 		return
 	}
 
 	siteDir := fmt.Sprintf("%s/%s", s.config.StorageDir, site.Slug)
 	result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: fmt.Sprintf("failed to extract zip: %v", err)})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "extract_zip_failed") + ": " + err.Error()})
 		return
 	}
 
@@ -538,6 +531,34 @@ func bytesReader(data []byte) io.ReaderAt {
 	return bytesReaderType{data}
 }
 
+// siteFileTree returns a flat list of files in the site's storage directory.
+func (s *Server) siteFileTree(w http.ResponseWriter, r *http.Request, site *db.Site) {
+	siteDir := filepath.Join(s.config.StorageDir, site.Slug)
+	type fileEntry struct {
+		Name string `json:"name"`
+		Size int64  `json:"size"`
+		Dir  bool   `json:"dir"`
+	}
+	var files []fileEntry
+	entries, err := os.ReadDir(siteDir)
+	if err != nil {
+		writeJSON(w, 200, jsonResp{Data: []fileEntry{}})
+		return
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		info, _ := e.Info()
+		size := int64(0)
+		if info != nil {
+			size = info.Size()
+		}
+		files = append(files, fileEntry{Name: e.Name(), Size: size, Dir: e.IsDir()})
+	}
+	writeJSON(w, 200, jsonResp{Data: files})
+}
+
 type bytesReaderType struct {
 	data []byte
 }
@@ -571,4 +592,85 @@ func isEmailDomainAllowed(email, allowedDomains string) bool {
 		}
 	}
 	return false
+}
+
+// adminCleanup handles orphaned directory cleanup.
+// GET  → scans storage dir, returns list of orphaned directories (not in DB)
+// POST → deletes the orphaned directories (requires confirm:true in body)
+func (s *Server) adminCleanup(w http.ResponseWriter, r *http.Request, user *db.User) {
+	// Get all slugs from DB
+	dbSlugs, err := db.GetAllSlugs(s.database)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to get site list"})
+		return
+	}
+	slugSet := make(map[string]bool)
+	for _, sl := range dbSlugs {
+		slugSet[sl] = true
+	}
+
+	// Scan storage directory
+	entries, err := os.ReadDir(s.config.StorageDir)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to read storage directory"})
+		return
+	}
+
+	var orphans []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		if !slugSet[name] {
+			orphans = append(orphans, name)
+		}
+	}
+
+	if r.Method == http.MethodGet {
+		writeJSON(w, 200, jsonResp{
+			Data: map[string]interface{}{
+				"orphans": orphans,
+				"count":   len(orphans),
+			},
+		})
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		var body struct {
+			Confirm bool `json:"confirm"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
+			return
+		}
+		if !body.Confirm {
+			writeJSON(w, 400, jsonResp{Error: "confirmation required"})
+			return
+		}
+
+		deleted := 0
+		for _, slug := range orphans {
+			dir := filepath.Join(s.config.StorageDir, slug)
+			if err := os.RemoveAll(dir); err != nil {
+				continue
+			}
+			deleted++
+		}
+
+		writeJSON(w, 200, jsonResp{
+			Message: "cleanup complete",
+			Data: map[string]interface{}{
+				"deleted": deleted,
+				"total":   len(orphans),
+			},
+		})
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }

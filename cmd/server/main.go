@@ -12,6 +12,8 @@ import (
 	"static-host/internal/server"
 )
 
+var version = "dev"
+
 func main() {
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
@@ -40,7 +42,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	fmt.Printf("Vibecast v1.0.0\n")
+	fmt.Printf("Vibecast v%s\n", version)
 	fmt.Printf("Build with vibe. Cast instantly.\n")
 	fmt.Printf("────────────────────────────\n")
 	fmt.Printf("Listening:  http://localhost%s\n", *addr)

@@ -356,6 +356,24 @@ func DeleteSite(db *sql.DB, id int64) error {
 	return err
 }
 
+// GetAllSlugs returns all site slugs from the database.
+func GetAllSlugs(db *sql.DB) ([]string, error) {
+	rows, err := db.Query(`SELECT slug FROM sites`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var slugs []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, err
+		}
+		slugs = append(slugs, s)
+	}
+	return slugs, rows.Err()
+}
+
 func CountSites(db *sql.DB) (int64, error) {
 	var count int64
 	err := db.QueryRow(`SELECT COUNT(*) FROM sites`).Scan(&count)

@@ -26,15 +26,25 @@ func paginationParams(r *http.Request) (page, perPage, offset int, search string
 	return
 }
 
+// publicSettings returns non-sensitive settings for unauthenticated clients.
+func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := db.GetSettings(s.database)
+	if err != nil {
+		writeJSON(w, 200, jsonResp{Data: map[string]bool{"openRegistration": true}})
+		return
+	}
+	writeJSON(w, 200, jsonResp{Data: map[string]bool{"openRegistration": settings.OpenRegistration}})
+}
+
 // adminStats returns dashboard statistics.
 func (s *Server) adminStats(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	stats, err := db.GetStats(s.database)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to get stats"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "get_stats_failed")})
 		return
 	}
 	writeJSON(w, 200, jsonResp{Data: stats})
@@ -43,19 +53,19 @@ func (s *Server) adminStats(w http.ResponseWriter, r *http.Request, user *db.Use
 // adminListUsers lists all users with pagination and search.
 func (s *Server) adminListUsers(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	page, limit, offset, search := paginationParams(r)
 
 	users, err := db.ListUsersPaged(s.database, search, limit, offset)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to list users"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "list_users_failed")})
 		return
 	}
 	total, err := db.CountUsersWithSearch(s.database, search)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to count users"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "count_users_failed")})
 		return
 	}
 	var list []map[string]interface{}
@@ -83,32 +93,32 @@ func (s *Server) adminUserAction(w http.ResponseWriter, r *http.Request, user *d
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/api/admin/users/"), "/", 2)
 	targetID, err := strconv.ParseInt(pathParts[0], 10, 64)
 	if err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid user ID"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_user_id")})
 		return
 	}
 
 	target, err := db.GetUserByID(s.database, targetID)
 	if err != nil || target == nil {
-		writeJSON(w, 404, jsonResp{Error: "user not found"})
+		writeJSON(w, 404, jsonResp{Error: tMsg(r, "user_not_found")})
 		return
 	}
 
 	switch r.Method {
 	case http.MethodPut:
 		if target.ID == user.ID {
-			writeJSON(w, 400, jsonResp{Error: "cannot modify your own admin status"})
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "cannot_modify_self_admin")})
 			return
 		}
 		newVal := !target.IsAdmin
 		if err := db.UpdateUserAdmin(s.database, target.ID, newVal); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to update"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_failed")})
 			return
 		}
 		writeJSON(w, 200, jsonResp{Message: "updated", Data: map[string]interface{}{"isAdmin": newVal}})
 
 	case http.MethodDelete:
 		if target.ID == user.ID {
-			writeJSON(w, 400, jsonResp{Error: "cannot delete yourself"})
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "cannot_delete_self")})
 			return
 		}
 		sites, _ := db.ListSitesByUser(s.database, target.ID)
@@ -116,32 +126,32 @@ func (s *Server) adminUserAction(w http.ResponseWriter, r *http.Request, user *d
 			_ = os.RemoveAll(filepath.Join(s.config.StorageDir, site.Slug))
 		}
 		if err := db.DeleteUser(s.database, target.ID); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to delete user"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "delete_user_failed")})
 			return
 		}
 		writeJSON(w, 200, jsonResp{Message: "deleted"})
 
 	default:
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 	}
 }
 
 // adminListAllSites lists all sites with pagination, search, and owner email.
 func (s *Server) adminListAllSites(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
 	page, limit, offset, search := paginationParams(r)
 
 	sites, err := db.ListAllSitesWithOwnerPaged(s.database, search, limit, offset)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to list sites"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "list_sites_failed")})
 		return
 	}
 	total, err := db.CountAllSitesWithOwner(s.database, search)
 	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: "failed to count sites"})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "count_sites_failed")})
 		return
 	}
 	var list []map[string]interface{}
@@ -164,27 +174,37 @@ func (s *Server) adminSiteAction(w http.ResponseWriter, r *http.Request, user *d
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/api/admin/sites/"), "/", 2)
 	siteID, err := strconv.ParseInt(pathParts[0], 10, 64)
 	if err != nil {
-		writeJSON(w, 400, jsonResp{Error: "invalid site ID"})
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_site_id")})
 		return
 	}
 
 	site, err := db.GetSiteByID(s.database, siteID)
 	if err != nil || site == nil {
-		writeJSON(w, 404, jsonResp{Error: "site not found"})
+		writeJSON(w, 404, jsonResp{Error: tMsg(r, "site_not_found")})
+		return
+	}
+
+	// Check for /files sub-action (file tree listing for any site)
+	if len(pathParts) > 1 && pathParts[1] == "files" {
+		if r.Method != http.MethodGet {
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+			return
+		}
+		s.siteFileTree(w, r, site)
 		return
 	}
 
 	switch r.Method {
 	case http.MethodDelete:
 		if err := db.DeleteSite(s.database, site.ID); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to delete site"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "delete_site_failed")})
 			return
 		}
 		_ = os.RemoveAll(filepath.Join(s.config.StorageDir, site.Slug))
 		writeJSON(w, 200, jsonResp{Message: "deleted"})
 
 	default:
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 	}
 }
 
@@ -194,7 +214,7 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 	case http.MethodGet:
 		settings, err := db.GetSettings(s.database)
 		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to get settings"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "get_settings_failed")})
 			return
 		}
 		writeJSON(w, 200, jsonResp{Data: settings})
@@ -206,28 +226,28 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 			AllowedDomains    string `json:"allowedDomains"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 			return
 		}
 		if err := db.SetSetting(s.database, "open_registration", strconv.FormatBool(body.OpenRegistration)); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}
 		if err := db.SetSetting(s.database, "allow_public_access", strconv.FormatBool(body.AllowPublicAccess)); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}
 		if err := db.SetSetting(s.database, "domain_restriction", strconv.FormatBool(body.DomainRestriction)); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}
 		if err := db.SetSetting(s.database, "allowed_domains", body.AllowedDomains); err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to update settings"})
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}
 		writeJSON(w, 200, jsonResp{Message: "settings updated"})
 	default:
-		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 	}
 }
 

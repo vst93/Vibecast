@@ -53,14 +53,18 @@ func GetSessionToken(r *http.Request) string {
 	return auth
 }
 
-// GetSiteToken extracts the site access token from the Authorization header
-// or from the ?token= query parameter (for browser navigation).
+// GetSiteToken extracts the site access token from the Authorization header,
+// a cookie, or the ?token= query parameter (fallback for old links).
 func GetSiteToken(r *http.Request) string {
-	// Try Authorization header first
+	// Try Authorization header first (API clients)
 	if token := GetSessionToken(r); token != "" {
 		return token
 	}
-	// Fall back to query parameter for browser navigation
+	// Try cookie (browser navigation — set by password gate)
+	if cookie, err := r.Cookie("site_token"); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+	// Fall back to query parameter (legacy links)
 	return r.URL.Query().Get("token")
 }
 

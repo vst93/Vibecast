@@ -59,6 +59,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.HandleFunc("/api/auth/me", s.handleMe)
 	mux.HandleFunc("/api/auth/captcha", s.handleCaptcha)
+	mux.HandleFunc("/api/settings", s.publicSettings)
 	mux.HandleFunc("/api/auth/change-password", auth.RequireAuth(s.database, s.handleChangePassword))
 
 	// Sites API (auth required)
@@ -72,6 +73,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/admin/sites", auth.RequireAdmin(s.database, s.adminListAllSites))
 	mux.HandleFunc("/api/admin/sites/", auth.RequireAdmin(s.database, s.adminSiteAction))
 	mux.HandleFunc("/api/admin/settings", auth.RequireAdmin(s.database, s.adminHandleSettings))
+	mux.HandleFunc("/api/admin/cleanup", auth.RequireAdmin(s.database, s.adminCleanup))
 
 	// Admin UI
 	mux.HandleFunc("/admin", s.handleAdminPage)
@@ -142,27 +144,17 @@ func slugify(s string) string {
 	return s
 }
 
-// generateUniqueSlug ensures the slug is unique.
-// Uses a random suffix instead of sequential numbers to avoid leaking site counts.
-func (s *Server) generateUniqueSlug(base string) (string, error) {
-	slug := slugify(base)
-	existing, err := db.GetSiteBySlug(s.database, slug)
-	if err != nil {
-		return "", err
-	}
-	if existing == nil {
-		return slug, nil
-	}
-	// Append random suffix — not sequential, so counts can't be guessed
-	for i := 0; i < 20; i++ {
-		suffix := randomSuffix(4)
-		candidate := fmt.Sprintf("%s-%s", slugify(base), suffix)
-		ex, err := db.GetSiteBySlug(s.database, candidate)
+// generateUniqueSlug generates a random 12-character slug.
+// Ignores the site name entirely — slugs are unguessable random strings.
+func (s *Server) generateUniqueSlug(_ string) (string, error) {
+	for i := 0; i < 30; i++ {
+		slug := randomSuffix(12)
+		ex, err := db.GetSiteBySlug(s.database, slug)
 		if err != nil {
 			return "", err
 		}
 		if ex == nil {
-			return candidate, nil
+			return slug, nil
 		}
 	}
 	return "", fmt.Errorf("could not generate unique slug")

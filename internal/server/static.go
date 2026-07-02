@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"mime"
 	"net/http"
 	"os"
@@ -66,12 +67,7 @@ func getContentType(ext string) string {
 // staticHandler serves files from the site's storage directory.
 // Handles path safety, MIME detection, index.html fallback, SPA fallback, and password protection.
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if public access is allowed
-	if !db.GetSettingBool(s.database, "allow_public_access", true) {
-		http.Error(w, "Public access is disabled", http.StatusForbidden)
-		return
-	}
-
+	// Check if public access is allowed (password-protected sites are still accessible)
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/s/"), "/", 2)
 	slug := pathParts[0]
 	if slug == "" {
@@ -86,6 +82,12 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if site == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	// If public access is disabled, only password-protected sites can be accessed
+	if !db.GetSettingBool(s.database, "allow_public_access", true) && site.Password == "" {
+		http.Error(w, "Public access is disabled", http.StatusForbidden)
 		return
 	}
 
@@ -110,11 +112,11 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteDir := filepath.Join(s.config.StorageDir, slug)
-	s.serveStaticFile(w, r, siteDir, subPath)
+	s.serveStaticFile(w, r, siteDir, slug, subPath)
 }
 
 // serveStaticFile reads a file from disk and serves it with proper MIME and headers.
-func (s *Server) serveStaticFile(w http.ResponseWriter, r *http.Request, siteDir, subPath string) {
+func (s *Server) serveStaticFile(w http.ResponseWriter, r *http.Request, siteDir, slug, subPath string) {
 	// Clean and safe-join the path
 	cleanPath := filepath.Clean("/" + subPath)
 
@@ -146,6 +148,11 @@ func (s *Server) serveStaticFile(w http.ResponseWriter, r *http.Request, siteDir
 				s.writeFile(w, r, indexPath, idxStat)
 				return
 			}
+			// Try directory listing on the site root
+			if subPath == "" {
+				s.serveDirListing(w, r, siteDir, slug, "")
+				return
+			}
 			http.NotFound(w, r)
 			return
 		}
@@ -159,7 +166,8 @@ func (s *Server) serveStaticFile(w http.ResponseWriter, r *http.Request, siteDir
 			s.writeFile(w, r, indexPath, idxStat)
 			return
 		}
-		http.NotFound(w, r)
+		// No index.html — serve directory listing (nginx-style)
+		s.serveDirListing(w, r, fullPath, slug, subPath)
 		return
 	}
 
@@ -196,4 +204,106 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request, path string, 
 	// Use ServeContent — handles Last-Modified, If-Modified-Since, Range, ETag
 	modTime := stat.ModTime()
 	http.ServeContent(w, r, filepath.Base(path), modTime, f)
+}
+
+// serveDirListing renders an nginx-style directory listing.
+func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath, slug, subPath string) {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Build breadcrumb
+	baseURL := "/s/" + slug + "/"
+	parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/")
+	var crumbs []string
+	crumbs = append(crumbs, `<a href="`+baseURL+`">/</a>`)
+	acc := ""
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		acc += p + "/"
+		sep := ""
+		if i > 0 || subPath != "" {
+			sep = "/"
+		}
+		crumbs = append(crumbs, `<a href="`+baseURL+acc+`">`+p+`</a>`+sep)
+	}
+
+	var b strings.Builder
+	b.WriteString(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">`)
+	b.WriteString(`<style>body{font-family:system-ui,sans-serif;background:`)
+	b.WriteString(`var(--ink,#0c1117);color:var(--text,#e6edf3);margin:0;padding:2rem}
+a{color:#39d353;text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:1.1rem;font-weight:600;margin-bottom:1rem}
+table{border-collapse:collapse;width:100%;max-width:800px}
+th,td{text-align:left;padding:6px 12px;border-bottom:1px solid #30363d;font-size:.85rem}
+th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
+.dir{font-weight:600}.size{color:#7d8590;text-align:right;font-family:monospace}</style>`)
+	b.WriteString(`</head><body><h1>`)
+	b.WriteString(strings.Join(crumbs, " / "))
+	b.WriteString(`</h1><table><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>`)
+
+	// ".." link for subdirectories
+	if subPath != "" {
+		parent := baseURL
+		if parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/"); len(parts) > 1 {
+			parent = baseURL + strings.Join(parts[:len(parts)-1], "/") + "/"
+		}
+		b.WriteString(`<tr><td class="dir"><a href="` + parent + `">../</a></td><td>-</td></tr>`)
+	}
+
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		info, _ := e.Info()
+		size := "-"
+		if !e.IsDir() && info != nil {
+			size = formatSize(info.Size())
+		}
+		displayName := name
+		if e.IsDir() {
+			displayName += "/"
+		}
+		href := baseURL
+		if subPath != "" {
+			href += subPath
+			if !strings.HasSuffix(href, "/") {
+				href += "/"
+			}
+		}
+		href += name
+		if e.IsDir() {
+			href += "/"
+		}
+		cls := ""
+		if e.IsDir() {
+			cls = ` class="dir"`
+		}
+		b.WriteString(`<tr><td` + cls + `><a href="` + href + `">` + displayName + `</a></td><td class="size">` + size + `</td></tr>`)
+	}
+	b.WriteString(`</tbody></table></body></html>`)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+	w.WriteHeader(200)
+	w.Write([]byte(b.String()))
+}
+
+// formatSize converts a byte count to a human-readable string.
+func formatSize(n int64) string {
+	if n < 1024 {
+		return fmt.Sprintf("%d B", n)
+	}
+	if n < 1024*1024 {
+		return fmt.Sprintf("%.1f KB", float64(n)/1024)
+	}
+	if n < 1024*1024*1024 {
+		return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))
+	}
+	return fmt.Sprintf("%.1f GB", float64(n)/(1024*1024*1024))
 }

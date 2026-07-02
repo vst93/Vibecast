@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        default: false
+        type: boolean
+      force_version:
+        description: "Force a specific version tag (overrides auto-generated date version)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Compute version
+        id: version
+        run: |
+          FORCE="${{ github.event.inputs.force_version }}"
+          if [ -n "$FORCE" ] && [ "$FORCE" != "" ]; then
+            VERSION="$FORCE"
+          else
+            BASE=$(date +%Y%m%d)
+            VERSION="$BASE"
+            N=1
+            while git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; do
+              N=$((N + 1))
+              VERSION="${BASE}-${N}"
+            done
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $VERSION"
+
+      - name: Build all platforms
+        env:
+          CGO_ENABLED: 0
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          LDFLAGS="-s -w -X main.version=${VERSION}"
+
+          mkdir -p dist
+
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/vibecast-${VERSION}-linux-amd64 ./cmd/server
+
+          # macOS amd64 (Intel)
+          GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/vibecast-${VERSION}-darwin-amd64 ./cmd/server
+
+          # macOS arm64 (Apple Silicon)
+          GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/vibecast-${VERSION}-darwin-arm64 ./cmd/server
+
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/vibecast-${VERSION}-windows-amd64.exe ./cmd/server
+
+          ls -lh dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          generate_release_notes: true
+          files: dist/*

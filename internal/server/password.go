@@ -50,7 +50,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		contentType := r.Header.Get("Content-Type")
 		if strings.Contains(contentType, "application/json") {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeJSON(w, 400, jsonResp{Error: "invalid JSON"})
+				writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 				return
 			}
 		} else {
@@ -60,12 +60,14 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !auth.CheckPassword(site.Password, body.Password) {
+			// Password page always uses English — it's a public-facing page
+			errMsg := "Incorrect password"
 			if strings.Contains(contentType, "application/json") {
-				writeJSON(w, 401, jsonResp{Error: "incorrect password"})
+				writeJSON(w, 401, jsonResp{Error: errMsg})
 			} else {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprint(w, passwordPageHTMLWithErr(slug, site.Name, "密码错误，请重试"))
+				fmt.Fprint(w, passwordPageHTMLWithErr(slug, site.Name, errMsg))
 			}
 			return
 		}
@@ -88,8 +90,16 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				},
 			})
 		} else {
-			// Form submission: redirect with token in query
-			http.Redirect(w, r, "/s/"+slug+"/?token="+token, http.StatusSeeOther)
+			// Form submission: set cookie and redirect (no token in URL)
+			http.SetCookie(w, &http.Cookie{
+				Name:     "site_token",
+				Value:    token,
+				Path:     "/s/" + slug + "/",
+				MaxAge:   7 * 24 * 3600,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			http.Redirect(w, r, "/s/"+slug+"/", http.StatusSeeOther)
 		}
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -553,6 +554,23 @@ func (s *Server) adminRestartUpdate(w http.ResponseWriter, r *http.Request, user
 	}()
 }
 
+// getLocalIPs returns all non-loopback IPv4 addresses of the server.
+func getLocalIPs() []string {
+	var ips []string
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ips
+	}
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+			if ipNet.IP.To4() != nil {
+				ips = append(ips, ipNet.IP.String())
+			}
+		}
+	}
+	return ips
+}
+
 // adminSystemInfo handles GET /api/admin/system-info
 func (s *Server) adminSystemInfo(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodGet {
@@ -572,6 +590,7 @@ func (s *Server) adminSystemInfo(w http.ResponseWriter, r *http.Request, user *d
 		"os":          runtime.GOOS,
 		"arch":        runtime.GOARCH,
 		"startTime":   startTime,
+		"localIPs":    getLocalIPs(),
 	}})
 }
 

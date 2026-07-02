@@ -42,13 +42,14 @@ func migrate(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 
 	CREATE TABLE IF NOT EXISTS sites (
-		id           INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-		slug         TEXT NOT NULL UNIQUE,
-		name         TEXT NOT NULL DEFAULT '',
-		password     TEXT NOT NULL DEFAULT '',
-		created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		id            INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		slug          TEXT NOT NULL UNIQUE,
+		name          TEXT NOT NULL DEFAULT '',
+		password      TEXT NOT NULL DEFAULT '',
+		password_plain TEXT NOT NULL DEFAULT '',
+		created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE INDEX IF NOT EXISTS idx_sites_user ON sites(user_id);
 	CREATE INDEX IF NOT EXISTS idx_sites_slug ON sites(slug);
@@ -71,11 +72,13 @@ func migrate(db *sql.DB) error {
 		return err
 	}
 
-	// Step 2: add is_admin column if it doesn't exist (for existing DBs)
+	// Step 2: add columns if they doesn't exist (for existing DBs)
 	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN password_plain TEXT NOT NULL DEFAULT ''`)
 
 	// Step 3: seed default settings
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('open_registration', '1')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allow_public_access', '1')`)
 
 	return nil
 }

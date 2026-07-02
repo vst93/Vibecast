@@ -15,6 +15,12 @@ import (
 // staticHandler serves files from the site's storage directory.
 // Handles path safety, MIME detection, index.html fallback, and password protection.
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
+	// Check if public access is allowed
+	if !db.GetSettingBool(s.database, "allow_public_access", true) {
+		http.Error(w, "Public access is disabled", http.StatusForbidden)
+		return
+	}
+
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/s/"), "/", 2)
 	slug := pathParts[0]
 	if slug == "" {

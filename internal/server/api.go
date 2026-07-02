@@ -295,7 +295,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		hashedPwd = h
 	}
 
-	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd)
+	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to create site"})
 		return
@@ -321,6 +321,7 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		name = site.Name
 	}
 	hashedPwd := site.Password // keep existing by default
+	plainPwd := site.PasswordPlain
 	if body.Password != "" {
 		if len(body.Password) < 4 {
 			writeJSON(w, 400, jsonResp{Error: "site password must be at least 4 characters"})
@@ -332,8 +333,9 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 			return
 		}
 		hashedPwd = h
+		plainPwd = body.Password
 	}
-	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd); err != nil {
+	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd, plainPwd); err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to update site"})
 		return
 	}
@@ -391,13 +393,15 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 func siteToJSON(site *db.Site) map[string]interface{} {
 	protected := site.Password != ""
 	return map[string]interface{}{
-		"id":        site.ID,
-		"slug":      site.Slug,
-		"name":      site.Name,
-		"protected": protected,
-		"url":       fmt.Sprintf("/s/%s/", site.Slug),
-		"createdAt":  site.CreatedAt,
-		"updatedAt": site.UpdatedAt,
+		"id":            site.ID,
+		"slug":          site.Slug,
+		"name":          site.Name,
+		"protected":     protected,
+		"password":      site.PasswordPlain,
+		"storagePath":   site.Slug,
+		"url":           fmt.Sprintf("/s/%s/", site.Slug),
+		"createdAt":     site.CreatedAt,
+		"updatedAt":     site.UpdatedAt,
 	}
 }
 

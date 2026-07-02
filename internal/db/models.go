@@ -14,13 +14,14 @@ type User struct {
 }
 
 type Site struct {
-	ID        int64
-	UserID    int64
-	Slug      string
-	Name      string
-	Password  string // bcrypt hash, empty = no protection
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            int64
+	UserID        int64
+	Slug          string
+	Name          string
+	Password      string // bcrypt hash, empty = no protection
+	PasswordPlain string // plaintext password for display
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // --- Users ---
@@ -143,24 +144,24 @@ func DeleteSession(db *sql.DB, token string) error {
 
 // --- Sites ---
 
-func CreateSite(db *sql.DB, userID int64, slug, name, hashedPassword string) (*Site, error) {
+func CreateSite(db *sql.DB, userID int64, slug, name, hashedPassword, plainPassword string) (*Site, error) {
 	res, err := db.Exec(
-		`INSERT INTO sites (user_id, slug, name, password) VALUES (?, ?, ?, ?)`,
-		userID, slug, name, hashedPassword,
+		`INSERT INTO sites (user_id, slug, name, password, password_plain) VALUES (?, ?, ?, ?, ?)`,
+		userID, slug, name, hashedPassword, plainPassword,
 	)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
-	return &Site{ID: id, UserID: userID, Slug: slug, Name: name, Password: hashedPassword}, nil
+	return &Site{ID: id, UserID: userID, Slug: slug, Name: name, Password: hashedPassword, PasswordPlain: plainPassword}, nil
 }
 
 func GetSiteBySlug(db *sql.DB, slug string) (*Site, error) {
 	s := &Site{}
 	err := db.QueryRow(
-		`SELECT id, user_id, slug, name, password, created_at, updated_at FROM sites WHERE slug = ?`,
+		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites WHERE slug = ?`,
 		slug,
-	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -170,9 +171,9 @@ func GetSiteBySlug(db *sql.DB, slug string) (*Site, error) {
 func GetSiteByID(db *sql.DB, id int64) (*Site, error) {
 	s := &Site{}
 	err := db.QueryRow(
-		`SELECT id, user_id, slug, name, password, created_at, updated_at FROM sites WHERE id = ?`,
+		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites WHERE id = ?`,
 		id,
-	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -181,7 +182,7 @@ func GetSiteByID(db *sql.DB, id int64) (*Site, error) {
 
 func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 	rows, err := db.Query(
-		`SELECT id, user_id, slug, name, password, created_at, updated_at FROM sites WHERE user_id = ? ORDER BY created_at DESC`,
+		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites WHERE user_id = ? ORDER BY created_at DESC`,
 		userID,
 	)
 	if err != nil {
@@ -191,7 +192,7 @@ func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
 		sites = append(sites, s)
@@ -201,7 +202,7 @@ func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 
 func ListAllSites(db *sql.DB) ([]*Site, error) {
 	rows, err := db.Query(
-		`SELECT id, user_id, slug, name, password, created_at, updated_at FROM sites ORDER BY created_at DESC`,
+		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -210,7 +211,7 @@ func ListAllSites(db *sql.DB) ([]*Site, error) {
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
 		sites = append(sites, s)
@@ -218,10 +219,10 @@ func ListAllSites(db *sql.DB) ([]*Site, error) {
 	return sites, rows.Err()
 }
 
-func UpdateSite(db *sql.DB, id int64, name, hashedPassword string) error {
+func UpdateSite(db *sql.DB, id int64, name, hashedPassword, plainPassword string) error {
 	_, err := db.Exec(
-		`UPDATE sites SET name = ?, password = ?, updated_at = datetime('now') WHERE id = ?`,
-		name, hashedPassword, id,
+		`UPDATE sites SET name = ?, password = ?, password_plain = ?, updated_at = datetime('now') WHERE id = ?`,
+		name, hashedPassword, plainPassword, id,
 	)
 	return err
 }
@@ -250,11 +251,11 @@ func CreateSiteSession(db *sql.DB, siteID int64, token string, expiresAt time.Ti
 func GetSiteSession(db *sql.DB, token string) (*Site, error) {
 	s := &Site{}
 	err := db.QueryRow(
-		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.created_at, s.updated_at
+		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.password_plain, s.created_at, s.updated_at
 		 FROM site_sessions ss JOIN sites s ON ss.site_id = s.id
 		 WHERE ss.token = ? AND ss.expires_at > datetime('now')`,
 		token,
-	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -330,12 +331,20 @@ func GetStats(db *sql.DB) (*Stats, error) {
 // GetSettings returns a structured settings object.
 type Settings struct {
 	OpenRegistration bool `json:"openRegistration"`
+	AllowPublicAccess bool `json:"allowPublicAccess"`
 }
 
 func GetSettings(db *sql.DB) (*Settings, error) {
+	s := &Settings{}
 	val, err := GetSetting(db, "open_registration")
 	if err != nil {
 		return nil, err
 	}
-	return &Settings{OpenRegistration: val == "1" || val == "true"}, nil
+	s.OpenRegistration = val == "1" || val == "true"
+	val2, err := GetSetting(db, "allow_public_access")
+	if err != nil {
+		return nil, err
+	}
+	s.AllowPublicAccess = val2 == "1" || val2 == "true"
+	return s, nil
 }

@@ -33,7 +33,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if site.Password == "" {
 		// Not protected — redirect to site
-		http.Redirect(w, r, s.prefURL("/s/"+slug+"/"), http.StatusSeeOther)
+		http.Redirect(w, r, prefURL(r, "/s/"+slug+"/"), http.StatusSeeOther)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				Message: "authenticated",
 				Data: map[string]interface{}{
 					"token": token,
-					"url":   s.prefURL(fmt.Sprintf("/s/%s/", slug)),
+					"url":   prefURL(r, fmt.Sprintf("/s/%s/", slug)),
 				},
 			})
 		} else {
@@ -99,7 +99,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				HttpOnly: true,
 				SameSite: http.SameSiteLaxMode,
 			})
-			http.Redirect(w, r, s.prefURL("/s/"+slug+"/"), http.StatusSeeOther)
+			http.Redirect(w, r, prefURL(r, "/s/"+slug+"/"), http.StatusSeeOther)
 		}
 		return
 	}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -45,17 +46,6 @@ func New(cfg *Config) (*Server, error) {
 // Close closes the database connection.
 func (s *Server) Close() error {
 	return s.database.Close()
-}
-
-// baseURL returns the configured base URL prefix (empty for root deployment).
-// All generated URLs (API responses, redirects, directory listings) should use this.
-func (s *Server) baseURL() string {
-	return s.config.BaseURL
-}
-
-// prefURL prepends the base URL to a path. e.g. ("/s/foo/") → "/vibecast/s/foo/".
-func (s *Server) prefURL(p string) string {
-	return s.config.BaseURL + p
 }
 
 // SetHTTPServer stores a reference to the running http.Server, used for
@@ -137,31 +127,68 @@ func (s *Server) logMiddleware(next http.Handler) http.Handler {
 // stripBaseURL strips the configured base URL prefix from incoming requests
 // so that internal route matching works without knowing the prefix.
 // e.g. GET /vibecast/s/foo/ → /s/foo/ for the mux.
-// When BaseURL is empty, this is a pass-through.
+// When BaseURL is empty, auto-detects from request path using known route prefixes.
 func (s *Server) stripBaseURL(next http.Handler) http.Handler {
-	base := s.config.BaseURL
-	if base == "" {
-		return next
-	}
+	configuredBase := s.config.BaseURL
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) >= len(base) && r.URL.Path[:len(base)] == base {
-			// Strip the prefix. Ensure we don't turn "/vibecast" into "" — keep at least "/".
+		base := configuredBase
+		if base == "" {
+			// Auto-detect from request path using known route prefixes
+			base = detectBaseURL(r.URL.Path)
+		}
+		if base != "" && len(r.URL.Path) >= len(base) && r.URL.Path[:len(base)] == base {
 			r.URL.Path = r.URL.Path[len(base):]
 			if r.URL.Path == "" {
 				r.URL.Path = "/"
 			}
-			// Also strip from RawPath if present
-			if r.URL.RawPath != "" {
-				if len(r.URL.RawPath) >= len(base) && r.URL.RawPath[:len(base)] == base {
-					r.URL.RawPath = r.URL.RawPath[len(base):]
-					if r.URL.RawPath == "" {
-						r.URL.RawPath = "/"
-					}
+			if r.URL.RawPath != "" && len(r.URL.RawPath) >= len(base) && r.URL.RawPath[:len(base)] == base {
+				r.URL.RawPath = r.URL.RawPath[len(base):]
+				if r.URL.RawPath == "" {
+					r.URL.RawPath = "/"
 				}
 			}
 		}
-		next.ServeHTTP(w, r)
+		// Store detected base in context for URL generation
+		ctx := context.WithValue(r.Context(), baseURLKey{}, base)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// knownRoutePrefixes are the route prefixes we serve.
+var knownRoutePrefixes = []string{"/s/", "/p/", "/api/", "/admin", "/dashboard", "/favicon"}
+
+// detectBaseURL infers the base URL path by checking if a known route prefix
+// exists somewhere in the path. e.g. "/v/s/foo/" → base="/v", path="/s/foo/"
+func detectBaseURL(path string) string {
+	if path == "" || path == "/" {
+		return ""
+	}
+	for _, prefix := range knownRoutePrefixes {
+		if idx := strings.Index(path, prefix); idx > 0 {
+			return path[:idx]
+		}
+	}
+	return ""
+}
+
+type baseURLKey struct{}
+
+// baseURL returns the base URL prefix from the request context (set by stripBaseURL).
+func (s *Server) baseURL() string {
+	return s.config.BaseURL
+}
+
+// reqBaseURL returns the base URL detected for this specific request.
+func reqBaseURL(r *http.Request) string {
+	if v, ok := r.Context().Value(baseURLKey{}).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// prefURL prepends the request-detected base URL to a path.
+func prefURL(r *http.Request, p string) string {
+	return reqBaseURL(r) + p
 }
 
 // handleIndex serves the landing page.
@@ -171,14 +198,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(landingPageHTML, "__BASE_URL__", s.baseURL())
+	html := strings.ReplaceAll(landingPageHTML, "__BASE_URL__", reqBaseURL(r))
 	fmt.Fprint(w, html)
 }
 
 // handleDashboard serves the admin dashboard SPA.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(dashboardHTML, "__BASE_URL__", s.baseURL())
+	html := strings.ReplaceAll(dashboardHTML, "__BASE_URL__", reqBaseURL(r))
 	fmt.Fprint(w, html)
 }
 

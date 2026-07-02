@@ -120,10 +120,10 @@ func renderCaptchaSVG(text string) string {
 		))
 	}
 
-	// Build full SVG
+	// Build full SVG — use opaque background for cross-environment compatibility
 	b.WriteString(fmt.Sprintf(
 		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`+
-			`<rect width="%d" height="%d" fill="transparent"/>`+
+			`<rect width="%d" height="%d" fill="#f6f8fa"/>`+
 			`%s`+ // noise dots
 			`%s`+ // noise lines
 			`%s`+ // characters

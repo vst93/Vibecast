@@ -307,7 +307,7 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	switch r.Method {
 	case http.MethodGet:
-		writeJSON(w, 200, jsonResp{Data: s.siteToJSON(site)})
+		writeJSON(w, 200, jsonResp{Data: s.siteToJSON(r, site)})
 	case http.MethodPut:
 		s.updateSite(w, r, user, site)
 	case http.MethodDelete:
@@ -351,7 +351,7 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 	var list []map[string]interface{}
 	for _, site := range sites {
 		vs := visitStats[site.ID]
-		list = append(list, s.siteToJSONWithVisits(site, vs))
+		list = append(list, s.siteToJSONWithVisits(r, site, vs))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -416,7 +416,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	writeJSON(w, 201, jsonResp{
 		Message: "site created",
-		Data:    s.siteToJSON(site),
+		Data:    s.siteToJSON(r, site),
 	})
 }
 
@@ -501,7 +501,7 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 		respData := map[string]interface{}{
 			"slug":     site.Slug,
-			"url":      s.prefURL(fmt.Sprintf("/s/%s/", site.Slug)),
+			"url":      prefURL(r, fmt.Sprintf("/s/%s/", site.Slug)),
 			"files":    header.Filename,
 			"fileCount": result.TotalFiles,
 			"totalSize": result.TotalSize,
@@ -533,7 +533,7 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 		Message: "deployed",
 		Data: map[string]interface{}{
 			"slug":      site.Slug,
-			"url":        s.prefURL(fmt.Sprintf("/s/%s/", site.Slug)),
+			"url":        prefURL(r, fmt.Sprintf("/s/%s/", site.Slug)),
 			"files":      header.Filename,
 			"fileCount":  1,
 			"totalSize":  fileSize,
@@ -541,7 +541,7 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 	})
 }
 
-func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
+func (s *Server) siteToJSON(r *http.Request, site *db.Site) map[string]interface{} {
 	protected := site.Password != ""
 	publicAccessDisabled := !db.GetSettingBool(s.database, "allow_public_access", true)
 	return map[string]interface{}{
@@ -551,7 +551,7 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 		"protected":            protected,
 		"password":             site.PasswordPlain,
 		"storagePath":          site.Slug,
-		"url":                  s.prefURL(fmt.Sprintf("/s/%s/", site.Slug)),
+		"url":                  prefURL(r, fmt.Sprintf("/s/%s/", site.Slug)),
 		"createdAt":            site.CreatedAt,
 		"updatedAt":            site.UpdatedAt,
 		"publicAccessDisabled": publicAccessDisabled,
@@ -561,8 +561,8 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 }
 
 // siteToJSONWithVisits builds the site JSON with visit stats included.
-func (s *Server) siteToJSONWithVisits(site *db.Site, visits *db.VisitStats) map[string]interface{} {
-	m := s.siteToJSON(site)
+func (s *Server) siteToJSONWithVisits(r *http.Request, site *db.Site, visits *db.VisitStats) map[string]interface{} {
+	m := s.siteToJSON(r, site)
 	if visits != nil {
 		m["visits"] = map[string]int64{
 			"today": visits.Today,

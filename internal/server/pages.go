@@ -165,7 +165,7 @@ input,button,select{font-family:inherit}
 .auth-card .switch a{color:var(--accent);cursor:pointer;font-weight:500}
 .captcha-label{font-size:.75rem;font-weight:600;margin-bottom:.2rem;color:var(--dim)}
 .captcha-row{display:flex;align-items:stretch;gap:.5rem;margin-bottom:.75rem}
-.captcha-row .captcha-img{flex-shrink:0;border:1px solid var(--line);border-radius:6px;background:var(--ink);cursor:pointer;height:40px;width:150px;object-fit:contain;transition:border-color .15s}
+.captcha-row .captcha-img{flex-shrink:0;border:1px solid var(--line);border-radius:6px;background:#f6f8fa;cursor:pointer;height:40px;width:150px;object-fit:contain;transition:border-color .15s}
 .captcha-row .captcha-img:hover{border-color:var(--accent)}
 .captcha-row input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;outline:none;background:var(--ink);color:var(--text);transition:border-color .15s}
 .captcha-row input:focus{border-color:var(--accent)}

@@ -11,7 +11,7 @@ var landingPageHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VibeShare &mdash; Build with vibe. Share instantly.</title>
+<title>Vibecast &mdash; Build with vibe. Cast instantly.</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f0f0f;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -30,8 +30,8 @@ footer{margin-top:4rem;color:#444;font-size:.8rem}
 </head>
 <body>
 <div class="hero">
-<h1>VibeShare</h1>
-<p class="tagline">Build with vibe. Share instantly.</p>
+<h1>Vibecast</h1>
+<p class="tagline">Build with vibe. Cast instantly.</p>
 <a href="/dashboard" class="cta">Get Started</a>
 <div class="features">
 <div class="feature"><div class="icon">Z</div><h3>Instant Deploy</h3><p>Upload a ZIP, get a live URL in seconds.</p></div>
@@ -40,7 +40,7 @@ footer{margin-top:4rem;color:#444;font-size:.8rem}
 <div class="feature"><div class="icon">S</div><h3>Self-Hosted</h3><p>Your data, your rules. SQLite + filesystem.</p></div>
 </div>
 </div>
-<footer>VibeShare &mdash; Self-hosted static site hosting</footer>
+<footer>Vibecast &mdash; Self-hosted static site hosting</footer>
 </body>
 </html>`
 
@@ -50,7 +50,7 @@ var dashboardHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VibeShare Dashboard</title>
+<title>Vibecast Dashboard</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f0f0f;color:#e0e0e0;min-height:100vh}
@@ -129,7 +129,7 @@ function checkAuth(){
   return api("/auth/me").then(function(d){currentUser=d.data;return true}).catch(function(){return false});
 }
 function renderAuth(){
-  document.getElementById("app").innerHTML='<div class="auth-screen"><div class="auth-card"><h1>VibeShare</h1><p class="subtitle">Build with vibe. Share instantly.</p><div id="auth-form"></div></div></div>';
+  document.getElementById("app").innerHTML='<div class="auth-screen"><div class="auth-card"><h1>Vibecast</h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
   showLogin();
 }
 function showLogin(){
@@ -148,7 +148,7 @@ function doLogout(){
   api("/auth/logout",{method:"POST"}).then(function(){location.reload()});
 }
 function renderDashboard(){
-  document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">VibeShare</div><div class="user">'+esc(currentUser.email)+' <button onclick="doLogout()">Logout</button></div></nav><div class="container"><div class="section"><h2>Create New Site</h2><div class="form-row"><input id="site-name" placeholder="Site name (e.g. My Portfolio)"><input id="site-slug" placeholder="custom-slug (optional)"><input id="site-pwd" type="password" placeholder="Access password (optional)"><button class="btn" onclick="createSite()">Create</button></div></div><div class="section"><h2>Your Sites</h2><div id="site-list"></div></div></div>';
+  document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibecast</div><div class="user">'+esc(currentUser.email)+' <button onclick="doLogout()">Logout</button></div></nav><div class="container"><div class="section"><h2>Create New Site</h2><div class="form-row"><input id="site-name" placeholder="Site name (e.g. My Portfolio)"><input id="site-slug" placeholder="custom-slug (optional)"><input id="site-pwd" type="password" placeholder="Access password (optional)"><button class="btn" onclick="createSite()">Create</button></div></div><div class="section"><h2>Your Sites</h2><div id="site-list"></div></div></div>';
   loadSites();
 }
 function loadSites(){

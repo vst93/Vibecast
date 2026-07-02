@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	SessionCookieName = "vibeshare_session"
+	SessionCookieName = "vibecast_session"
 	SessionDuration   = 7 * 24 * time.Hour
 )
 

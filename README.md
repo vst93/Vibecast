@@ -1,6 +1,6 @@
-# VibeShare
+# Vibecast
 
-> Build with vibe. Share instantly.
+> Build with vibe. Cast instantly.
 
 A self-hosted, multi-user static site hosting platform built in pure Go.  
 No Nginx, no external web server — the application server handles everything: 
@@ -25,10 +25,10 @@ authentication, site management, ZIP deployment, and static file serving.
 make build
 
 # Run
-./bin/vibeshare
+./bin/vibecast
 
 # Or with custom config
-./bin/vibeshare --addr :3000 --storage ./data/sites --db ./data/vibeshare.db
+./bin/vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 Then open `http://localhost:8080/dashboard` to register and start deploying.
@@ -37,9 +37,9 @@ Then open `http://localhost:8080/dashboard` to register and start deploying.
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--addr` | `VIBESHARE_ADDR` | `:8080` | Listen address |
-| `--storage` | `VIBESHARE_STORAGE` | `./data/sites` | Site files storage directory |
-| `--db` | `VIBESHARE_DB` | `./data/vibeshare.db` | SQLite database path |
+| `--addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
+| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
+| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
 
 ## API
 
@@ -92,9 +92,9 @@ MIT
 
 ---
 
-# VibeShare
+# Vibecast
 
-> Build with vibe. Share instantly.
+> Build with vibe. Cast instantly.
 
 一个自托管的纯 Go 多用户静态站点托管平台。
 不依赖 Nginx 或任何外部 Web Server —— 应用服务器全权处理：
@@ -117,10 +117,10 @@ MIT
 make build
 
 # 运行
-./bin/vibeshare
+./bin/vibecast
 
 # 或指定自定义配置
-./bin/vibeshare --addr :3000 --storage ./data/sites --db ./data/vibeshare.db
+./bin/vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 然后打开 `http://localhost:8080/dashboard` 注册并开始部署。
@@ -129,9 +129,9 @@ make build
 
 | 参数 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
-| `--addr` | `VIBESHARE_ADDR` | `:8080` | 监听地址 |
-| `--storage` | `VIBESHARE_STORAGE` | `./data/sites` | 站点文件存储目录 |
-| `--db` | `VIBESHARE_DB` | `./data/vibeshare.db` | SQLite 数据库路径 |
+| `--addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
+| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
+| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
 
 ## API 接口
 

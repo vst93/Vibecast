@@ -34,7 +34,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Password protection check
 	if site.Password != "" {
-		cookieName := "vibeshare_site_" + slug
+		cookieName := "vibecast_site_" + slug
 		cookie, err := r.Cookie(cookieName)
 		if err != nil || cookie.Value == "" {
 			http.Redirect(w, r, "/p/"+slug, http.StatusSeeOther)

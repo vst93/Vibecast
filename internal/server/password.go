@@ -79,7 +79,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Set cookie
-		cookieName := "vibeshare_site_" + slug
+		cookieName := "vibecast_site_" + slug
 		http.SetCookie(w, &http.Cookie{
 			Name:     cookieName,
 			Value:    token,

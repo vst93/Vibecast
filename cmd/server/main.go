@@ -13,9 +13,9 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", getEnv("VIBESHARE_ADDR", ":8080"), "listen address")
-	storageDir := flag.String("storage", getEnv("VIBESHARE_STORAGE", "./data/sites"), "site files storage directory")
-	dbPath := flag.String("db", getEnv("VIBESHARE_DB", "./data/vibeshare.db"), "SQLite database path")
+	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
+	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
+	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")
 	flag.Parse()
 
 	cfg := &server.Config{
@@ -40,8 +40,8 @@ func main() {
 		os.Exit(0)
 	}()
 
-	fmt.Printf("VibeShare v1.0.0\n")
-	fmt.Printf("Build with vibe. Share instantly.\n")
+	fmt.Printf("Vibecast v1.0.0\n")
+	fmt.Printf("Build with vibe. Cast instantly.\n")
 	fmt.Printf("────────────────────────────\n")
 	fmt.Printf("Listening:  http://localhost%s\n", *addr)
 	fmt.Printf("Storage:   %s\n", *storageDir)

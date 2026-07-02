@@ -1,6 +1,6 @@
 .PHONY: build run clean dev
 
-APP_NAME := vibeshare
+APP_NAME := vibecast
 BUILD_DIR := bin
 GOPROXY ?= https://goproxy.cn,direct
 

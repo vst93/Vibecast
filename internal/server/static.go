@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"static-host/internal/auth"
-	"static-host/internal/db"
+	"vibecast/internal/auth"
+	"vibecast/internal/db"
 )
 
 // extraMimeTypes extends Go's built-in mime map with modern frontend file types.

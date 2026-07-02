@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"static-host/internal/db"
+	"vibecast/internal/db"
 
 	"golang.org/x/crypto/bcrypt"
 )

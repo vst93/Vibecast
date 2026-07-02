@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"static-host/internal/db"
+	"vibecast/internal/db"
 )
 
 // paginationParams extracts page, perPage, offset, and search from query params.

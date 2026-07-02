@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"static-host/internal/server"
+	"vibecast/internal/server"
 )
 
 var version = "dev"

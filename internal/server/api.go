@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"static-host/internal/auth"
-	"static-host/internal/db"
-	"static-host/internal/storage"
+	"vibecast/internal/auth"
+	"vibecast/internal/db"
+	"vibecast/internal/storage"
 )
 
 const maxUploadSize = 100 << 20 // 100 MB

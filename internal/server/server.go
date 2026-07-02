@@ -9,8 +9,8 @@ import (
 
 	crand "crypto/rand"
 
-	"static-host/internal/auth"
-	"static-host/internal/db"
+	"vibecast/internal/auth"
+	"vibecast/internal/db"
 )
 
 // Config holds server configuration.

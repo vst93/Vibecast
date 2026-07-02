@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"static-host/internal/auth"
-	"static-host/internal/db"
+	"vibecast/internal/auth"
+	"vibecast/internal/db"
 )
 
 // passwordPageHandler shows the password gate page and processes password submissions.

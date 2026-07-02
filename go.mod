@@ -1,4 +1,4 @@
-module static-host
+module vibecast
 
 go 1.23.0
 

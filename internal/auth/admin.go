@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
-	"static-host/internal/db"
+	"vibecast/internal/db"
 )
 
 // RequireAdmin is middleware that requires a valid admin session.

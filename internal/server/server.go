@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -127,16 +126,14 @@ func (s *Server) logMiddleware(next http.Handler) http.Handler {
 // stripBaseURL strips the configured base URL prefix from incoming requests
 // so that internal route matching works without knowing the prefix.
 // e.g. GET /vibecast/s/foo/ → /s/foo/ for the mux.
-// When BaseURL is empty, auto-detects from request path using known route prefixes.
+// When BaseURL is empty, this is a pass-through.
 func (s *Server) stripBaseURL(next http.Handler) http.Handler {
-	configuredBase := s.config.BaseURL
+	base := s.config.BaseURL
+	if base == "" {
+		return next
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		base := configuredBase
-		if base == "" {
-			// Auto-detect from request path using known route prefixes
-			base = detectBaseURL(r.URL.Path)
-		}
-		if base != "" && len(r.URL.Path) >= len(base) && r.URL.Path[:len(base)] == base {
+		if len(r.URL.Path) >= len(base) && r.URL.Path[:len(base)] == base {
 			r.URL.Path = r.URL.Path[len(base):]
 			if r.URL.Path == "" {
 				r.URL.Path = "/"
@@ -148,47 +145,8 @@ func (s *Server) stripBaseURL(next http.Handler) http.Handler {
 				}
 			}
 		}
-		// Store detected base in context for URL generation
-		ctx := context.WithValue(r.Context(), baseURLKey{}, base)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r)
 	})
-}
-
-// knownRoutePrefixes are the route prefixes we serve.
-var knownRoutePrefixes = []string{"/s/", "/p/", "/api/", "/admin", "/dashboard", "/favicon"}
-
-// detectBaseURL infers the base URL path by checking if a known route prefix
-// exists somewhere in the path. e.g. "/v/s/foo/" → base="/v", path="/s/foo/"
-func detectBaseURL(path string) string {
-	if path == "" || path == "/" {
-		return ""
-	}
-	for _, prefix := range knownRoutePrefixes {
-		if idx := strings.Index(path, prefix); idx > 0 {
-			return path[:idx]
-		}
-	}
-	return ""
-}
-
-type baseURLKey struct{}
-
-// baseURL returns the base URL prefix from the request context (set by stripBaseURL).
-func (s *Server) baseURL() string {
-	return s.config.BaseURL
-}
-
-// reqBaseURL returns the base URL detected for this specific request.
-func reqBaseURL(r *http.Request) string {
-	if v, ok := r.Context().Value(baseURLKey{}).(string); ok {
-		return v
-	}
-	return ""
-}
-
-// prefURL prepends the request-detected base URL to a path.
-func prefURL(r *http.Request, p string) string {
-	return reqBaseURL(r) + p
 }
 
 // handleIndex serves the landing page.
@@ -198,14 +156,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(landingPageHTML, "__BASE_URL__", reqBaseURL(r))
+	html := strings.ReplaceAll(landingPageHTML, "__BASE_URL__", s.config.BaseURL)
 	fmt.Fprint(w, html)
 }
 
 // handleDashboard serves the admin dashboard SPA.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(dashboardHTML, "__BASE_URL__", reqBaseURL(r))
+	html := strings.ReplaceAll(dashboardHTML, "__BASE_URL__", s.config.BaseURL)
 	fmt.Fprint(w, html)
 }
 

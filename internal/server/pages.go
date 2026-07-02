@@ -595,9 +595,6 @@ button:hover{background:var(--accent-dim)}
 <button type="submit">Enter Site</button>
 </form>
 </div>
-<script>
-document.querySelector("form").addEventListener("submit",function(e){e.preventDefault();e.target.submit()});
-</script>
 </body>
 </html>`, escHTML(siteName), escHTML(siteName))
 }

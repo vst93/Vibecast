@@ -32,8 +32,8 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if site.Password == "" {
-		// Not protected — redirect to site (relative: /p/{slug} → /s/{slug}/)
-		http.Redirect(w, r, "../s/"+slug+"/", http.StatusSeeOther)
+		// Not protected — redirect to site
+		http.Redirect(w, r, "/s/"+slug+"/", http.StatusSeeOther)
 		return
 	}
 
@@ -86,12 +86,11 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				Message: "authenticated",
 				Data: map[string]interface{}{
 					"token": token,
-					"url":   "s/" + slug + "/",
+					"url":   fmt.Sprintf("/s/%s/", slug),
 				},
 			})
 		} else {
 			// Form submission: set cookie and redirect (no token in URL)
-			// Cookie path is relative to the app root; use "/" so it works behind reverse proxies
 			http.SetCookie(w, &http.Cookie{
 				Name:     "site_token",
 				Value:    token,
@@ -100,8 +99,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				HttpOnly: true,
 				SameSite: http.SameSiteLaxMode,
 			})
-			// Relative redirect: /p/{slug} → ../s/{slug}/
-			http.Redirect(w, r, "../s/"+slug+"/", http.StatusSeeOther)
+			http.Redirect(w, r, "/s/"+slug+"/", http.StatusSeeOther)
 		}
 		return
 	}

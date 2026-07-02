@@ -493,7 +493,7 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	respData := map[string]interface{}{
 		"slug":      site.Slug,
-		"url":        "s/" + site.Slug + "/",
+		"url":        fmt.Sprintf("/s/%s/", site.Slug),
 		"files":      header.Filename,
 		"fileCount":  result.TotalFiles,
 		"totalSize":  result.TotalSize,
@@ -518,7 +518,7 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 		"protected":            protected,
 		"password":             site.PasswordPlain,
 		"storagePath":          site.Slug,
-		"url":                  "s/" + site.Slug + "/",
+		"url":                  fmt.Sprintf("/s/%s/", site.Slug),
 		"createdAt":            site.CreatedAt,
 		"updatedAt":            site.UpdatedAt,
 		"publicAccessDisabled": publicAccessDisabled,

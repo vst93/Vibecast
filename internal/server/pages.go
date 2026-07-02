@@ -214,6 +214,7 @@ var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",slug:"URL Slug
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();else renderAuth();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function siteUrl(u){return BASE+(u||"").replace(/^\//,"")}
 function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);var ms=type==="error"?5000:2500;setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},200)},ms)}
 function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
 function setToken(tk){try{localStorage.setItem("vibecast_token",tk)}catch(e){}}
@@ -296,7 +297,7 @@ if(s.publicAccessDisabled&&!s.protected){dot="disabled";badge='<span class="badg
 else if(s.protected){dot="protected";badge='<span class="badge badge-protected">'+t("protected")+'</span>'}
 else{dot="public";badge='<span class="badge badge-public">'+t("public")+'</span>'}
 var pwd=s.protected?'<code style="font-family:var(--mono);font-size:.75rem;color:var(--text)">'+esc(s.password)+'</code> <button class="copy-btn" data-pwd="'+esc(s.password)+'" onclick="event.stopPropagation();copyText(this.getAttribute(\'data-pwd\'))" title="'+t("copy")+'">⧉</button>':'<span style="color:var(--dim)">'+t("none")+'</span>';
-h+='<li class="site-item"><div class="site-head" onclick="toggleDetail('+s.id+')"><div class="info"><div class="name"><span class="status-dot '+dot+'"></span>'+esc(s.name)+' '+badge+'</div><div class="url">~/sites/'+esc(s.slug)+'/</div></div><div class="actions"><a class="btn btn-sm btn-outline" href="'+s.url+'" target="_blank" onclick="event.stopPropagation()">'+t("visit")+'</a><label class="upload-btn" onclick="event.stopPropagation()">'+t("deployZip")+'<input type="file" accept=".zip" onchange="deploy('+s.id+',this.files[0])"></label><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();delSite('+s.id+')">'+t("delete")+'</button></div></div><div class="site-detail" id="detail-'+s.id+'"><div class="detail-row"><span class="label">'+t("accessPassword")+'</span><span class="value">'+pwd+'</span></div></div></li>'}
+h+='<li class="site-item"><div class="site-head" onclick="toggleDetail('+s.id+')"><div class="info"><div class="name"><span class="status-dot '+dot+'"></span>'+esc(s.name)+' '+badge+'</div><div class="url">~/sites/'+esc(s.slug)+'/</div></div><div class="actions"><a class="btn btn-sm btn-outline" href="'+siteUrl(s.url)+'" target="_blank" onclick="event.stopPropagation()">'+t("visit")+'</a><label class="upload-btn" onclick="event.stopPropagation()">'+t("deployZip")+'<input type="file" accept=".zip" onchange="deploy('+s.id+',this.files[0])"></label><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();delSite('+s.id+')">'+t("delete")+'</button></div></div><div class="site-detail" id="detail-'+s.id+'"><div class="detail-row"><span class="label">'+t("accessPassword")+'</span><span class="value">'+pwd+'</span></div></div></li>'}
 h+='</ul><div style="font-size:.7rem;color:var(--dim);margin-top:.5rem;font-family:var(--mono)">'+t("deployHint")+'</div>'+pg;
 el.innerHTML=h}).catch(function(e){toast(e.message,"error")})
 }
@@ -452,6 +453,7 @@ var i18n={en:{overview:"Overview",settings:"Settings",users:"Users",allSites:"Al
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}renderAdmin()}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function siteUrl(u){return BASE+(u||"").replace(/^\//,"")}
 function fmtDate(s){if(!s)return"-";var d=new Date(s);return d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
 function toast(msg,type){type=type||"success";var el=document.createElement("div");el.className="toast "+type+" show";el.textContent=msg;document.body.appendChild(el);var ms=type==="error"?5000:2500;setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},200)},ms)}
 function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
@@ -575,7 +577,7 @@ if(s.publicAccessDisabled&&!s.protected){b='<span class="badge badge-disabled">'
 else if(s.protected){b='<span class="badge badge-protected">'+t("protected")+'</span>'}
 else{b='<span class="badge badge-public">'+t("public")+'</span>'}
 var pwd=s.protected?'<code style="font-family:var(--mono);font-size:.7rem">'+esc(s.password)+'</code>':'<span style="color:var(--dim)">'+t("none")+'</span>';
-h+='<tr class="site-row" id="row-'+s.id+'" onclick="adminToggleDetail('+s.id+')"><td style="font-family:var(--mono);color:var(--dim)">'+s.id+'</td><td>'+esc(s.name)+'</td><td style="font-family:var(--mono);font-size:.75rem">'+esc(s.slug)+'</td><td style="font-size:.75rem">'+esc(s.ownerEmail||"-")+'</td><td>'+b+'</td><td>'+pwd+'</td><td><a href="'+s.url+'" target="_blank" style="font-family:var(--mono);font-size:.75rem" onclick="event.stopPropagation()">'+s.url+'</a></td><td onclick="event.stopPropagation()"><button class="btn btn-danger" onclick="delSite('+s.id+')">'+t("delete")+'</button></td></tr>';
+h+='<tr class="site-row" id="row-'+s.id+'" onclick="adminToggleDetail('+s.id+')"><td style="font-family:var(--mono);color:var(--dim)">'+s.id+'</td><td>'+esc(s.name)+'</td><td style="font-family:var(--mono);font-size:.75rem">'+esc(s.slug)+'</td><td style="font-size:.75rem">'+esc(s.ownerEmail||"-")+'</td><td>'+b+'</td><td>'+pwd+'</td><td><a href="'+siteUrl(s.url)+'" target="_blank" style="font-family:var(--mono);font-size:.75rem" onclick="event.stopPropagation()">'+s.url+'</a></td><td onclick="event.stopPropagation()"><button class="btn btn-danger" onclick="delSite('+s.id+')">'+t("delete")+'</button></td></tr>';
 h+='<tr class="admin-detail-row" id="detail-'+s.id+'"><td colspan="8"></td></tr>'}
 h+='</tbody></table>'+pg;el.innerHTML=h}).catch(function(e){toast(e.message,"error")})
 }
@@ -673,7 +675,7 @@ button:hover{background:var(--accent-dim)}
 </form>
 </div>
 </body>
-</html>`, escHTML(siteName), escHTML(errMsg))
+</html>`, escHTML(siteName), escHTML(siteName), escHTML(errMsg))
 }
 
 // escHTML escapes HTML special characters to prevent XSS.

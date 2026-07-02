@@ -3,7 +3,11 @@
 > Build with vibe. Cast instantly.
 
 A self-hosted, multi-user static site hosting platform built in pure Go.
-No Nginx, no external web server — one binary handles everything: auth, site management, ZIP deployment, and static file serving.
+No Nginx, no external web server — one binary handles everything: authentication, site management, ZIP deployment, and static file serving.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
 
 [中文说明](#vibecast-中文说明)
 
@@ -18,11 +22,26 @@ No Nginx, no external web server — one binary handles everything: auth, site m
 - **Directory Listing** — nginx-style auto-index when no `index.html` exists
 - **File Tree** — Click any site to expand and browse its files
 - **Dark / Light Theme** — Toggle with CSS variables, persisted per user
-- **Bilingual EN / 中文** — Full i18n across UI and API errors
-- **Captcha** — SVG math captcha on login and registration
+- **Bilingual EN / 中文** — Full i18n across UI and API error messages
+- **SVG Captcha** — Math captcha rendered as SVG with noise and rotation
 - **Settings Control** — Toggle open registration, public access, email domain restriction
+- **Reverse-Proxy Ready** — All URLs are relative, works behind any sub-path
 - **Version Info** — `vibecast --version` prints the version; admin panel shows it in the navbar
-- **Zero external dependencies** — Pure Go + SQLite, no CGO
+- **Zero External Dependencies** — Pure Go + SQLite, no CGO, no Nginx, no Node.js
+
+## Screenshots
+
+### Dashboard
+
+Manage your sites — create, deploy, view file tree, toggle password, copy URL.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Admin Panel
+
+Full administrative control — stats, settings, user management, site oversight, cleanup.
+
+![Admin Panel](docs/screenshots/admin.png)
 
 ## Installation
 
@@ -76,8 +95,8 @@ Open `http://localhost:8080/dashboard` — the first registered user becomes adm
 
 ## Usage
 
-1. **Register** at `/dashboard`, first user is auto-promoted to admin
-2. **Create a site** — just give it a name, optionally set an access password
+1. **Register** at `/dashboard` — first user is auto-promoted to admin
+2. **Create a site** — just give it a name; a random slug is generated for you
 3. **Deploy** — click "Deploy ZIP" and upload your site bundle
 4. **Visit** — your site goes live at `/s/{slug}/`
 5. **Manage** — expand any site to view its file tree; admin panel at `/admin`
@@ -119,6 +138,10 @@ MIT
 一个自托管的纯 Go 多用户静态站点托管平台。
 不依赖 Nginx 或任何外部 Web Server —— 一个二进制搞定一切：认证、站点管理、ZIP 部署、静态文件服务。
 
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
+
 ## 功能特性
 
 - **ZIP 部署** — 上传 ZIP，自动解压即时上线
@@ -129,10 +152,25 @@ MIT
 - **文件树** — 点击展开任意站点查看文件列表
 - **深色 / 浅色主题** — CSS 变量切换，用户偏好持久化
 - **中英文双语** — UI 和 API 错误提示全面支持
-- **验证码** — SVG 数学验证码，登录注册保护
+- **SVG 验证码** — 数学验证码，含噪点和旋转干扰
 - **设置控制** — 开关注册、公开访问、邮箱域名限制
+- **反向代理友好** — 所有 URL 均为相对路径，支持任意子路径部署
 - **版本信息** — `vibecast --version` 查看版本号，管理后台导航栏显示版本
-- **零外部依赖** — 纯 Go + SQLite，无需 CGO
+- **零外部依赖** — 纯 Go + SQLite，无需 CGO、Nginx、Node.js
+
+## 截图
+
+### Dashboard 管理面板
+
+管理你的站点 — 创建、部署、查看文件树、切换密码、复制链接。
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Admin 管理后台
+
+完整的后台管理 — 统计、设置、用户管理、站点总览、存储清理。
+
+![Admin Panel](docs/screenshots/admin.png)
 
 ## 安装
 
@@ -187,7 +225,7 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ## 使用方式
 
 1. **注册** — 在 `/dashboard` 注册，首用户自动成为管理员
-2. **创建站点** — 填个名字即可，可选设访问密码
+2. **创建站点** — 填个名字即可，系统自动生成随机 slug
 3. **部署** — 点击 "Deploy ZIP" 上传站点压缩包
 4. **访问** — 站点上线地址为 `/s/{slug}/`
 5. **管理** — 点击站点展开查看文件树；管理后台在 `/admin`

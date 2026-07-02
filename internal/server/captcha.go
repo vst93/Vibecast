@@ -2,7 +2,6 @@ package server
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"math/big"
 	"strings"
@@ -135,9 +134,8 @@ func renderCaptchaSVG(text string) string {
 		charSVG.String(),
 	))
 
-	svgBytes := []byte(b.String())
-	dataURI := "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString(svgBytes)
-	return dataURI
+	svgBytes := b.String()
+	return svgBytes
 }
 
 // randomColor returns a random hex color string.

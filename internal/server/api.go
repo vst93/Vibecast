@@ -202,11 +202,11 @@ func (s *Server) handleCaptcha(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		return
 	}
-	id, img := generateCaptcha()
+	id, svg := generateCaptcha()
 	writeJSON(w, 200, jsonResp{
 		Data: map[string]interface{}{
 			"id":    id,
-			"image": img,
+			"image": svg,
 		},
 	})
 }

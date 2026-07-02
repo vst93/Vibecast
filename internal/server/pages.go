@@ -165,7 +165,7 @@ input,button,select{font-family:inherit}
 .auth-card .switch a{color:var(--accent);cursor:pointer;font-weight:500}
 .captcha-label{font-size:.75rem;font-weight:600;margin-bottom:.2rem;color:var(--dim)}
 .captcha-row{display:flex;align-items:stretch;gap:.5rem;margin-bottom:.75rem}
-.captcha-row .captcha-img{flex-shrink:0;border:1px solid var(--line);border-radius:6px;background:#f6f8fa;cursor:pointer;height:40px;width:150px;object-fit:contain;transition:border-color .15s}
+.captcha-row .captcha-img{flex-shrink:0;border:1px solid var(--line);border-radius:6px;background:#f6f8fa;cursor:pointer;height:40px;width:150px;overflow:hidden;transition:border-color .15s}
 .captcha-row .captcha-img:hover{border-color:var(--accent)}
 .captcha-row input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;outline:none;background:var(--ink);color:var(--text);transition:border-color .15s}
 .captcha-row input:focus{border-color:var(--accent)}
@@ -243,8 +243,8 @@ function checkAuth(){if(!getToken())return Promise.resolve(false);return api("/a
 var loginCaptchaId="",registerCaptchaId="";var regOpen=true;
 function loadCaptcha(v){
 return fetch(BASE+"api/auth/captcha").then(function(r){return r.json()}).then(function(d){
-if(v==="login"){loginCaptchaId=d.data.id;var img=document.getElementById("login-captcha-img");if(img)img.src=d.data.image}
-else{registerCaptchaId=d.data.id;var img=document.getElementById("register-captcha-img");if(img)img.src=d.data.image}
+if(v==="login"){loginCaptchaId=d.data.id;var el=document.getElementById("login-captcha-img");if(el)el.innerHTML=d.data.image}
+else{registerCaptchaId=d.data.id;var el=document.getElementById("register-captcha-img");if(el)el.innerHTML=d.data.image}
 }).catch(function(){})
 }
 function renderAuth(){
@@ -253,11 +253,11 @@ document.getElementById("app").innerHTML=lh+'<div class="auth-screen"><div class
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){regOpen=d.data&&d.data.openRegistration!==false;showLogin()}).catch(function(){regOpen=true;showLogin()});
 }
 function showLogin(){
-document.getElementById("auth-form").innerHTML='<form onsubmit="doLogin();return false"><div class="auth-field"><label>'+t("email")+'</label><input id="email" type="email" placeholder="'+t("emailPh")+'" autocomplete="email"></div><div class="auth-field"><label>'+t("password")+'</label><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="current-password"></div><div class="auth-field"><label class="captcha-label">'+t("captchaLabel")+'</label><div class="captcha-row"><img class="captcha-img" id="login-captcha-img" src="" alt="captcha" width="150" height="40" onclick="loadCaptcha(\'login\')" title="'+t("captcha")+'"><input id="login-captcha" type="text" placeholder="'+t("captchaPh")+'"></div></div><button class="btn btn-primary" type="submit">'+t("login")+'</button></form>'+(regOpen?'<p class="switch">'+t("noAccount")+' <a onclick="showRegister()">'+t("register")+'</a></p>':'');
+document.getElementById("auth-form").innerHTML='<form onsubmit="doLogin();return false"><div class="auth-field"><label>'+t("email")+'</label><input id="email" type="email" placeholder="'+t("emailPh")+'" autocomplete="email"></div><div class="auth-field"><label>'+t("password")+'</label><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="current-password"></div><div class="auth-field"><label class="captcha-label">'+t("captchaLabel")+'</label><div class="captcha-row"><div class="captcha-img" id="login-captcha-img" onclick="loadCaptcha(\'login\')" title="'+t("captcha")+'"></div><input id="login-captcha" type="text" placeholder="'+t("captchaPh")+'"></div></div><button class="btn btn-primary" type="submit">'+t("login")+'</button></form>'+(regOpen?'<p class="switch">'+t("noAccount")+' <a onclick="showRegister()">'+t("register")+'</a></p>':'');
 loadCaptcha("login");
 }
 function showRegister(){
-document.getElementById("auth-form").innerHTML='<form onsubmit="doRegister();return false"><div class="auth-field"><label>'+t("email")+'</label><input id="email" type="email" placeholder="'+t("emailPh")+'" autocomplete="email"></div><div class="auth-field"><label>'+t("password")+'</label><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="new-password"><div class="field-hint">'+t("pwdHint")+'</div></div><div class="auth-field"><label>'+t("confirmPassword")+'</label><input id="confirm-pwd" type="password" placeholder="'+t("confirmPassword")+'" autocomplete="new-password"></div><div class="auth-field"><label class="captcha-label">'+t("captchaLabel")+'</label><div class="captcha-row"><img class="captcha-img" id="register-captcha-img" src="" alt="captcha" width="150" height="40" onclick="loadCaptcha(\'register\')" title="'+t("captcha")+'"><input id="register-captcha" type="text" placeholder="'+t("captchaPh")+'"></div></div><button class="btn btn-primary" type="submit">'+t("register")+'</button></form><p class="switch">'+t("haveAccount")+' <a onclick="showLogin()">'+t("login")+'</a></p>';
+document.getElementById("auth-form").innerHTML='<form onsubmit="doRegister();return false"><div class="auth-field"><label>'+t("email")+'</label><input id="email" type="email" placeholder="'+t("emailPh")+'" autocomplete="email"></div><div class="auth-field"><label>'+t("password")+'</label><input id="password" type="password" placeholder="'+t("password")+'" autocomplete="new-password"><div class="field-hint">'+t("pwdHint")+'</div></div><div class="auth-field"><label>'+t("confirmPassword")+'</label><input id="confirm-pwd" type="password" placeholder="'+t("confirmPassword")+'" autocomplete="new-password"></div><div class="auth-field"><label class="captcha-label">'+t("captchaLabel")+'</label><div class="captcha-row"><div class="captcha-img" id="register-captcha-img" onclick="loadCaptcha(\'register\')" title="'+t("captcha")+'"></div><input id="register-captcha" type="text" placeholder="'+t("captchaPh")+'"></div></div><button class="btn btn-primary" type="submit">'+t("register")+'</button></form><p class="switch">'+t("haveAccount")+' <a onclick="showLogin()">'+t("login")+'</a></p>';
 loadCaptcha("register");
 }
 function doLogin(){

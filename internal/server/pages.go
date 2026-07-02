@@ -197,36 +197,12 @@ function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearTok
 function renderDashboard(){
 var adminLink=currentUser.isAdmin?'<a class="admin-link" href="/admin">'+t("adminPanel")+'</a>':'';
 var langHtml='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a> <a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="brand"><div class="logo">Vibecast</div></div><div class="nav-right">'+adminLink+langHtml+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-grid"><div class="form-field full"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("slug")+'</label><input id="site-slug" placeholder="'+t("slugPh")+'"><div class="desc">'+t("slugDesc")+'</div></div><div class="form-field"><label>'+t("sitePwd")+'</label><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div></div><div class="form-actions"><button class="btn btn-primary" onclick="createSite()">'+t("create")+'</button></div></div></div><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key==='Enter')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="brand"><div class="logo">Vibecast</div></div><div class="nav-right">'+adminLink+langHtml+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-grid"><div class="form-field full"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("slug")+'</label><input id="site-slug" placeholder="'+t("slugPh")+'"><div class="desc">'+t("slugDesc")+'</div></div><div class="form-field"><label>'+t("sitePwd")+'</label><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div></div><div class="form-actions"><button class="btn btn-primary" onclick="createSite()">'+t("create")+'</button></div></div></div><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div>';
 loadSites();}
 
 function searchSites(){siteSearch=document.getElementById("site-search").value;sitePage=1;loadSites()}
 function sitePageGo(p){sitePage=p;loadSites()}
-function searchAdminSites(){adminSiteSearch=document.getElementById("admin-site-search").value;adminSitePage=1;loadSites()}
-function adminSitePageGo(p){adminSitePage=p;loadSites()}
 function loadSites(){
-var q=adminSiteSearch?"&q="+encodeURIComponent(adminSiteSearch):"";
-api("/admin/sites?page="+adminSitePage+"&perPage="+adminSitePerPage+q).then(function(d){
-var r=d.data||{};var sites=r.items||[];adminSiteTotal=r.total||0;
-var el=document.getElementById("sites");
-var totalPages=Math.ceil(adminSiteTotal/adminSitePerPage)||1;
-var pgHtml=paginationHtml(adminSitePage,totalPages,"adminSitePageGo");
-if(!sites.length){el.innerHTML='<div class="empty">'+t("noSites")+'</div>'+pgHtml;return}
-var html='<table><thead><tr><th>ID</th><th>'+t("name")+'</th><th>'+t("slug")+'</th><th>'+t("owner")+'</th><th>'+t("protected")+'</th><th>'+t("password")+'</th><th>'+t("url")+'</th><th>'+t("actions")+'</th></tr></thead><tbody>';
-for(var i=0;i<sites.length;i++){
-var s=sites[i];
-var badge='';
-if(s.publicAccessDisabled&&!s.protected){badge='<span class="badge badge-disabled">'+t("accessDisabled")+'</span>'}
-else if(s.protected){badge='<span class="badge badge-protected">'+t("protected")+'</span>'}
-else{badge='<span class="badge badge-public">'+t("public")+'</span>'}
-var pwd=s.protected?'<code style="font-size:.8rem">'+esc(s.password)+'</code>':'<span style="color:var(--muted)">'+t("none")+'</span>';
-html+='<tr><td>'+s.id+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.slug)+'</td><td>'+esc(s.ownerEmail||"-")+'</td><td>'+badge+'</td><td>'+pwd+'</td><td><a href="'+s.url+'" target="_blank">'+s.url+'</a></td><td><button class="btn btn-danger" onclick="delSite('+s.id+')">'+t("delete")+'</button></td></tr>';
-}
-html+='</tbody></table>';
-html+=pgHtml;
-el.innerHTML=html;
-}).catch(function(e){toast(e.message,"error")})
-}
 var q=siteSearch?"&q="+encodeURIComponent(siteSearch):"";
 api("/sites?page="+sitePage+"&perPage="+sitePerPage+q).then(function(d){
 var r=d.data||{};var sites=r.items||[];siteTotal=r.total||0;
@@ -247,7 +223,7 @@ pwdInput.placeholder=t("pwdRequired");
 var totalPages=Math.ceil(siteTotal/sitePerPage)||1;
 var pgHtml=paginationHtml(sitePage,totalPages,"sitePageGo");
 if(!sites.length){
-el.innerHTML='<div class="empty">'+(siteSearch?t("noSites"):t("noSites"))+'</div>'+pgHtml;
+el.innerHTML='<div class="empty">'+t("noSites")+'</div>'+pgHtml;
 return;
 }
 var html='<ul class="site-list">';
@@ -267,7 +243,8 @@ html+='<li class="site-item"><div class="site-head" onclick="toggleDetail('+s.id
 html+='</ul><div class="field-hint" style="margin-top:.5rem">'+t("deployHint")+'</div>';
 html+=pgHtml;
 el.innerHTML=html;
-}).catch(function(e){toast(e.message,"error")})}
+}).catch(function(e){toast(e.message,"error")})
+}
 function paginationHtml(page,totalPages,goFn){
 if(totalPages<=1)return '';
 var html='<div class="pagination">';
@@ -471,13 +448,35 @@ html+=pgHtml;
 el.innerHTML=html;
 }).catch(function(e){toast(e.message,"error")})
 }
-api("/admin/users").then(function(d){var r=d.data||{};var users=r.items||[];var el=document.getElementById("users");if(!users.length){el.innerHTML='<div class="empty">'+t("noUsers")+'</div>';return}var html='<table><thead><tr><th>ID</th><th>Email</th><th>'+t("role")+'</th><th>'+t("created")+'</th><th>'+t("actions")+'</th></tr></thead><tbody>';for(var i=0;i<users.length;i++){var u=users[i];var badge=u.isAdmin?'<span class="badge badge-admin">Admin</span>':'<span class="badge badge-user">User</span>';var btn=u.isAdmin?'<button class="btn btn-demote" onclick="toggleAdmin('+u.id+')">'+t("demote")+'</button>':'<button class="btn btn-promote" onclick="toggleAdmin('+u.id+')">'+t("promote")+'</button>';html+='<tr><td>'+u.id+'</td><td>'+esc(u.email)+'</td><td>'+badge+'</td><td>'+fmtDate(u.createdAt)+'</td><td>'+btn+' <button class="btn btn-danger" onclick="delUser('+u.id+')">'+t("delete")+'</button></td></tr>'}html+='</tbody></table>';el.innerHTML=html}).catch(function(e){toast(e.message,"error")});}
 
 function toggleAdmin(id){api("/admin/users/"+id,{method:"PUT"}).then(function(){toast(t("roleUpdated"));loadUsers();loadStats()}).catch(function(e){toast(e.message,"error")})}
 function delUser(id){if(!confirm(t("deleteUserConfirm")))return;api("/admin/users/"+id,{method:"DELETE"}).then(function(){toast(t("userDeleted"));loadUsers();loadStats();loadSites()}).catch(function(e){toast(e.message,"error")})}
 
+function searchAdminSites(){adminSiteSearch=document.getElementById("admin-site-search").value;adminSitePage=1;loadSites()}
+function adminSitePageGo(p){adminSitePage=p;loadSites()}
 function loadSites(){
-api("/admin/sites").then(function(d){var r=d.data||{};var sites=r.items||[];var el=document.getElementById("sites");if(!sites.length){el.innerHTML='<div class="empty">'+t("noSites")+'</div>';return}var html='<table><thead><tr><th>ID</th><th>'+t("name")+'</th><th>'+t("slug")+'</th><th>'+t("owner")+'</th><th>'+t("protected")+'</th><th>'+t("password")+'</th><th>'+t("url")+'</th><th>'+t("actions")+'</th></tr></thead><tbody>';for(var i=0;i<sites.length;i++){var s=sites[i];var badge='';if(s.publicAccessDisabled&&!s.protected){badge='<span class="badge badge-disabled">'+t("accessDisabled")+'</span>'}else if(s.protected){badge='<span class="badge badge-protected">'+t("protected")+'</span>'}else{badge='<span class="badge badge-public">'+t("public")+'</span>'};var pwd=s.protected?'<code style="font-size:.8rem">'+esc(s.password)+'</code>':'<span style="color:var(--muted)">'+t("none")+'</span>';html+='<tr><td>'+s.id+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.slug)+'</td><td>'+esc(s.ownerEmail||"-")+'</td><td>'+badge+'</td><td>'+pwd+'</td><td><a href="'+s.url+'" target="_blank">'+s.url+'</a></td><td><button class="btn btn-danger" onclick="delSite('+s.id+')">'+t("delete")+'</button></td></tr>'}html+='</tbody></table>';el.innerHTML=html}).catch(function(e){toast(e.message,"error")});}
+var q=adminSiteSearch?"&q="+encodeURIComponent(adminSiteSearch):"";
+api("/admin/sites?page="+adminSitePage+"&perPage="+adminSitePerPage+q).then(function(d){
+var r=d.data||{};var sites=r.items||[];adminSiteTotal=r.total||0;
+var el=document.getElementById("sites");
+var totalPages=Math.ceil(adminSiteTotal/adminSitePerPage)||1;
+var pgHtml=paginationHtml(adminSitePage,totalPages,"adminSitePageGo");
+if(!sites.length){el.innerHTML='<div class="empty">'+t("noSites")+'</div>'+pgHtml;return}
+var html='<table><thead><tr><th>ID</th><th>'+t("name")+'</th><th>'+t("slug")+'</th><th>'+t("owner")+'</th><th>'+t("protected")+'</th><th>'+t("password")+'</th><th>'+t("url")+'</th><th>'+t("actions")+'</th></tr></thead><tbody>';
+for(var i=0;i<sites.length;i++){
+var s=sites[i];
+var badge='';
+if(s.publicAccessDisabled&&!s.protected){badge='<span class="badge badge-disabled">'+t("accessDisabled")+'</span>'}
+else if(s.protected){badge='<span class="badge badge-protected">'+t("protected")+'</span>'}
+else{badge='<span class="badge badge-public">'+t("public")+'</span>'}
+var pwd=s.protected?'<code style="font-size:.8rem">'+esc(s.password)+'</code>':'<span style="color:var(--muted)">'+t("none")+'</span>';
+html+='<tr><td>'+s.id+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.slug)+'</td><td>'+esc(s.ownerEmail||"-")+'</td><td>'+badge+'</td><td>'+pwd+'</td><td><a href="'+s.url+'" target="_blank">'+s.url+'</a></td><td><button class="btn btn-danger" onclick="delSite('+s.id+')">'+t("delete")+'</button></td></tr>';
+}
+html+='</tbody></table>';
+html+=pgHtml;
+el.innerHTML=html;
+}).catch(function(e){toast(e.message,"error")})
+}
 
 function delSite(id){if(!confirm(t("deleteSiteConfirm")))return;api("/admin/sites/"+id,{method:"DELETE"}).then(function(){toast(t("siteDeleted"));loadSites();loadStats()}).catch(function(e){toast(e.message,"error")})}
 

@@ -9,6 +9,7 @@ type User struct {
 	ID        int64
 	Email     string
 	Password  string // bcrypt hash
+	IsAdmin   bool
 	CreatedAt time.Time
 }
 
@@ -22,41 +23,91 @@ type Site struct {
 	UpdatedAt time.Time
 }
 
-// CreateUser inserts a new user. Password should already be bcrypt-hashed.
-func CreateUser(db *sql.DB, email, hashedPassword string) (*User, error) {
+// --- Users ---
+
+func CreateUser(db *sql.DB, email, hashedPassword string, isAdmin bool) (*User, error) {
+	adminVal := 0
+	if isAdmin {
+		adminVal = 1
+	}
 	res, err := db.Exec(
-		`INSERT INTO users (email, password) VALUES (?, ?)`,
-		email, hashedPassword,
+		`INSERT INTO users (email, password, is_admin) VALUES (?, ?, ?)`,
+		email, hashedPassword, adminVal,
 	)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
-	return &User{ID: id, Email: email, Password: hashedPassword}, nil
+	return &User{ID: id, Email: email, Password: hashedPassword, IsAdmin: isAdmin}, nil
 }
 
 func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 	u := &User{}
+	var adminVal int
 	err := db.QueryRow(
-		`SELECT id, email, password, created_at FROM users WHERE email = ?`,
+		`SELECT id, email, password, is_admin, created_at FROM users WHERE email = ?`,
 		email,
-	).Scan(&u.ID, &u.Email, &u.Password, &u.CreatedAt)
+	).Scan(&u.ID, &u.Email, &u.Password, &adminVal, &u.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	u.IsAdmin = adminVal == 1
 	return u, err
 }
 
 func GetUserByID(db *sql.DB, id int64) (*User, error) {
 	u := &User{}
+	var adminVal int
 	err := db.QueryRow(
-		`SELECT id, email, password, created_at FROM users WHERE id = ?`,
+		`SELECT id, email, password, is_admin, created_at FROM users WHERE id = ?`,
 		id,
-	).Scan(&u.ID, &u.Email, &u.Password, &u.CreatedAt)
+	).Scan(&u.ID, &u.Email, &u.Password, &adminVal, &u.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	u.IsAdmin = adminVal == 1
 	return u, err
+}
+
+func CountUsers(db *sql.DB) (int64, error) {
+	var count int64
+	err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
+	return count, err
+}
+
+func ListUsers(db *sql.DB) ([]*User, error) {
+	rows, err := db.Query(
+		`SELECT id, email, password, is_admin, created_at FROM users ORDER BY created_at ASC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []*User
+	for rows.Next() {
+		u := &User{}
+		var adminVal int
+		if err := rows.Scan(&u.ID, &u.Email, &u.Password, &adminVal, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		u.IsAdmin = adminVal == 1
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+func UpdateUserAdmin(db *sql.DB, id int64, isAdmin bool) error {
+	adminVal := 0
+	if isAdmin {
+		adminVal = 1
+	}
+	_, err := db.Exec(`UPDATE users SET is_admin = ? WHERE id = ?`, adminVal, id)
+	return err
+}
+
+func DeleteUser(db *sql.DB, id int64) error {
+	_, err := db.Exec(`DELETE FROM users WHERE id = ?`, id)
+	return err
 }
 
 // --- Sessions ---
@@ -71,15 +122,17 @@ func CreateSession(db *sql.DB, userID int64, token string, expiresAt time.Time) 
 
 func GetSession(db *sql.DB, token string) (*User, error) {
 	u := &User{}
+	var adminVal int
 	err := db.QueryRow(
-		`SELECT u.id, u.email, u.password, u.created_at
+		`SELECT u.id, u.email, u.password, u.is_admin, u.created_at
 		 FROM sessions s JOIN users u ON s.user_id = u.id
 		 WHERE s.token = ? AND s.expires_at > datetime('now')`,
 		token,
-	).Scan(&u.ID, &u.Email, &u.Password, &u.CreatedAt)
+	).Scan(&u.ID, &u.Email, &u.Password, &adminVal, &u.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	u.IsAdmin = adminVal == 1
 	return u, err
 }
 
@@ -135,7 +188,25 @@ func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	var sites []*Site
+	for rows.Next() {
+		s := &Site{}
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		sites = append(sites, s)
+	}
+	return sites, rows.Err()
+}
 
+func ListAllSites(db *sql.DB) ([]*Site, error) {
+	rows, err := db.Query(
+		`SELECT id, user_id, slug, name, password, created_at, updated_at FROM sites ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
@@ -160,7 +231,13 @@ func DeleteSite(db *sql.DB, id int64) error {
 	return err
 }
 
-// --- Site Sessions (for password-protected sites) ---
+func CountSites(db *sql.DB) (int64, error) {
+	var count int64
+	err := db.QueryRow(`SELECT COUNT(*) FROM sites`).Scan(&count)
+	return count, err
+}
+
+// --- Site Sessions ---
 
 func CreateSiteSession(db *sql.DB, siteID int64, token string, expiresAt time.Time) error {
 	_, err := db.Exec(
@@ -182,4 +259,83 @@ func GetSiteSession(db *sql.DB, token string) (*Site, error) {
 		return nil, nil
 	}
 	return s, err
+}
+
+// --- Settings ---
+
+func GetSetting(db *sql.DB, key string) (string, error) {
+	var val string
+	err := db.QueryRow(`SELECT value FROM settings WHERE key = ?`, key).Scan(&val)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return val, err
+}
+
+func GetSettingBool(db *sql.DB, key string, defaultVal bool) bool {
+	val, err := GetSetting(db, key)
+	if err != nil || val == "" {
+		return defaultVal
+	}
+	return val == "1" || val == "true"
+}
+
+func SetSetting(db *sql.DB, key, value string) error {
+	_, err := db.Exec(
+		`INSERT INTO settings (key, value) VALUES (?, ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		key, value,
+	)
+	return err
+}
+
+func GetAllSettings(db *sql.DB) (map[string]string, error) {
+	rows, err := db.Query(`SELECT key, value FROM settings`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	m := make(map[string]string)
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, err
+		}
+		m[k] = v
+	}
+	return m, rows.Err()
+}
+
+// GetStats returns dashboard statistics.
+type Stats struct {
+	Users  int64 `json:"users"`
+	Sites  int64 `json:"sites"`
+	Admins int64 `json:"admins"`
+}
+
+func GetStats(db *sql.DB) (*Stats, error) {
+	s := &Stats{}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&s.Users); err != nil {
+		return nil, err
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sites`).Scan(&s.Sites); err != nil {
+		return nil, err
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&s.Admins); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// GetSettings returns a structured settings object.
+type Settings struct {
+	OpenRegistration bool `json:"openRegistration"`
+}
+
+func GetSettings(db *sql.DB) (*Settings, error) {
+	val, err := GetSetting(db, "open_registration")
+	if err != nil {
+		return nil, err
+	}
+	return &Settings{OpenRegistration: val == "1" || val == "true"}, nil
 }

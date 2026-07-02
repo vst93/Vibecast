@@ -148,7 +148,8 @@ function doLogout(){
   api("/auth/logout",{method:"POST"}).then(function(){location.reload()});
 }
 function renderDashboard(){
-  document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibecast</div><div class="user">'+esc(currentUser.email)+' <button onclick="doLogout()">Logout</button></div></nav><div class="container"><div class="section"><h2>Create New Site</h2><div class="form-row"><input id="site-name" placeholder="Site name (e.g. My Portfolio)"><input id="site-slug" placeholder="custom-slug (optional)"><input id="site-pwd" type="password" placeholder="Access password (optional)"><button class="btn" onclick="createSite()">Create</button></div></div><div class="section"><h2>Your Sites</h2><div id="site-list"></div></div></div>';
+  var adminLink=currentUser.isAdmin?'<a href="/admin" style="color:#fbbf24;text-decoration:none;font-size:.85rem;margin-right:1rem">Admin Panel</a>':'';
+  document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibecast</div><div class="user">'+adminLink+esc(currentUser.email)+' <button onclick="doLogout()">Logout</button></div></nav><div class="container"><div class="section"><h2>Create New Site</h2><div class="form-row"><input id="site-name" placeholder="Site name (e.g. My Portfolio)"><input id="site-slug" placeholder="custom-slug (optional)"><input id="site-pwd" type="password" placeholder="Access password (optional)"><button class="btn" onclick="createSite()">Create</button></div></div><div class="section"><h2>Your Sites</h2><div id="site-list"></div></div></div>';
   loadSites();
 }
 function loadSites(){
@@ -278,3 +279,193 @@ func escHTML(s string) string {
 		"'", "&#39;",
 	).Replace(s)
 }
+
+// adminPageHTML is the admin dashboard SPA.
+var adminPageHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibecast Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f0f0f;color:#e0e0e0;min-height:100vh}
+.navbar{display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;background:#161616;border-bottom:1px solid #222}
+.navbar .logo{font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,#f87171,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.navbar .links{display:flex;gap:1rem;align-items:center}
+.navbar .links a{color:#888;text-decoration:none;font-size:.9rem;cursor:pointer}
+.navbar .links a:hover{color:#e0e0e0}
+.container{max-width:1000px;margin:2rem auto;padding:0 1rem}
+.section{background:#161616;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border:1px solid #222}
+.section h2{font-size:1.1rem;margin-bottom:1rem;color:#fbbf24}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.stat-card{background:#1a1a1a;border-radius:8px;padding:1.5rem;text-align:center;border:1px solid #222}
+.stat-card .num{font-size:2rem;font-weight:700;color:#e0e0e0}
+.stat-card .label{font-size:.8rem;color:#666;margin-top:.3rem}
+table{width:100%;border-collapse:collapse}
+th,td{padding:.6rem .8rem;text-align:left;border-bottom:1px solid #222}
+th{color:#888;font-size:.8rem;font-weight:600;text-transform:uppercase}
+td{font-size:.9rem}
+.badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:4px}
+.badge-admin{background:#7c2d12;color:#fbbf24}
+.badge-user{background:#374151;color:#9ca3af}
+.badge-protected{background:#374151;color:#9ca3af}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:.85rem;cursor:pointer;font-weight:500}
+.btn-promote{background:#059669;color:#fff}
+.btn-demote{background:#d97706;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}
+.btn:hover{opacity:.85}
+.toggle{display:flex;align-items:center;gap:1rem}
+.toggle-switch{position:relative;width:44px;height:24px;background:#333;border-radius:12px;cursor:pointer;transition:background .2s}
+.toggle-switch.on{background:#059669}
+.toggle-switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .2s}
+.toggle-switch.on::after{transform:translateX(20px)}
+.toggle-label{font-size:.9rem;color:#e0e0e0}
+.empty{text-align:center;color:#555;padding:1.5rem;font-size:.9rem}
+.toast{position:fixed;bottom:2rem;right:2rem;padding:12px 24px;border-radius:8px;font-size:.9rem;z-index:999;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+.toast.success{background:#059669;color:#fff}
+.toast.error{background:#dc2626;color:#fff}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+var API="/api";
+function api(path,opts){
+  opts=opts||{};
+  return fetch(API+path,Object.assign({},opts,{headers:{"Content-Type":"application/json"},credentials:"same-origin"})).then(function(r){
+    return r.json().catch(function(){return{error:"network error"}}).then(function(data){
+      if(!r.ok)throw new Error(data.error||"request failed");
+      return data;
+    });
+  });
+}
+function toast(msg,type){
+  type=type||"success";
+  var el=document.createElement("div");
+  el.className="toast "+type+" show";
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(function(){el.classList.remove("show");setTimeout(function(){el.remove()},300)},2500);
+}
+function esc(s){
+  return String(s||"").replace(/[&<>"']/g,function(c){
+    return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function fmtDate(s){
+  if(!s)return"-";
+  var d=new Date(s);
+  return d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+}
+function checkAuth(){
+  return api("/auth/me").then(function(d){
+    if(!d.data.isAdmin)throw new Error("not admin");
+    return d.data;
+  }).catch(function(){location.href="/dashboard"});
+}
+function renderNav(user){
+  return '<nav class="navbar"><div class="logo">Vibecast Admin</div><div class="links"><a href="/dashboard">Dashboard</a><a onclick="doLogout()">Logout</a></div></nav>';
+}
+function doLogout(){
+  api("/auth/logout",{method:"POST"}).then(function(){location.href="/"});
+}
+function renderDashboard(user){
+  document.getElementById("app").innerHTML=renderNav(user)+
+  '<div class="container">'+
+  '<div class="section"><h2>Overview</h2><div id="stats" class="stats-grid"></div></div>'+
+  '<div class="section"><h2>Settings</h2><div id="settings"></div></div>'+
+  '<div class="section"><h2>Users</h2><div id="users"></div></div>'+
+  '<div class="section"><h2>All Sites</h2><div id="sites"></div></div>'+
+  '</div>';
+  loadStats();
+  loadSettings();
+  loadUsers();
+  loadSites();
+}
+function loadStats(){
+  api("/admin/stats").then(function(d){
+    var s=d.data;
+    document.getElementById("stats").innerHTML=
+    '<div class="stat-card"><div class="num">'+s.users+'</div><div class="label">Users</div></div>'+
+    '<div class="stat-card"><div class="num">'+s.sites+'</div><div class="label">Sites</div></div>'+
+    '<div class="stat-card"><div class="num">'+s.admins+'</div><div class="label">Admins</div></div>';
+  }).catch(function(e){toast(e.message,"error")});
+}
+function loadSettings(){
+  api("/admin/settings").then(function(d){
+    var s=d.data;
+    var on=s.openRegistration;
+    document.getElementById("settings").innerHTML=
+    '<div class="toggle"><div class="toggle-switch '+(on?"on":"")+'" onclick="toggleRegistration()"></div><span class="toggle-label">Open Registration '+(on?"(Enabled)":"(Disabled)")+'</span></div>';
+  }).catch(function(e){toast(e.message,"error")});
+}
+function toggleRegistration(){
+  api("/admin/settings").then(function(d){
+    var newVal=!d.data.openRegistration;
+    return api("/admin/settings",{method:"PUT",body:JSON.stringify({openRegistration:newVal})});
+  }).then(function(){
+    toast("Settings updated");
+    loadSettings();
+  }).catch(function(e){toast(e.message,"error")});
+}
+function loadUsers(){
+  api("/admin/users").then(function(d){
+    var users=d.data||[];
+    var el=document.getElementById("users");
+    if(!users.length){el.innerHTML='<div class="empty">No users</div>';return}
+    var html='<table><thead><tr><th>ID</th><th>Email</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+    for(var i=0;i<users.length;i++){
+      var u=users[i];
+      var badge=u.isAdmin?'<span class="badge badge-admin">Admin</span>':'<span class="badge badge-user">User</span>';
+      var btn=u.isAdmin?'<button class="btn btn-demote" onclick="toggleAdmin('+u.id+')">Demote</button>':'<button class="btn btn-promote" onclick="toggleAdmin('+u.id+')">Promote</button>';
+      html+='<tr><td>'+u.id+'</td><td>'+esc(u.email)+'</td><td>'+badge+'</td><td>'+fmtDate(u.createdAt)+'</td><td>'+btn+' <button class="btn btn-danger" onclick="delUser('+u.id+')">Delete</button></td></tr>';
+    }
+    html+='</tbody></table>';
+    el.innerHTML=html;
+  }).catch(function(e){toast(e.message,"error")});
+}
+function toggleAdmin(id){
+  api("/admin/users/"+id,{method:"PUT"}).then(function(){
+    toast("Role updated");
+    loadUsers();
+    loadStats();
+  }).catch(function(e){toast(e.message,"error")});
+}
+function delUser(id){
+  if(!confirm("Delete this user and all their sites?"))return;
+  api("/admin/users/"+id,{method:"DELETE"}).then(function(){
+    toast("User deleted");
+    loadUsers();
+    loadStats();
+    loadSites();
+  }).catch(function(e){toast(e.message,"error")});
+}
+function loadSites(){
+  api("/admin/sites").then(function(d){
+    var sites=d.data||[];
+    var el=document.getElementById("sites");
+    if(!sites.length){el.innerHTML='<div class="empty">No sites</div>';return}
+    var html='<table><thead><tr><th>ID</th><th>Name</th><th>Slug</th><th>Protected</th><th>URL</th><th>Actions</th></tr></thead><tbody>';
+    for(var i=0;i<sites.length;i++){
+      var s=sites[i];
+      var badge=s.protected?'<span class="badge badge-protected">Yes</span>':'-';
+      html+='<tr><td>'+s.id+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.slug)+'</td><td>'+badge+'</td><td><a href="'+s.url+'" target="_blank" style="color:#6366f1">'+s.url+'</a></td><td><button class="btn btn-danger" onclick="delSite('+s.id+')">Delete</button></td></tr>';
+    }
+    html+='</tbody></table>';
+    el.innerHTML=html;
+  }).catch(function(e){toast(e.message,"error")});
+}
+function delSite(id){
+  if(!confirm("Delete this site?"))return;
+  api("/admin/sites/"+id,{method:"DELETE"}).then(function(){
+    toast("Site deleted");
+    loadSites();
+    loadStats();
+  }).catch(function(e){toast(e.message,"error")});
+}
+checkAuth().then(function(user){renderDashboard(user)});
+</script>
+</body>
+</html>`

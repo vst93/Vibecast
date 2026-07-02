@@ -61,7 +61,19 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/sites", auth.RequireAuth(s.database, s.handleSites))
 	mux.HandleFunc("/api/sites/", auth.RequireAuth(s.database, s.handleSite))
 
+	// Admin API (admin only)
+	mux.HandleFunc("/api/admin/stats", auth.RequireAdmin(s.database, s.adminStats))
+	mux.HandleFunc("/api/admin/users", auth.RequireAdmin(s.database, s.adminListUsers))
+	mux.HandleFunc("/api/admin/users/", auth.RequireAdmin(s.database, s.adminUserAction))
+	mux.HandleFunc("/api/admin/sites", auth.RequireAdmin(s.database, s.adminListAllSites))
+	mux.HandleFunc("/api/admin/sites/", auth.RequireAdmin(s.database, s.adminSiteAction))
+	mux.HandleFunc("/api/admin/settings", auth.RequireAdmin(s.database, s.adminHandleSettings))
+
 	// Admin UI
+	mux.HandleFunc("/admin", s.handleAdminPage)
+	mux.HandleFunc("/admin/", s.handleAdminPage)
+
+	// Dashboard UI
 	mux.HandleFunc("/dashboard", s.handleDashboard)
 	mux.HandleFunc("/dashboard/", s.handleDashboard)
 

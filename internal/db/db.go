@@ -13,7 +13,7 @@ func Open(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	db.SetMaxOpenConns(1) // SQLite single-writer
+	db.SetMaxOpenConns(1)
 	if err := migrate(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -22,11 +22,13 @@ func Open(path string) (*sql.DB, error) {
 }
 
 func migrate(db *sql.DB) error {
+	// Step 1: create tables fresh
 	schema := `
 	CREATE TABLE IF NOT EXISTS users (
 		id          INTEGER PRIMARY KEY AUTOINCREMENT,
 		email       TEXT NOT NULL UNIQUE,
 		password    TEXT NOT NULL,
+		is_admin    INTEGER NOT NULL DEFAULT 0,
 		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -44,7 +46,7 @@ func migrate(db *sql.DB) error {
 		user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		slug         TEXT NOT NULL UNIQUE,
 		name         TEXT NOT NULL DEFAULT '',
-		password     TEXT NOT NULL DEFAULT '',  -- bcrypt hash, empty = no password
+		password     TEXT NOT NULL DEFAULT '',
 		created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
@@ -59,7 +61,21 @@ func migrate(db *sql.DB) error {
 		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE INDEX IF NOT EXISTS idx_site_sessions_token ON site_sessions(token);
+
+	CREATE TABLE IF NOT EXISTS settings (
+		key   TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	);
 	`
-	_, err := db.Exec(schema)
-	return err
+	if _, err := db.Exec(schema); err != nil {
+		return err
+	}
+
+	// Step 2: add is_admin column if it doesn't exist (for existing DBs)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`)
+
+	// Step 3: seed default settings
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('open_registration', '1')`)
+
+	return nil
 }

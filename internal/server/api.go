@@ -52,12 +52,22 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if registration is open (unless this is the first user — first user becomes admin)
+	userCount, _ := db.CountUsers(s.database)
+	isFirstUser := userCount == 0
+	if !isFirstUser {
+		if !db.GetSettingBool(s.database, "open_registration", true) {
+			writeJSON(w, 403, jsonResp{Error: "registration is closed"})
+			return
+		}
+	}
+
 	hashed, err := auth.HashPassword(body.Password)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to hash password"})
 		return
 	}
-	user, err := db.CreateUser(s.database, body.Email, hashed)
+	user, err := db.CreateUser(s.database, body.Email, hashed, isFirstUser)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			writeJSON(w, 409, jsonResp{Error: "email already registered"})
@@ -79,8 +89,9 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, jsonResp{
 		Message: "registered",
 		Data: map[string]interface{}{
-			"id":    user.ID,
-			"email": user.Email,
+			"id":      user.ID,
+			"email":   user.Email,
+			"isAdmin": user.IsAdmin,
 		},
 	})
 }
@@ -121,8 +132,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, jsonResp{
 		Message: "logged in",
 		Data: map[string]interface{}{
-			"id":    user.ID,
-			"email": user.Email,
+			"id":      user.ID,
+			"email":   user.Email,
+			"isAdmin": user.IsAdmin,
 		},
 	})
 }
@@ -148,8 +160,9 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, jsonResp{
 		Data: map[string]interface{}{
-			"id":    user.ID,
-			"email": user.Email,
+			"id":      user.ID,
+			"email":   user.Email,
+			"isAdmin": user.IsAdmin,
 		},
 	})
 }

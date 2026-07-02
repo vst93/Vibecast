@@ -18,12 +18,19 @@ func main() {
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
 	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("vibecast v%s\n", version)
+		return
+	}
 
 	cfg := &server.Config{
 		Addr:       *addr,
 		StorageDir: *storageDir,
 		DBPath:     *dbPath,
+		Version:    version,
 	}
 
 	srv, err := server.New(cfg)

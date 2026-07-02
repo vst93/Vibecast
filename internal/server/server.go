@@ -18,12 +18,14 @@ type Config struct {
 	Addr       string // listen address, e.g. ":8080"
 	StorageDir string // path to site files storage
 	DBPath     string // path to SQLite database
+	Version    string // build version (injected via ldflags)
 }
 
 // Server holds application state.
 type Server struct {
 	config   *Config
 	database *sql.DB
+	version  string
 }
 
 // New creates a new Server instance.
@@ -35,7 +37,7 @@ func New(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	return &Server{config: cfg, database: database}, nil
+	return &Server{config: cfg, database: database, version: cfg.Version}, nil
 }
 
 // Close closes the database connection.
@@ -60,6 +62,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/auth/me", s.handleMe)
 	mux.HandleFunc("/api/auth/captcha", s.handleCaptcha)
 	mux.HandleFunc("/api/settings", s.publicSettings)
+	mux.HandleFunc("/api/version", s.handleVersion)
 	mux.HandleFunc("/api/auth/change-password", auth.RequireAuth(s.database, s.handleChangePassword))
 
 	// Sites API (auth required)
@@ -120,6 +123,15 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, dashboardHTML)
+}
+
+// handleVersion returns the build version.
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	v := s.version
+	if v == "" {
+		v = "dev"
+	}
+	writeJSON(w, 200, jsonResp{Data: map[string]string{"version": v}})
 }
 
 // slugify converts a string to a URL-safe slug.

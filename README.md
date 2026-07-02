@@ -6,6 +6,8 @@ A self-hosted, multi-user static site hosting platform built in pure Go.
 No Nginx, no external web server — the application server handles everything: 
 authentication, site management, ZIP deployment, and static file serving.
 
+[中文说明](#vibecast-中文说明)
+
 ---
 
 ## Features
@@ -92,7 +94,7 @@ MIT
 
 ---
 
-# Vibecast
+# Vibecast 中文说明
 
 > Build with vibe. Cast instantly.
 

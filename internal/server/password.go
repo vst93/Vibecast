@@ -13,7 +13,7 @@ import (
 
 // passwordPageHandler shows the password gate page and processes password submissions.
 // GET /p/{slug}  → show password form
-// POST /p/{slug} → validate password, set cookie, redirect to site
+// POST /p/{slug} → validate password, return token (JSON) or redirect with ?token=
 func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimPrefix(r.URL.Path, "/p/")
 	slug = strings.SplitN(slug, "/", 2)[0]
@@ -78,21 +78,18 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Set cookie
-		cookieName := "vibecast_site_" + slug
-		http.SetCookie(w, &http.Cookie{
-			Name:     cookieName,
-			Value:    token,
-			Path:     "/",
-			MaxAge:   int((7 * 24 * time.Hour).Seconds()),
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
-
 		if strings.Contains(contentType, "application/json") {
-			writeJSON(w, 200, jsonResp{Message: "authenticated"})
+			// Return token for API clients
+			writeJSON(w, 200, jsonResp{
+				Message: "authenticated",
+				Data: map[string]interface{}{
+					"token": token,
+					"url":   fmt.Sprintf("/s/%s/", slug),
+				},
+			})
 		} else {
-			http.Redirect(w, r, "/s/"+slug+"/", http.StatusSeeOther)
+			// Form submission: redirect with token in query
+			http.Redirect(w, r, "/s/"+slug+"/?token="+token, http.StatusSeeOther)
 		}
 		return
 	}

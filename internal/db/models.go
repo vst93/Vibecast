@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type Site struct {
 	Name          string
 	Password      string // bcrypt hash, empty = no protection
 	PasswordPlain string // plaintext password for display
+	OwnerEmail    string // only populated in admin views (JOIN with users)
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -95,6 +97,45 @@ func ListUsers(db *sql.DB) ([]*User, error) {
 		users = append(users, u)
 	}
 	return users, rows.Err()
+}
+
+// ListUsersPaged returns a page of users with optional search on email.
+func ListUsersPaged(db *sql.DB, search string, limit, offset int) ([]*User, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	rows, err := db.Query(
+		`SELECT id, email, password, is_admin, created_at
+		 FROM users
+		 WHERE LOWER(email) LIKE ?
+		 ORDER BY created_at ASC
+		 LIMIT ? OFFSET ?`,
+		search, limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []*User
+	for rows.Next() {
+		u := &User{}
+		var adminVal int
+		if err := rows.Scan(&u.ID, &u.Email, &u.Password, &adminVal, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		u.IsAdmin = adminVal == 1
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// CountUsersWithSearch returns total user count with optional search.
+func CountUsersWithSearch(db *sql.DB, search string) (int64, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	var count int64
+	err := db.QueryRow(
+		`SELECT COUNT(*) FROM users WHERE LOWER(email) LIKE ?`,
+		search,
+	).Scan(&count)
+	return count, err
 }
 
 func UpdateUserAdmin(db *sql.DB, id int64, isAdmin bool) error {
@@ -200,6 +241,44 @@ func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 	return sites, rows.Err()
 }
 
+// ListSitesByUserPaged returns a page of sites for a user with optional search.
+// search matches against name or slug (case-insensitive LIKE).
+func ListSitesByUserPaged(db *sql.DB, userID int64, search string, limit, offset int) ([]*Site, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	rows, err := db.Query(
+		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at
+		 FROM sites
+		 WHERE user_id = ? AND (LOWER(name) LIKE ? OR LOWER(slug) LIKE ?)
+		 ORDER BY created_at DESC
+		 LIMIT ? OFFSET ?`,
+		userID, search, search, limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var sites []*Site
+	for rows.Next() {
+		s := &Site{}
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		sites = append(sites, s)
+	}
+	return sites, rows.Err()
+}
+
+// CountSitesByUser returns the total number of sites for a user (with optional search).
+func CountSitesByUser(db *sql.DB, userID int64, search string) (int64, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	var count int64
+	err := db.QueryRow(
+		`SELECT COUNT(*) FROM sites WHERE user_id = ? AND (LOWER(name) LIKE ? OR LOWER(slug) LIKE ?)`,
+		userID, search, search,
+	).Scan(&count)
+	return count, err
+}
+
 func ListAllSites(db *sql.DB) ([]*Site, error) {
 	rows, err := db.Query(
 		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites ORDER BY created_at DESC`,
@@ -217,6 +296,46 @@ func ListAllSites(db *sql.DB) ([]*Site, error) {
 		sites = append(sites, s)
 	}
 	return sites, rows.Err()
+}
+
+// ListAllSitesWithOwnerPaged returns a page of all sites with owner email and optional search.
+// search matches against site name, slug, or owner email.
+func ListAllSitesWithOwnerPaged(db *sql.DB, search string, limit, offset int) ([]*Site, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	rows, err := db.Query(
+		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.password_plain, u.email, s.created_at, s.updated_at
+		 FROM sites s JOIN users u ON s.user_id = u.id
+		 WHERE LOWER(s.name) LIKE ? OR LOWER(s.slug) LIKE ? OR LOWER(u.email) LIKE ?
+		 ORDER BY s.created_at DESC
+		 LIMIT ? OFFSET ?`,
+		search, search, search, limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var sites []*Site
+	for rows.Next() {
+		s := &Site{}
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.OwnerEmail, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		sites = append(sites, s)
+	}
+	return sites, rows.Err()
+}
+
+// CountAllSitesWithOwner returns total count of sites with optional search.
+func CountAllSitesWithOwner(db *sql.DB, search string) (int64, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	var count int64
+	err := db.QueryRow(
+		`SELECT COUNT(*)
+		 FROM sites s JOIN users u ON s.user_id = u.id
+		 WHERE LOWER(s.name) LIKE ? OR LOWER(s.slug) LIKE ? OR LOWER(u.email) LIKE ?`,
+		search, search, search,
+	).Scan(&count)
+	return count, err
 }
 
 func UpdateSite(db *sql.DB, id int64, name, hashedPassword, plainPassword string) error {

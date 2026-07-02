@@ -11,6 +11,21 @@ import (
 	"static-host/internal/db"
 )
 
+// paginationParams extracts page, perPage, offset, and search from query params.
+func paginationParams(r *http.Request) (page, perPage, offset int, search string) {
+	page, _ = strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	perPage, _ = strconv.Atoi(r.URL.Query().Get("perPage"))
+	if perPage < 1 || perPage > 100 {
+		perPage = 10
+	}
+	offset = (page - 1) * perPage
+	search = strings.TrimSpace(r.URL.Query().Get("q"))
+	return
+}
+
 // adminStats returns dashboard statistics.
 func (s *Server) adminStats(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodGet {
@@ -25,52 +40,42 @@ func (s *Server) adminStats(w http.ResponseWriter, r *http.Request, user *db.Use
 	writeJSON(w, 200, jsonResp{Data: stats})
 }
 
-// adminListUsers lists all users (GET) or toggles admin status (PUT /api/admin/users/{id}).
+// adminListUsers lists all users with pagination and search.
 func (s *Server) adminListUsers(w http.ResponseWriter, r *http.Request, user *db.User) {
-	if r.Method == http.MethodGet {
-		users, err := db.ListUsers(s.database)
-		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to list users"})
-			return
-		}
-		var list []map[string]interface{}
-		for _, u := range users {
-			list = append(list, map[string]interface{}{
-				"id":        u.ID,
-				"email":     u.Email,
-				"isAdmin":   u.IsAdmin,
-				"createdAt": u.CreatedAt,
-			})
-		}
-		if list == nil {
-			list = []map[string]interface{}{}
-		}
-		writeJSON(w, 200, jsonResp{Data: list})
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
 		return
 	}
-	// POST fallback — list users
-	if r.Method == http.MethodPost {
-		users, err := db.ListUsers(s.database)
-		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: "failed to list users"})
-			return
-		}
-		var list []map[string]interface{}
-		for _, u := range users {
-			list = append(list, map[string]interface{}{
-				"id":        u.ID,
-				"email":     u.Email,
-				"isAdmin":   u.IsAdmin,
-				"createdAt": u.CreatedAt,
-			})
-		}
-		if list == nil {
-			list = []map[string]interface{}{}
-		}
-		writeJSON(w, 200, jsonResp{Data: list})
+	page, limit, offset, search := paginationParams(r)
+
+	users, err := db.ListUsersPaged(s.database, search, limit, offset)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to list users"})
 		return
 	}
-	writeJSON(w, 405, jsonResp{Error: "method not allowed"})
+	total, err := db.CountUsersWithSearch(s.database, search)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to count users"})
+		return
+	}
+	var list []map[string]interface{}
+	for _, u := range users {
+		list = append(list, map[string]interface{}{
+			"id":        u.ID,
+			"email":     u.Email,
+			"isAdmin":   u.IsAdmin,
+			"createdAt": u.CreatedAt,
+		})
+	}
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"items": list,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}})
 }
 
 // adminUserAction handles /api/admin/users/{id} — PUT to toggle admin, DELETE to remove.
@@ -90,7 +95,6 @@ func (s *Server) adminUserAction(w http.ResponseWriter, r *http.Request, user *d
 
 	switch r.Method {
 	case http.MethodPut:
-		// Toggle admin
 		if target.ID == user.ID {
 			writeJSON(w, 400, jsonResp{Error: "cannot modify your own admin status"})
 			return
@@ -103,12 +107,10 @@ func (s *Server) adminUserAction(w http.ResponseWriter, r *http.Request, user *d
 		writeJSON(w, 200, jsonResp{Message: "updated", Data: map[string]interface{}{"isAdmin": newVal}})
 
 	case http.MethodDelete:
-		// Delete user
 		if target.ID == user.ID {
 			writeJSON(w, 400, jsonResp{Error: "cannot delete yourself"})
 			return
 		}
-		// Delete user's sites from disk
 		sites, _ := db.ListSitesByUser(s.database, target.ID)
 		for _, site := range sites {
 			_ = os.RemoveAll(filepath.Join(s.config.StorageDir, site.Slug))
@@ -124,25 +126,37 @@ func (s *Server) adminUserAction(w http.ResponseWriter, r *http.Request, user *d
 	}
 }
 
-// adminListAllSites lists all sites (GET).
+// adminListAllSites lists all sites with pagination, search, and owner email.
 func (s *Server) adminListAllSites(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, 405, jsonResp{Error: "method not allowed"})
 		return
 	}
-	sites, err := db.ListAllSites(s.database)
+	page, limit, offset, search := paginationParams(r)
+
+	sites, err := db.ListAllSitesWithOwnerPaged(s.database, search, limit, offset)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to list sites"})
 		return
 	}
+	total, err := db.CountAllSitesWithOwner(s.database, search)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to count sites"})
+		return
+	}
 	var list []map[string]interface{}
 	for _, site := range sites {
-		list = append(list, siteToJSON(site))
+		list = append(list, s.siteToJSON(site))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	writeJSON(w, 200, jsonResp{Data: list})
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"items": list,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}})
 }
 
 // adminSiteAction handles /api/admin/sites/{id} — DELETE to remove any site.

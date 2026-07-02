@@ -9,31 +9,64 @@ import (
 	"strings"
 )
 
+const (
+	maxDecompressedSize = 500 * 1024 * 1024 // 500 MB total uncompressed
+	maxFileCount        = 10000             // max files in a single zip
+	maxSingleFileSize   = 100 * 1024 * 1024 // 100 MB per file
+)
+
+// blockedExtensions are file types that have no place in a static website.
+// They are either server-side scripts (won't execute but are suspicious),
+// native executables (potential malware), or web server configs (irrelevant).
+var blockedExtensions = map[string]bool{
+	// Server-side scripts
+	".php": true, ".php3": true, ".php4": true, ".php5": true, ".phtml": true,
+	".cgi": true, ".pl": true, ".py": true, ".rb": true, ".sh": true, ".bash": true,
+	".asp": true, ".aspx": true, ".jsp": true, ".node": true,
+	// Native executables / binaries
+	".exe": true, ".bat": true, ".cmd": true, ".com": true, ".scr": true,
+	".msi": true, ".dll": true, ".so": true, ".dylib": true, ".bin": true,
+	".jar": true, ".app": true, ".run": true, ".out": true,
+	// Web server configs (irrelevant for Go, but could confuse)
+	".htaccess": true, ".htpasswd": true,
+}
+
+// ExtractZipResult holds extraction results including skipped dangerous files.
+type ExtractZipResult struct {
+	WebRoot     string   // actual web root directory
+	Skipped     []string // list of skipped file names (dangerous types)
+	TotalFiles  int      // number of files extracted
+	TotalSize   int64    // total bytes extracted
+}
+
 // ExtractZip extracts a zip reader contents into destDir.
 // It strips common top-level directory if all entries share one (e.g. "site/" prefix).
-// Returns the actual web root (destDir or a subdirectory of it).
-func ExtractZip(r io.ReaderAt, size int64, destDir string) (string, error) {
+// Dangerous file types are skipped. Zip bombs are rejected.
+func ExtractZip(r io.ReaderAt, size int64, destDir string) (*ExtractZipResult, error) {
 	tmpDir := destDir + ".tmp"
 	_ = os.RemoveAll(tmpDir)
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
-		return "", fmt.Errorf("mkdir tmp: %w", err)
+		return nil, fmt.Errorf("mkdir tmp: %w", err)
 	}
 
 	zr, err := zip.NewReader(r, size)
 	if err != nil {
-		return "", fmt.Errorf("zip reader: %w", err)
+		return nil, fmt.Errorf("zip reader: %w", err)
+	}
+
+	// Check file count
+	if len(zr.File) > maxFileCount {
+		return nil, fmt.Errorf("zip contains too many files (%d > %d limit)", len(zr.File), maxFileCount)
 	}
 
 	// Detect common prefix
 	prefix := ""
 	for i, f := range zr.File {
-		// Only consider actual directory entries or files for prefix detection
 		if f.Name[0] == '/' || strings.Contains(f.Name, "..") {
-			return "", fmt.Errorf("unsafe path in zip: %s", f.Name)
+			return nil, fmt.Errorf("unsafe path in zip: %s", f.Name)
 		}
 		parts := strings.SplitN(f.Name, "/", 2)
 		if len(parts) < 2 {
-			// File at root level — no common prefix to strip
 			prefix = ""
 			break
 		}
@@ -45,6 +78,9 @@ func ExtractZip(r io.ReaderAt, size int64, destDir string) (string, error) {
 		}
 	}
 
+	result := &ExtractZipResult{}
+	var totalSize int64
+
 	for _, f := range zr.File {
 		// Strip the common prefix
 		name := f.Name
@@ -55,55 +91,76 @@ func ExtractZip(r io.ReaderAt, size int64, destDir string) (string, error) {
 			continue
 		}
 
+		// Check for dangerous file extensions
+		ext := strings.ToLower(filepath.Ext(name))
+		if blockedExtensions[ext] {
+			result.Skipped = append(result.Skipped, name)
+			continue
+		}
+
+		// Check single file size (uncompressed)
+		if f.UncompressedSize64 > maxSingleFileSize {
+			return nil, fmt.Errorf("file too large: %s (%d bytes > %d limit)", name, f.UncompressedSize64, maxSingleFileSize)
+		}
+
+		// Check total decompressed size
+		totalSize += int64(f.UncompressedSize64)
+		if totalSize > maxDecompressedSize {
+			return nil, fmt.Errorf("zip bomb detected: total uncompressed size exceeds %d MB limit", maxDecompressedSize/(1024*1024))
+		}
+
 		target := filepath.Join(tmpDir, name)
 
 		// Prevent path traversal
 		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(tmpDir)+string(os.PathSeparator)) {
-			return "", fmt.Errorf("path traversal detected: %s", f.Name)
+			return nil, fmt.Errorf("path traversal detected: %s", f.Name)
 		}
 
 		if f.FileInfo().IsDir() {
 			if err := os.MkdirAll(target, 0755); err != nil {
-				return "", fmt.Errorf("mkdir %s: %w", target, err)
+				return nil, fmt.Errorf("mkdir %s: %w", target, err)
 			}
 			continue
 		}
 
 		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-			return "", fmt.Errorf("mkdir parent: %w", err)
+			return nil, fmt.Errorf("mkdir parent: %w", err)
 		}
 
 		rc, err := f.Open()
 		if err != nil {
-			return "", fmt.Errorf("open zip entry %s: %w", f.Name, err)
+			return nil, fmt.Errorf("open zip entry %s: %w", f.Name, err)
 		}
 
 		out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			rc.Close()
-			return "", fmt.Errorf("create file %s: %w", target, err)
+			return nil, fmt.Errorf("create file %s: %w", target, err)
 		}
 
 		if _, err := io.Copy(out, rc); err != nil {
 			rc.Close()
 			out.Close()
-			return "", fmt.Errorf("write file %s: %w", target, err)
+			return nil, fmt.Errorf("write file %s: %w", target, err)
 		}
 		rc.Close()
 		out.Close()
+
+		result.TotalFiles++
 	}
 
 	// Atomic-ish swap: remove old dir, rename tmp
 	_ = os.RemoveAll(destDir)
 	if err := os.Rename(tmpDir, destDir); err != nil {
-		// Fallback: try copy
-		return "", fmt.Errorf("rename %s -> %s: %w", tmpDir, destDir, err)
+		return nil, fmt.Errorf("rename %s -> %s: %w", tmpDir, destDir, err)
 	}
 
-	return destDir, nil
+	result.WebRoot = destDir
+	result.TotalSize = totalSize
+	return result, nil
 }
 
-// DeleteSite removes the site storage directory.
+// DeleteSiteDir removes the site storage directory.
 func DeleteSiteDir(baseDir, slug string) error {
 	return os.RemoveAll(filepath.Join(baseDir, slug))
 }

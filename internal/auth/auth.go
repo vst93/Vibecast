@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"static-host/internal/db"
@@ -14,8 +15,7 @@ import (
 )
 
 const (
-	SessionCookieName = "vibecast_session"
-	SessionDuration   = 7 * 24 * time.Hour
+	SessionDuration = 7 * 24 * time.Hour
 )
 
 // GenerateToken generates a random 32-byte hex token.
@@ -38,40 +38,33 @@ func CheckPassword(hash, plain string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 
-// SetSessionCookie writes the session cookie.
-func SetSessionCookie(w http.ResponseWriter, token string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     SessionCookieName,
-		Value:    token,
-		Path:     "/",
-		MaxAge:   int(SessionDuration.Seconds()),
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-}
-
-// ClearSessionCookie removes the session cookie.
-func ClearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     SessionCookieName,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-}
-
-// GetSessionToken extracts the session token from request cookies.
+// GetSessionToken extracts the Bearer token from the Authorization header.
+// Supports both "Authorization: Bearer <token>" and "Authorization: <token>".
 func GetSessionToken(r *http.Request) string {
-	c, err := r.Cookie(SessionCookieName)
-	if err != nil {
+	auth := r.Header.Get("Authorization")
+	if auth == "" {
 		return ""
 	}
-	return c.Value
+	auth = strings.TrimSpace(auth)
+	// Strip "Bearer " prefix if present
+	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		return strings.TrimSpace(auth[7:])
+	}
+	return auth
 }
 
-// CurrentUser resolves the user from the session cookie. Returns nil if not authenticated.
+// GetSiteToken extracts the site access token from the Authorization header
+// or from the ?token= query parameter (for browser navigation).
+func GetSiteToken(r *http.Request) string {
+	// Try Authorization header first
+	if token := GetSessionToken(r); token != "" {
+		return token
+	}
+	// Fall back to query parameter for browser navigation
+	return r.URL.Query().Get("token")
+}
+
+// CurrentUser resolves the user from the Authorization header token. Returns nil if not authenticated.
 func CurrentUser(r *http.Request, database *sql.DB) *db.User {
 	token := GetSessionToken(r)
 	if token == "" {
@@ -84,12 +77,14 @@ func CurrentUser(r *http.Request, database *sql.DB) *db.User {
 	return user
 }
 
-// RequireAuth is middleware that requires a valid user session.
+// RequireAuth is middleware that requires a valid user session via Bearer token.
 func RequireAuth(database *sql.DB, next func(http.ResponseWriter, *http.Request, *db.User)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := CurrentUser(r, database)
 		if user == nil {
-			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, `{"error":"unauthorized"}`)
 			return
 		}
 		next(w, r, user)

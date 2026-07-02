@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	crand "crypto/rand"
+
 	"static-host/internal/auth"
 	"static-host/internal/db"
 )
@@ -139,20 +141,51 @@ func slugify(s string) string {
 }
 
 // generateUniqueSlug ensures the slug is unique.
+// Uses a random suffix instead of sequential numbers to avoid leaking site counts.
 func (s *Server) generateUniqueSlug(base string) (string, error) {
 	slug := slugify(base)
-	suffix := 1
-	for {
-		existing, err := db.GetSiteBySlug(s.database, slug)
+	existing, err := db.GetSiteBySlug(s.database, slug)
+	if err != nil {
+		return "", err
+	}
+	if existing == nil {
+		return slug, nil
+	}
+	// Append random suffix — not sequential, so counts can't be guessed
+	for i := 0; i < 20; i++ {
+		suffix := randomSuffix(4)
+		candidate := fmt.Sprintf("%s-%s", slugify(base), suffix)
+		ex, err := db.GetSiteBySlug(s.database, candidate)
 		if err != nil {
 			return "", err
 		}
-		if existing == nil {
-			return slug, nil
+		if ex == nil {
+			return candidate, nil
 		}
-		suffix++
-		slug = fmt.Sprintf("%s-%d", slugify(base), suffix)
 	}
+	return "", fmt.Errorf("could not generate unique slug")
+}
+
+// randomSuffix generates a short random alphanumeric string.
+func randomSuffix(n int) string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = chars[randInt(len(chars))]
+	}
+	return string(b)
+}
+
+// randInt returns a non-negative random int < n.
+func randInt(n int) int {
+	return int(mrandUint32()) % n
+}
+
+// mrandUint32 returns a pseudo-random uint32 using crypto/rand.
+func mrandUint32() uint32 {
+	var b [4]byte
+	_, _ = crand.Read(b[:])
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
 // isValidSlug checks if a slug matches the allowed pattern.

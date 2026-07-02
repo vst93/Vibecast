@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,14 +78,13 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Auto-login
+	// Auto-login: create session token
 	token := auth.GenerateToken()
 	expires := time.Now().Add(auth.SessionDuration)
 	if err := db.CreateSession(s.database, user.ID, token, expires); err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to create session"})
 		return
 	}
-	auth.SetSessionCookie(w, token)
 
 	writeJSON(w, 201, jsonResp{
 		Message: "registered",
@@ -92,6 +92,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 			"id":      user.ID,
 			"email":   user.Email,
 			"isAdmin": user.IsAdmin,
+			"token":   token,
 		},
 	})
 }
@@ -127,7 +128,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, jsonResp{Error: "failed to create session"})
 		return
 	}
-	auth.SetSessionCookie(w, token)
 
 	writeJSON(w, 200, jsonResp{
 		Message: "logged in",
@@ -135,6 +135,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			"id":      user.ID,
 			"email":   user.Email,
 			"isAdmin": user.IsAdmin,
+			"token":   token,
 		},
 	})
 }
@@ -148,7 +149,6 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if token != "" {
 		_ = db.DeleteSession(s.database, token)
 	}
-	auth.ClearSessionCookie(w)
 	writeJSON(w, 200, jsonResp{Message: "logged out"})
 }
 
@@ -214,7 +214,7 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	switch r.Method {
 	case http.MethodGet:
-		writeJSON(w, 200, jsonResp{Data: siteToJSON(site)})
+		writeJSON(w, 200, jsonResp{Data: s.siteToJSON(site)})
 	case http.MethodPut:
 		s.updateSite(w, r, user, site)
 	case http.MethodDelete:
@@ -225,19 +225,41 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 }
 
 func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User) {
-	sites, err := db.ListSitesByUser(s.database, user.ID)
+	// Pagination
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	perPage, _ := strconv.Atoi(r.URL.Query().Get("perPage"))
+	if perPage < 1 || perPage > 100 {
+		perPage = 10
+	}
+	search := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	offset := (page - 1) * perPage
+	sites, err := db.ListSitesByUserPaged(s.database, user.ID, search, perPage, offset)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to list sites"})
 		return
 	}
+	total, err := db.CountSitesByUser(s.database, user.ID, search)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "failed to count sites"})
+		return
+	}
 	var list []map[string]interface{}
 	for _, site := range sites {
-		list = append(list, siteToJSON(site))
+		list = append(list, s.siteToJSON(site))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	writeJSON(w, 200, jsonResp{Data: list})
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"items":   list,
+		"total":   total,
+		"page":    page,
+		"perPage": perPage,
+	}})
 }
 
 func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.User) {
@@ -295,6 +317,14 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		hashedPwd = h
 	}
 
+	// If public access is disabled, sites must have password protection
+	if body.Password == "" {
+		if !db.GetSettingBool(s.database, "allow_public_access", true) {
+			writeJSON(w, 403, jsonResp{Error: "public access is disabled: site must have a password"})
+			return
+		}
+	}
+
 	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to create site"})
@@ -303,7 +333,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	writeJSON(w, 201, jsonResp{
 		Message: "site created",
-		Data:    siteToJSON(site),
+		Data:    s.siteToJSON(site),
 	})
 }
 
@@ -334,6 +364,12 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		}
 		hashedPwd = h
 		plainPwd = body.Password
+	} else if site.Password == "" {
+		// Trying to keep a site public when public access is disabled
+		if !db.GetSettingBool(s.database, "allow_public_access", true) {
+			writeJSON(w, 403, jsonResp{Error: "public access is disabled: site must have a password"})
+			return
+		}
 	}
 	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd, plainPwd); err != nil {
 		writeJSON(w, 500, jsonResp{Error: "failed to update site"})
@@ -375,33 +411,44 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 	}
 
 	siteDir := fmt.Sprintf("%s/%s", s.config.StorageDir, site.Slug)
-	if _, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir); err != nil {
+	result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir)
+	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: fmt.Sprintf("failed to extract zip: %v", err)})
 		return
 	}
 
+	respData := map[string]interface{}{
+		"slug":      site.Slug,
+		"url":        fmt.Sprintf("/s/%s/", site.Slug),
+		"files":      header.Filename,
+		"fileCount":  result.TotalFiles,
+		"totalSize":  result.TotalSize,
+	}
+	if len(result.Skipped) > 0 {
+		respData["skipped"] = result.Skipped
+	}
+
 	writeJSON(w, 200, jsonResp{
 		Message: "deployed",
-		Data: map[string]interface{}{
-			"slug":  site.Slug,
-			"url":   fmt.Sprintf("/s/%s/", site.Slug),
-			"files": header.Filename,
-		},
+		Data:    respData,
 	})
 }
 
-func siteToJSON(site *db.Site) map[string]interface{} {
+func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 	protected := site.Password != ""
+	publicAccessDisabled := !db.GetSettingBool(s.database, "allow_public_access", true)
 	return map[string]interface{}{
-		"id":            site.ID,
-		"slug":          site.Slug,
-		"name":          site.Name,
-		"protected":     protected,
-		"password":      site.PasswordPlain,
-		"storagePath":   site.Slug,
-		"url":           fmt.Sprintf("/s/%s/", site.Slug),
-		"createdAt":     site.CreatedAt,
-		"updatedAt":     site.UpdatedAt,
+		"id":                   site.ID,
+		"slug":                 site.Slug,
+		"name":                 site.Name,
+		"protected":            protected,
+		"password":             site.PasswordPlain,
+		"storagePath":          site.Slug,
+		"url":                  fmt.Sprintf("/s/%s/", site.Slug),
+		"createdAt":            site.CreatedAt,
+		"updatedAt":            site.UpdatedAt,
+		"publicAccessDisabled": publicAccessDisabled,
+		"ownerEmail":           site.OwnerEmail,
 	}
 }
 

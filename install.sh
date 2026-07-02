@@ -12,6 +12,13 @@ INSTALL_DIR="/usr/local/bin"
 VERSION=""
 BINARY_NAME="vibecast"
 
+# GitHub mirror proxies for China mainland (tried in order, then falls back to direct GitHub)
+MIRRORS=(
+  "https://ghfast.top/"
+  "https://gh-proxy.com/"
+  ""
+)
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -55,11 +62,18 @@ esac
 # If version not specified, get latest release tag
 if [[ -z "$VERSION" ]]; then
   info "Fetching latest release..."
-  if command -v curl &>/dev/null; then
-    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-  else
-    VERSION=$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-  fi
+  API_URL="https://api.github.com/repos/${REPO}/releases/latest"
+  for mirror in "${MIRRORS[@]}"; do
+    url="${mirror}${API_URL}"
+    if command -v curl &>/dev/null; then
+      VERSION=$(curl -fsSL --connect-timeout 10 "$url" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    else
+      VERSION=$(wget -qO- --timeout=10 "$url" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    fi
+    if [[ -n "$VERSION" ]]; then
+      break
+    fi
+  done
   if [[ -z "$VERSION" ]]; then
     error "Could not determine latest version. Specify with --version."
     exit 1
@@ -77,17 +91,27 @@ fi
 
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET_NAME}"
 
-# Download
+# Download via mirrors
 TMP_FILE=$(mktemp)
-info "Downloading ${DOWNLOAD_URL}"
-if command -v curl &>/dev/null; then
-  curl -fsSL -o "$TMP_FILE" "$DOWNLOAD_URL"
-else
-  wget -qO "$TMP_FILE" "$DOWNLOAD_URL"
-fi
+info "Downloading ${ASSET_NAME}"
+downloaded=false
+for mirror in "${MIRRORS[@]}"; do
+  url="${mirror}${DOWNLOAD_URL}"
+  if command -v curl &>/dev/null; then
+    if curl -fsSL --connect-timeout 10 -o "$TMP_FILE" "$url"; then
+      downloaded=true
+      break
+    fi
+  else
+    if wget -qO "$TMP_FILE" --timeout=10 "$url"; then
+      downloaded=true
+      break
+    fi
+  fi
+done
 
-if [[ ! -s "$TMP_FILE" ]]; then
-  error "Download failed or file is empty"
+if [[ "$downloaded" != "true" ]] || [[ ! -s "$TMP_FILE" ]]; then
+  error "Download failed from all mirrors"
   rm -f "$TMP_FILE"
   exit 1
 fi

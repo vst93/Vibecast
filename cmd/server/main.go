@@ -15,6 +15,14 @@ import (
 var version = "dev"
 
 func main() {
+	// Check for CLI subcommands
+	if len(os.Args) > 1 && os.Args[1] == "update" {
+		if err := server.RunUpdateCLI(version); err != nil {
+			log.Fatalf("Update failed: %v", err)
+		}
+		return
+	}
+
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
 	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")

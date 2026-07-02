@@ -58,6 +58,11 @@ var messageMap = map[string]map[string]string{
 	"get_stats_failed":        {"en": "Failed to get stats", "zh": "获取统计数据失败"},
 	// password.go
 	"incorrect_password": {"en": "Incorrect password", "zh": "密码错误，请重试"},
+	// update.go
+	"update_fetch_failed":     {"en": "Failed to fetch update info", "zh": "获取更新信息失败"},
+	"update_asset_not_found":  {"en": "No matching binary found for your platform", "zh": "未找到匹配当前平台的安装包"},
+	"update_download_failed":  {"en": "Failed to download update", "zh": "下载更新失败"},
+	"update_install_failed":   {"en": "Failed to install update", "zh": "安装更新失败"},
 }
 
 func tMsg(r *http.Request, key string) string {

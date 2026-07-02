@@ -77,6 +77,8 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/admin/sites/", auth.RequireAdmin(s.database, s.adminSiteAction))
 	mux.HandleFunc("/api/admin/settings", auth.RequireAdmin(s.database, s.adminHandleSettings))
 	mux.HandleFunc("/api/admin/cleanup", auth.RequireAdmin(s.database, s.adminCleanup))
+	mux.HandleFunc("/api/admin/update/check", auth.RequireAdmin(s.database, s.adminCheckUpdate))
+	mux.HandleFunc("/api/admin/update/apply", auth.RequireAdmin(s.database, s.adminApplyUpdate))
 
 	// Admin UI
 	mux.HandleFunc("/admin", s.handleAdminPage)

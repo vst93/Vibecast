@@ -15,9 +15,8 @@ const (
 	maxSingleFileSize   = 100 * 1024 * 1024 // 100 MB per file
 )
 
-// blockedExtensions are file types that have no place in a static website.
-// They are either server-side scripts (won't execute but are suspicious),
-// native executables (potential malware), or web server configs (irrelevant).
+// blockedExtensions are file types that are dangerous to serve or execute.
+// They are either server-side scripts, native executables, or system-level files.
 var blockedExtensions = map[string]bool{
 	// Server-side scripts
 	".php": true, ".php3": true, ".php4": true, ".php5": true, ".phtml": true,
@@ -27,8 +26,67 @@ var blockedExtensions = map[string]bool{
 	".exe": true, ".bat": true, ".cmd": true, ".com": true, ".scr": true,
 	".msi": true, ".dll": true, ".so": true, ".dylib": true, ".bin": true,
 	".jar": true, ".app": true, ".run": true, ".out": true,
+	".apk": true, ".deb": true, ".rpm": true, ".dmg": true, ".pkg": true,
+	".iso": true, ".img": true,
 	// Web server configs (irrelevant for Go, but could confuse)
 	".htaccess": true, ".htpasswd": true,
+	// System / shell
+	".ps1": true, ".psm1": true, ".vbs": true, ".wsf": true,
+	// Misc potentially dangerous
+	".reg": true, ".lnk": true, ".desktop": true,
+}
+
+// IsBlockedExtension returns true if the file extension is in the blocklist.
+func IsBlockedExtension(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return blockedExtensions[ext]
+}
+
+// SaveSingleFile saves a single uploaded file to the site directory.
+// It replaces the entire site content (same as ZIP deploy — atomic replace).
+// Returns the file size.
+func SaveSingleFile(src io.Reader, filename string, destDir string) (int64, error) {
+	if IsBlockedExtension(filename) {
+		return 0, fmt.Errorf("file type not allowed: %s", filepath.Ext(filename))
+	}
+
+	// Sanitize filename — keep it simple, no path traversal
+	filename = filepath.Base(filename)
+	if filename == "" || filename == "." || filename == ".." {
+		return 0, fmt.Errorf("invalid filename")
+	}
+
+	tmpDir := destDir + ".tmp"
+	_ = os.RemoveAll(tmpDir)
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return 0, fmt.Errorf("mkdir tmp: %w", err)
+	}
+
+	target := filepath.Join(tmpDir, filename)
+	out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return 0, fmt.Errorf("create file: %w", err)
+	}
+
+	n, err := io.Copy(out, src)
+	if err != nil {
+		out.Close()
+		return 0, fmt.Errorf("write file: %w", err)
+	}
+	out.Close()
+
+	if n > maxSingleFileSize {
+		_ = os.RemoveAll(tmpDir)
+		return 0, fmt.Errorf("file too large: %d bytes > %d limit", n, maxSingleFileSize)
+	}
+
+	// Atomic swap
+	_ = os.RemoveAll(destDir)
+	if err := os.Rename(tmpDir, destDir); err != nil {
+		return 0, fmt.Errorf("rename %s -> %s: %w", tmpDir, destDir, err)
+	}
+
+	return n, nil
 }
 
 // ExtractZipResult holds extraction results including skipped dangerous files.
@@ -60,22 +118,33 @@ func ExtractZip(r io.ReaderAt, size int64, destDir string) (*ExtractZipResult, e
 	}
 
 	// Detect common prefix
+	// Skip dotfiles (e.g. .DS_Store) when detecting prefix — they shouldn't
+	// prevent prefix stripping for the actual site files.
 	prefix := ""
 	for i, f := range zr.File {
 		if f.Name[0] == '/' || strings.Contains(f.Name, "..") {
 			return nil, fmt.Errorf("unsafe path in zip: %s", f.Name)
+		}
+		// Skip dotfiles for prefix detection
+		firstSeg := f.Name
+		if idx := strings.Index(f.Name, "/"); idx > 0 {
+			firstSeg = f.Name[:idx]
+		}
+		if strings.HasPrefix(firstSeg, ".") {
+			continue
 		}
 		parts := strings.SplitN(f.Name, "/", 2)
 		if len(parts) < 2 {
 			prefix = ""
 			break
 		}
-		if i == 0 {
+		if prefix == "" {
 			prefix = parts[0] + "/"
 		} else if !strings.HasPrefix(f.Name, prefix) {
 			prefix = ""
 			break
 		}
+		_ = i
 	}
 
 	result := &ExtractZipResult{}

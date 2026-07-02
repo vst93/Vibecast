@@ -39,6 +39,8 @@ var messageMap = map[string]map[string]string{
 	"forbidden":             {"en": "Forbidden", "zh": "无权限"},
 	"file_required":         {"en": "File upload required (field name: 'file')", "zh": "需要上传文件（字段名：'file'）"},
 	"zip_only":              {"en": "Only .zip files are accepted", "zh": "仅接受 .zip 文件"},
+	"file_type_blocked":     {"en": "This file type is not allowed (executable/script files are blocked)", "zh": "不允许此文件类型（可执行文件/脚本文件已被拦截）"},
+	"save_file_failed":      {"en": "Failed to save file", "zh": "保存文件失败"},
 	"read_upload_failed":    {"en": "Failed to read upload", "zh": "读取上传文件失败"},
 	"extract_zip_failed":    {"en": "Failed to extract zip", "zh": "解压 zip 文件失败"},
 	"update_failed":         {"en": "Failed to update", "zh": "更新失败"},
@@ -63,6 +65,13 @@ var messageMap = map[string]map[string]string{
 	"update_asset_not_found":  {"en": "No matching binary found for your platform", "zh": "未找到匹配当前平台的安装包"},
 	"update_download_failed":  {"en": "Failed to download update", "zh": "下载更新失败"},
 	"update_install_failed":   {"en": "Failed to install update", "zh": "安装更新失败"},
+	"updateRestart":           {"en": "Restart Now", "zh": "立即重启"},
+	"updateRestarting":        {"en": "Restarting...", "zh": "正在重启..."},
+	"updateRestartSuccess":    {"en": "Server is restarting. Page will reload automatically.", "zh": "服务器正在重启，页面将自动刷新。"},
+	"updateInProgress":        {"en": "Update already in progress", "zh": "更新正在进行中"},
+	"updateVerifyFailed":      {"en": "Checksum verification failed", "zh": "校验和验证失败"},
+	"updateNoChecksum":        {"en": "No checksum available (skipped verification)", "zh": "无校验和（已跳过验证）"},
+	"updateDownloadProgress":  {"en": "Downloading", "zh": "下载中"},
 }
 
 func tMsg(r *http.Request, key string) string {
@@ -72,6 +81,17 @@ func tMsg(r *http.Request, key string) string {
 	}
 	if msgs, ok := messageMap[key]; ok {
 		if msg, ok := msgs[lang]; ok {
+			return msg
+		}
+	}
+	return key
+}
+
+// tStatic returns the English message for a key, for use outside of HTTP
+// request context (e.g. CLI output). Falls back to the key itself.
+func tStatic(key string) string {
+	if msgs, ok := messageMap[key]; ok {
+		if msg, ok := msgs["en"]; ok {
 			return msg
 		}
 	}

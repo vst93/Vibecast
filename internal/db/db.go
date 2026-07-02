@@ -67,6 +67,17 @@ func migrate(db *sql.DB) error {
 		key   TEXT PRIMARY KEY,
 		value TEXT NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS site_visits (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		site_id     INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+		visit_date  TEXT NOT NULL,  -- YYYY-MM-DD
+		visit_month TEXT NOT NULL,  -- YYYY-MM
+		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_visits_site ON site_visits(site_id);
+	CREATE INDEX IF NOT EXISTS idx_visits_date ON site_visits(visit_date);
+	CREATE INDEX IF NOT EXISTS idx_visits_month ON site_visits(visit_month);
 	`
 	if _, err := db.Exec(schema); err != nil {
 		return err

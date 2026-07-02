@@ -1,6 +1,9 @@
 package server
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,19 +12,26 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"vibecast/internal/db"
 )
 
-// GitHub mirror hosts for China mainland — tried in order.
+// GitHub mirror hosts for China mainland — tried in order for binary downloads.
 // Each entry is a prefix prepended to the full GitHub URL.
 // Empty string = direct GitHub (used as last resort).
+// NOTE: mirrors only proxy release downloads, NOT the GitHub API.
 var githubMirrors = []string{
 	"https://ghfast.top/",
 	"https://gh-proxy.com/",
 	"",
 }
+
+// updateInProgress is an atomic flag (0 = idle, 1 = running) preventing
+// concurrent update operations from the admin API.
+var updateInProgress int32
 
 // releaseInfo represents a GitHub release.
 type releaseInfo struct {
@@ -40,14 +50,19 @@ type asset struct {
 
 const vibecastRepo = "vst93/Vibecast"
 
-// fetchLatestRelease queries GitHub API (via mirrors) for the latest release.
+// fetchLatestRelease queries GitHub API for the latest release.
+// Strategy: try direct api.github.com first, then fall back to mirrors.
 func fetchLatestRelease() (*releaseInfo, error) {
-	// The GitHub API URL — mirrors proxy it by prepending their base
 	ghAPIURL := "https://api.github.com/repos/" + vibecastRepo + "/releases/latest"
 
-	// Build candidate URLs: mirrors first, then direct
+	// Build candidate URLs: direct first, then mirrors as fallback.
+	// (Mirrors return 403 for API calls, but direct may fail in CN networks.)
 	var apiURLs []string
+	apiURLs = append(apiURLs, ghAPIURL) // direct first
 	for _, mirror := range githubMirrors {
+		if mirror == "" {
+			continue // already added direct above
+		}
 		apiURLs = append(apiURLs, mirror+ghAPIURL)
 	}
 
@@ -70,8 +85,7 @@ func fetchLatestRelease() (*releaseInfo, error) {
 			lastErr = err
 			continue
 		}
-		// Success
-		break
+		break // success
 	}
 	if body == nil {
 		return nil, fmt.Errorf("failed to fetch release info: %w", lastErr)
@@ -107,9 +121,11 @@ func findAsset(rel *releaseInfo) *asset {
 	return nil
 }
 
-// downloadAsset downloads an asset via mirror proxies and returns the local file path.
-func downloadAsset(assetURL string) (string, error) {
-	// Build candidate download URLs: mirrors first, then direct
+// downloadAsset downloads an asset via mirror proxies (mirror-first, direct fallback)
+// and returns the local file path. If totalSize > 0 and progress != nil, reports
+// download progress via the callback.
+func downloadAsset(assetURL string, totalSize int64, progress func(downloaded, total int64)) (string, error) {
+	// Build candidate download URLs: mirrors first, then direct.
 	var urls []string
 	for _, mirror := range githubMirrors {
 		urls = append(urls, mirror+assetURL)
@@ -123,7 +139,6 @@ func downloadAsset(assetURL string) (string, error) {
 
 	var lastErr error
 	for _, url := range urls {
-		// Reset file
 		tmpFile.Truncate(0)
 		tmpFile.Seek(0, 0)
 
@@ -137,14 +152,22 @@ func downloadAsset(assetURL string) (string, error) {
 			lastErr = fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 			continue
 		}
-		_, err = io.Copy(tmpFile, resp.Body)
+
+		var reader io.Reader = resp.Body
+		total := totalSize
+		if total <= 0 {
+			total = resp.ContentLength
+		}
+		if progress != nil && total > 0 {
+			reader = &progressReader{r: resp.Body, total: total, fn: progress}
+		}
+		_, err = io.Copy(tmpFile, reader)
 		resp.Body.Close()
 		if err != nil {
 			lastErr = err
 			continue
 		}
 		tmpFile.Close()
-		// Success
 		return tmpPath, nil
 	}
 
@@ -153,10 +176,138 @@ func downloadAsset(assetURL string) (string, error) {
 	return "", fmt.Errorf("failed to download asset: %w", lastErr)
 }
 
+// downloadAndVerifyAsset downloads the binary, then verifies it against
+// SHA256SUMS if available. Returns the path to the verified temp file.
+func downloadAndVerifyAsset(assetURL, assetName string) (string, error) {
+	tmpPath, err := downloadAsset(assetURL, 0, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Try to fetch SHA256SUMS from the same release download base.
+	// assetURL looks like: https://github.com/vst93/Vibecast/releases/download/VERSION/assetName
+	// SHA256SUMS is at:    .../releases/download/VERSION/SHA256SUMS
+	sumsURL := assetURL[:strings.LastIndex(assetURL, "/")+1] + "SHA256SUMS"
+
+	sumsOK, verifyErr := verifySHA256(tmpPath, assetName, sumsURL)
+	if !sumsOK {
+		if verifyErr == errNoChecksum {
+			// Old release without SHA256SUMS — skip but warn.
+			fmt.Fprintf(os.Stderr, "WARNING: %s\n", tStatic("updateNoChecksum"))
+		} else {
+			// Checksum mismatch — delete and fail.
+			os.Remove(tmpPath)
+			return "", fmt.Errorf("%s: %w", tStatic("updateVerifyFailed"), verifyErr)
+		}
+	}
+
+	return tmpPath, nil
+}
+
+var errNoChecksum = fmt.Errorf("no checksum file available")
+
+// verifySHA256 downloads SHA256SUMS, extracts the hash for assetName, computes
+// the SHA256 of localFile, and compares. Returns (true, nil) on match,
+// (true, err) on mismatch, (false, errNoChecksum) if sums file unavailable.
+func verifySHA256(localFile, assetName, sumsURL string) (bool, error) {
+	// Try mirrors then direct for the sums file.
+	var urls []string
+	for _, mirror := range githubMirrors {
+		urls = append(urls, mirror+sumsURL)
+	}
+
+	var sumsBody []byte
+	var got bool
+	for _, url := range urls {
+		resp, err := httpClient.Get(url)
+		if err != nil {
+			continue
+		}
+		if resp.StatusCode != 200 {
+			resp.Body.Close()
+			continue
+		}
+		sumsBody, err = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			continue
+		}
+		got = true
+		break
+	}
+
+	if !got {
+		return false, errNoChecksum
+	}
+
+	// Extract expected hash for this asset.
+	expectedHash := extractSHA256FromSums(string(sumsBody), assetName)
+	if expectedHash == "" {
+		return false, errNoChecksum
+	}
+
+	// Compute actual hash.
+	f, err := os.Open(localFile)
+	if err != nil {
+		return true, fmt.Errorf("open for hashing: %w", err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return true, fmt.Errorf("hashing: %w", err)
+	}
+	actualHash := hex.EncodeToString(h.Sum(nil))
+
+	if !strings.EqualFold(actualHash, expectedHash) {
+		return true, fmt.Errorf("hash mismatch: expected %s, got %s", expectedHash, actualHash)
+	}
+	return true, nil
+}
+
+// extractSHA256FromSums parses a SHA256SUMS file and returns the hash for the
+// given asset name. Format: "<hash>  <filename>" per line.
+func extractSHA256FromSums(sums, assetName string) string {
+	for _, line := range strings.Split(sums, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == assetName {
+			return fields[0]
+		}
+	}
+	return ""
+}
+
+// progressReader wraps an io.Reader and reports progress via callback.
+type progressReader struct {
+	r        io.Reader
+	total    int64
+	read     int64
+	fn       func(downloaded, total int64)
+	lastRep  time.Time
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.r.Read(p)
+	pr.read += int64(n)
+	// Throttle progress callback to every 100ms.
+	now := time.Now()
+	if n > 0 && now.Sub(pr.lastRep) >= 100*time.Millisecond {
+		pr.fn(pr.read, pr.total)
+		pr.lastRep = now
+	}
+	if err == io.EOF && pr.fn != nil {
+		pr.fn(pr.read, pr.total) // final
+	}
+	return n, err
+}
+
 // compareVersions compares two version strings (semantic versioning).
 // Returns: 1 if a > b, -1 if a < b, 0 if equal.
 func compareVersions(a, b string) int {
-	// Strip non-alphanumeric prefixes (v, etc.)
 	a = strings.TrimLeft(a, "vV ")
 	b = strings.TrimLeft(b, "vV ")
 
@@ -194,23 +345,15 @@ func selfReplace(newBinaryPath string) error {
 	}
 	currentExe, _ = filepath.EvalSymlinks(currentExe)
 
-	// Make new binary executable
 	if err := os.Chmod(newBinaryPath, 0755); err != nil {
 		return fmt.Errorf("chmod new binary: %w", err)
 	}
 
-	// On Linux, we can't overwrite a running binary directly.
-	// Strategy: backup current → copy new into place → clean up backup.
 	backupPath := currentExe + ".old"
-
-	// Remove stale backup if exists
 	_ = os.Remove(backupPath)
 
-	// Try rename (same filesystem), fall back to copy
 	if err := os.Rename(currentExe, backupPath); err == nil {
-		// Rename worked (same FS) — now copy new binary into place
 		if copyErr := copyFile(newBinaryPath, currentExe); copyErr != nil {
-			// Restore backup on failure
 			os.Rename(backupPath, currentExe)
 			return fmt.Errorf("install new binary: %w", copyErr)
 		}
@@ -219,8 +362,6 @@ func selfReplace(newBinaryPath string) error {
 		return nil
 	}
 
-	// Cross-device or rename failed — overwrite in place via copy
-	// On Linux, writing to a running binary is fine if we use O_TRUNC
 	if err := copyFile(newBinaryPath, currentExe); err != nil {
 		return fmt.Errorf("install new binary (copy): %w", err)
 	}
@@ -271,7 +412,7 @@ func (s *Server) adminCheckUpdate(w http.ResponseWriter, r *http.Request, user *
 	if err != nil {
 		writeJSON(w, 200, jsonResp{
 			Data: map[string]interface{}{
-				"currentVersion": currentVersion,
+				"currentVersion":  currentVersion,
 				"updateAvailable": false,
 				"error":           err.Error(),
 			},
@@ -285,7 +426,6 @@ func (s *Server) adminCheckUpdate(w http.ResponseWriter, r *http.Request, user *
 		updateAvailable = compareVersions(latestVersion, currentVersion) > 0
 	}
 
-	// Find matching asset
 	asset := findAsset(rel)
 	var assetInfo map[string]interface{}
 	if asset != nil {
@@ -315,41 +455,44 @@ func (s *Server) adminApplyUpdate(w http.ResponseWriter, r *http.Request, user *
 		return
 	}
 
+	// Concurrency guard: only one update at a time.
+	if !atomic.CompareAndSwapInt32(&updateInProgress, 0, 1) {
+		writeJSON(w, 409, jsonResp{Error: tMsg(r, "updateInProgress")})
+		return
+	}
+	defer atomic.StoreInt32(&updateInProgress, 0)
+
 	currentVersion := s.version
 	if currentVersion == "" {
 		currentVersion = "dev"
 	}
 
-	// Fetch latest release
 	rel, err := fetchLatestRelease()
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_fetch_failed") + ": " + err.Error()})
 		return
 	}
 
-	// Find matching asset
 	asset := findAsset(rel)
 	if asset == nil {
 		writeJSON(w, 404, jsonResp{Error: tMsg(r, "update_asset_not_found")})
 		return
 	}
 
-	// Download
-	tmpPath, err := downloadAsset(asset.BrowserDownloadURL)
+	// Download + verify SHA256.
+	tmpPath, err := downloadAndVerifyAsset(asset.BrowserDownloadURL, asset.Name)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_download_failed") + ": " + err.Error()})
 		return
 	}
 	defer os.Remove(tmpPath)
 
-	// Verify the downloaded file is not empty
 	info, err := os.Stat(tmpPath)
 	if err != nil || info.Size() == 0 {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_download_failed")})
 		return
 	}
 
-	// Replace the binary
 	if err := selfReplace(tmpPath); err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_install_failed") + ": " + err.Error()})
 		return
@@ -363,6 +506,77 @@ func (s *Server) adminApplyUpdate(w http.ResponseWriter, r *http.Request, user *
 		},
 	})
 }
+
+// adminRestartUpdate handles POST /api/admin/update/restart
+// Restarts the server process by gracefully shutting down then exec'ing the
+// new binary in-place (Unix only). On Windows, returns a message to restart manually.
+func (s *Server) adminRestartUpdate(w http.ResponseWriter, r *http.Request, user *db.User) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+		return
+	}
+
+	if runtime.GOOS == "windows" {
+		writeJSON(w, 200, jsonResp{
+			Message: "manual_restart_required",
+			Data:    map[string]interface{}{"platform": "windows"},
+		})
+		return
+	}
+
+	// Respond to client BEFORE shutting down, so the HTTP response is sent.
+	writeJSON(w, 200, jsonResp{Message: "restarting"})
+
+	// Shut down in a goroutine so the response is flushed first.
+	go func() {
+		time.Sleep(500 * time.Millisecond) // let response flush
+
+		// Gracefully close the database.
+		s.database.Close()
+
+		// Close the HTTP server listener so the port is released.
+		if s.httpServer != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			_ = s.httpServer.Shutdown(ctx)
+		}
+
+		// Replace the current process with the new binary.
+		exe, err := os.Executable()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "restart: cannot find executable: %v\n", err)
+			return
+		}
+		if err := syscall.Exec(exe, os.Args, os.Environ()); err != nil {
+			fmt.Fprintf(os.Stderr, "restart: exec failed: %v\n", err)
+		}
+	}()
+}
+
+// adminSystemInfo handles GET /api/admin/system-info
+func (s *Server) adminSystemInfo(w http.ResponseWriter, r *http.Request, user *db.User) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+		return
+	}
+	v := s.version
+	if v == "" {
+		v = "dev"
+	}
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"version":     v,
+		"storagePath": s.config.StorageDir,
+		"dbPath":      s.config.DBPath,
+		"listenAddr":  s.config.Addr,
+		"goVersion":   runtime.Version(),
+		"os":          runtime.GOOS,
+		"arch":        runtime.GOARCH,
+		"startTime":   startTime,
+	}})
+}
+
+// startTime is set at package init.
+var startTime = time.Now().Format(time.RFC3339)
 
 // --- CLI: `vibecast update` ---
 
@@ -398,28 +612,41 @@ func RunUpdateCLI(currentVersion string) error {
 	}
 	fmt.Printf("────────────────────────────\n")
 
-	// Find matching asset
 	asset := findAsset(rel)
 	if asset == nil {
 		return fmt.Errorf("no matching binary found for %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 	fmt.Printf("Downloading %s (%s)...\n", asset.Name, formatSize(asset.Size))
 
-	// Download
-	tmpPath, err := downloadAsset(asset.BrowserDownloadURL)
+	// Download with progress.
+	tmpPath, err := downloadAsset(asset.BrowserDownloadURL, asset.Size, func(downloaded, total int64) {
+		pct := float64(downloaded) / float64(total) * 100
+		fmt.Printf("\r%s... %.0f%% [%s/%s]   ", tStatic("updateDownloadProgress"), pct, formatSize(downloaded), formatSize(total))
+	})
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 	defer os.Remove(tmpPath)
+	fmt.Printf("\r✓ Downloaded (%s)                    \n", formatSize(asset.Size))
 
-	// Verify
+	// Verify SHA256.
+	sumsURL := asset.BrowserDownloadURL[:strings.LastIndex(asset.BrowserDownloadURL, "/")+1] + "SHA256SUMS"
+	sumsOK, verifyErr := verifySHA256(tmpPath, asset.Name, sumsURL)
+	if !sumsOK {
+		if verifyErr == errNoChecksum {
+			fmt.Printf("⚠ %s\n", tStatic("updateNoChecksum"))
+		} else {
+			return fmt.Errorf("%s: %w", tStatic("updateVerifyFailed"), verifyErr)
+		}
+	} else {
+		fmt.Printf("✓ Checksum verified\n")
+	}
+
 	info, err := os.Stat(tmpPath)
 	if err != nil || info.Size() == 0 {
 		return fmt.Errorf("downloaded file is empty or invalid")
 	}
-	fmt.Printf("✓ Downloaded (%s)\n", formatSize(info.Size()))
 
-	// Replace
 	fmt.Printf("Installing...\n")
 	if err := selfReplace(tmpPath); err != nil {
 		return fmt.Errorf("installation failed: %w", err)
@@ -432,5 +659,5 @@ func RunUpdateCLI(currentVersion string) error {
 
 // httpClient is a shared HTTP client with a reasonable timeout.
 var httpClient = &http.Client{
-	Timeout: 5 * time.Minute, // 5 minutes — allows time for large binary downloads via slow mirrors
+	Timeout: 5 * time.Minute,
 }

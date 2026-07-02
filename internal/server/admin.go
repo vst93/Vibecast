@@ -155,8 +155,15 @@ func (s *Server) adminListAllSites(w http.ResponseWriter, r *http.Request, user 
 		return
 	}
 	var list []map[string]interface{}
+	// Batch fetch visit stats
+	siteIDs := make([]int64, len(sites))
+	for i, site := range sites {
+		siteIDs[i] = site.ID
+	}
+	visitStats, _ := db.GetBatchVisitStats(s.database, siteIDs)
 	for _, site := range sites {
-		list = append(list, s.siteToJSON(site))
+		vs := visitStats[site.ID]
+		list = append(list, s.siteToJSONWithVisits(site, vs))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}

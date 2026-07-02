@@ -23,9 +23,10 @@ type Config struct {
 
 // Server holds application state.
 type Server struct {
-	config   *Config
-	database *sql.DB
-	version  string
+	config     *Config
+	database   *sql.DB
+	version    string
+	httpServer *http.Server // set by main.go for graceful shutdown / restart
 }
 
 // New creates a new Server instance.
@@ -43,6 +44,12 @@ func New(cfg *Config) (*Server, error) {
 // Close closes the database connection.
 func (s *Server) Close() error {
 	return s.database.Close()
+}
+
+// SetHTTPServer stores a reference to the running http.Server, used for
+// graceful shutdown during restart.
+func (s *Server) SetHTTPServer(hs *http.Server) {
+	s.httpServer = hs
 }
 
 // Router returns the main HTTP handler with all routes registered.
@@ -79,6 +86,8 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/admin/cleanup", auth.RequireAdmin(s.database, s.adminCleanup))
 	mux.HandleFunc("/api/admin/update/check", auth.RequireAdmin(s.database, s.adminCheckUpdate))
 	mux.HandleFunc("/api/admin/update/apply", auth.RequireAdmin(s.database, s.adminApplyUpdate))
+	mux.HandleFunc("/api/admin/update/restart", auth.RequireAdmin(s.database, s.adminRestartUpdate))
+	mux.HandleFunc("/api/admin/system-info", auth.RequireAdmin(s.database, s.adminSystemInfo))
 
 	// Admin UI
 	mux.HandleFunc("/admin", s.handleAdminPage)

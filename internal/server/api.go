@@ -340,9 +340,18 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "count_sites_failed")})
 		return
 	}
+
+	// Batch fetch visit stats for all sites on this page
+	siteIDs := make([]int64, len(sites))
+	for i, site := range sites {
+		siteIDs[i] = site.ID
+	}
+	visitStats, _ := db.GetBatchVisitStats(s.database, siteIDs)
+
 	var list []map[string]interface{}
 	for _, site := range sites {
-		list = append(list, s.siteToJSON(site))
+		vs := visitStats[site.ID]
+		list = append(list, s.siteToJSONWithVisits(site, vs))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -472,39 +481,63 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 	}
 	defer file.Close()
 
-	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
-		writeJSON(w, 400, jsonResp{Error: tMsg(r, "zip_only")})
-		return
-	}
-
-	// Read file into memory (we need size for zip.NewReader)
-	data, err := io.ReadAll(file)
-	if err != nil {
-		writeJSON(w, 400, jsonResp{Error: tMsg(r, "read_upload_failed")})
-		return
-	}
-
+	filename := strings.ToLower(header.Filename)
+	isZip := strings.HasSuffix(filename, ".zip")
 	siteDir := fmt.Sprintf("%s/%s", s.config.StorageDir, site.Slug)
-	result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir)
-	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: tMsg(r, "extract_zip_failed") + ": " + err.Error()})
+
+	if isZip {
+		// ZIP deploy — extract and replace entire site
+		data, err := io.ReadAll(file)
+		if err != nil {
+			writeJSON(w, 400, jsonResp{Error: tMsg(r, "read_upload_failed")})
+			return
+		}
+
+		result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir)
+		if err != nil {
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "extract_zip_failed") + ": " + err.Error()})
+			return
+		}
+
+		respData := map[string]interface{}{
+			"slug":     site.Slug,
+			"url":      fmt.Sprintf("/s/%s/", site.Slug),
+			"files":    header.Filename,
+			"fileCount": result.TotalFiles,
+			"totalSize": result.TotalSize,
+		}
+		if len(result.Skipped) > 0 {
+			respData["skipped"] = result.Skipped
+		}
+
+		writeJSON(w, 200, jsonResp{
+			Message: "deployed",
+			Data:    respData,
+		})
 		return
 	}
 
-	respData := map[string]interface{}{
-		"slug":      site.Slug,
-		"url":        fmt.Sprintf("/s/%s/", site.Slug),
-		"files":      header.Filename,
-		"fileCount":  result.TotalFiles,
-		"totalSize":  result.TotalSize,
+	// Single file deploy — save file, replace entire site content
+	if storage.IsBlockedExtension(filename) {
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "file_type_blocked")})
+		return
 	}
-	if len(result.Skipped) > 0 {
-		respData["skipped"] = result.Skipped
+
+	fileSize, err := storage.SaveSingleFile(file, header.Filename, siteDir)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "save_file_failed") + ": " + err.Error()})
+		return
 	}
 
 	writeJSON(w, 200, jsonResp{
 		Message: "deployed",
-		Data:    respData,
+		Data: map[string]interface{}{
+			"slug":      site.Slug,
+			"url":        fmt.Sprintf("/s/%s/", site.Slug),
+			"files":      header.Filename,
+			"fileCount":  1,
+			"totalSize":  fileSize,
+		},
 	})
 }
 
@@ -523,7 +556,21 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 		"updatedAt":            site.UpdatedAt,
 		"publicAccessDisabled": publicAccessDisabled,
 		"ownerEmail":           site.OwnerEmail,
+		"visits":               map[string]int64{"today": 0, "month": 0, "total": 0},
 	}
+}
+
+// siteToJSONWithVisits builds the site JSON with visit stats included.
+func (s *Server) siteToJSONWithVisits(site *db.Site, visits *db.VisitStats) map[string]interface{} {
+	m := s.siteToJSON(site)
+	if visits != nil {
+		m["visits"] = map[string]int64{
+			"today": visits.Today,
+			"month": visits.Month,
+			"total": visits.Total,
+		}
+	}
+	return m
 }
 
 // bytesReader is a helper to avoid importing bytes in the import block above.

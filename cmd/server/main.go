@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,7 +67,14 @@ func main() {
 	fmt.Printf("────────────────────────────\n")
 	fmt.Printf("Dashboard: http://localhost%s/dashboard\n", *addr)
 
-	if err := http.ListenAndServe(*addr, srv.Router()); err != nil {
+	// Use net.Listen + http.Server so we can gracefully shut down / restart.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	hs := &http.Server{Handler: srv.Router()}
+	srv.SetHTTPServer(hs)
+	if err := hs.Serve(ln); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

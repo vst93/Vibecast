@@ -502,3 +502,148 @@ func GetSettings(db *sql.DB) (*Settings, error) {
 	s.AllowedDomains = val4
 	return s, nil
 }
+
+// --- Site Visits ---
+
+// RecordVisit records a single site visit with daily and monthly granularity.
+func RecordVisit(db *sql.DB, siteID int64, visitDate, visitMonth string) error {
+	_, err := db.Exec(
+		`INSERT INTO site_visits (site_id, visit_date, visit_month) VALUES (?, ?, ?)`,
+		siteID, visitDate, visitMonth,
+	)
+	return err
+}
+
+// VisitStats holds visit counts for a site.
+type VisitStats struct {
+	Today int64 `json:"today"`
+	Month int64 `json:"month"`
+	Total int64 `json:"total"`
+}
+
+// GetVisitStats returns today/monthly/total visit counts for a site.
+func GetVisitStats(db *sql.DB, siteID int64) (*VisitStats, error) {
+	v := &VisitStats{}
+	today := time.Now().Format("2006-01-02")
+	month := time.Now().Format("2006-01")
+
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM site_visits WHERE site_id = ? AND visit_date = ?`,
+		siteID, today,
+	).Scan(&v.Today); err != nil {
+		return nil, err
+	}
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM site_visits WHERE site_id = ? AND visit_month = ?`,
+		siteID, month,
+	).Scan(&v.Month); err != nil {
+		return nil, err
+	}
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM site_visits WHERE site_id = ?`,
+		siteID,
+	).Scan(&v.Total); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// GetBatchVisitStats returns visit stats for multiple site IDs in one query set.
+// Returns map[siteID]*VisitStats.
+func GetBatchVisitStats(db *sql.DB, siteIDs []int64) (map[int64]*VisitStats, error) {
+	result := make(map[int64]*VisitStats)
+	if len(siteIDs) == 0 {
+		return result, nil
+	}
+
+	today := time.Now().Format("2006-01-02")
+	month := time.Now().Format("2006-01")
+
+	// Build placeholders
+	placeholders := make([]string, len(siteIDs))
+	args := make([]interface{}, len(siteIDs))
+	for i, id := range siteIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	phStr := strings.Join(placeholders, ",")
+
+	// Total counts
+	totalArgs := make([]interface{}, len(siteIDs))
+	copy(totalArgs, args)
+	rows, err := db.Query(
+		`SELECT site_id, COUNT(*) FROM site_visits WHERE site_id IN (`+phStr+`) GROUP BY site_id`,
+		totalArgs...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var id int64
+		var cnt int64
+		if err := rows.Scan(&id, &cnt); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if result[id] == nil {
+			result[id] = &VisitStats{}
+		}
+		result[id].Total = cnt
+	}
+	rows.Close()
+
+	// Today counts
+	todayArgs := append([]interface{}{today}, args...)
+	rows2, err := db.Query(
+		`SELECT site_id, COUNT(*) FROM site_visits WHERE visit_date = ? AND site_id IN (`+phStr+`) GROUP BY site_id`,
+		todayArgs...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for rows2.Next() {
+		var id int64
+		var cnt int64
+		if err := rows2.Scan(&id, &cnt); err != nil {
+			rows2.Close()
+			return nil, err
+		}
+		if result[id] == nil {
+			result[id] = &VisitStats{}
+		}
+		result[id].Today = cnt
+	}
+	rows2.Close()
+
+	// Month counts
+	monthArgs := append([]interface{}{month}, args...)
+	rows3, err := db.Query(
+		`SELECT site_id, COUNT(*) FROM site_visits WHERE visit_month = ? AND site_id IN (`+phStr+`) GROUP BY site_id`,
+		monthArgs...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for rows3.Next() {
+		var id int64
+		var cnt int64
+		if err := rows3.Scan(&id, &cnt); err != nil {
+			rows3.Close()
+			return nil, err
+		}
+		if result[id] == nil {
+			result[id] = &VisitStats{}
+		}
+		result[id].Month = cnt
+	}
+	rows3.Close()
+
+	// Ensure all requested IDs have an entry
+	for _, id := range siteIDs {
+		if result[id] == nil {
+			result[id] = &VisitStats{}
+		}
+	}
+
+	return result, nil
+}

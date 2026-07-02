@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"vibecast/internal/auth"
 	"vibecast/internal/db"
@@ -102,6 +103,12 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// Record visit (async, non-blocking — don't slow down the request)
+	go func() {
+		now := time.Now()
+		_ = db.RecordVisit(s.database, site.ID, now.Format("2006-01-02"), now.Format("2006-01"))
+	}()
 
 	// Determine sub-path
 	subPath := ""

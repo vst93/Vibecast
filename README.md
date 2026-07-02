@@ -23,14 +23,52 @@ No Nginx, no external web server — one binary handles everything: auth, site m
 - **Settings Control** — Toggle open registration, public access, email domain restriction
 - **Zero external dependencies** — Pure Go + SQLite, no CGO
 
+## Installation
+
+### One-liner (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+```
+
+Or with wget:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+```
+
+Options:
+
+```bash
+# Install a specific version
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --version 20260702
+
+# Install to a custom directory
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --dir /opt/vibecast
+```
+
+The script auto-detects your OS and architecture (linux/darwin, amd64/arm64), downloads the matching binary from [Releases](../../releases), and installs it to `/usr/local/bin/vibecast`.
+
+### Build from source
+
+```bash
+git clone https://github.com/vst93/Vibecast.git
+cd Vibecast
+make build
+./bin/vibecast
+```
+
+### Manual download
+
+Grab the binary for your platform from the [Releases](../../releases) page, make it executable, and run.
+
 ## Quick Start
 
 ```bash
-make build
-./bin/vibecast
+vibecast
 
 # or with custom config
-./bin/vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
+vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 Open `http://localhost:8080/dashboard` — the first registered user becomes admin.
@@ -52,10 +90,6 @@ Admins can toggle open registration, disable public access, restrict email domai
 | `--addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
 | `--storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
 | `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
-
-## Releases
-
-Pre-built binaries for Linux, macOS (Intel + Apple Silicon), and Windows are available on the [Releases](../../releases) page. Run the workflow manually from the Actions tab to cut a new release — optionally mark it as pre-release or force a specific version tag.
 
 ## Architecture
 
@@ -98,14 +132,52 @@ MIT
 - **设置控制** — 开关注册、公开访问、邮箱域名限制
 - **零外部依赖** — 纯 Go + SQLite，无需 CGO
 
+## 安装
+
+### 一键安装（Linux / macOS）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+```
+
+或使用 wget：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+```
+
+可选参数：
+
+```bash
+# 安装指定版本
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --version 20260702
+
+# 安装到自定义目录
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --dir /opt/vibecast
+```
+
+脚本自动检测操作系统和架构（linux/darwin，amd64/arm64），从 [Releases](../../releases) 下载对应二进制并安装到 `/usr/local/bin/vibecast`。
+
+### 从源码编译
+
+```bash
+git clone https://github.com/vst93/Vibecast.git
+cd Vibecast
+make build
+./bin/vibecast
+```
+
+### 手动下载
+
+从 [Releases](../../releases) 页面下载对应平台的二进制，赋予执行权限后运行。
+
 ## 快速开始
 
 ```bash
-make build
-./bin/vibecast
+vibecast
 
 # 或指定配置
-./bin/vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
+vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 打开 `http://localhost:8080/dashboard`，首个注册用户自动成为管理员。
@@ -127,10 +199,6 @@ make build
 | `--addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
 | `--storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
 | `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
-
-## 发布
-
-Linux、macOS（Intel + Apple Silicon）、Windows 预编译二进制见 [Releases](../../releases) 页面。在 Actions 标签页手动触发 Release workflow 即可发布新版本 —— 可选标记为预览版或指定版本号。
 
 ## 架构
 

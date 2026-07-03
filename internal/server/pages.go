@@ -215,7 +215,7 @@ input,button,select{font-family:inherit}
 .modal-header-row h3{margin:0}
 .modal-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dim);padding:4px 8px;border-radius:6px;transition:all .15s}
 .modal-close:hover{color:var(--text);background:var(--surface-2)}
-.org-feature-desc{font-size:.78rem;color:var(--dim);line-height:1.5;margin-bottom:1rem;padding:.6rem .8rem;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.org-feature-desc{font-size:.78rem;color:var(--dim);line-height:1.6;margin-bottom:1.2rem;padding:0 0 .8rem;border-bottom:1px solid var(--line)}
 #org-modal .modal{max-height:85vh;overflow-y:auto}
 .org-empty{display:grid;grid-template-columns:1fr 1fr;gap:0}
 .org-empty-panel{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}

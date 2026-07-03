@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -162,7 +163,11 @@ func escapeXML(s string) string {
 }
 
 // verifyCaptcha checks and removes the captcha. Returns true if matched.
+// In debug mode (VIBECAST_DEBUG=1), always returns true without checking.
 func verifyCaptcha(id, code string) bool {
+	if os.Getenv("VIBECAST_DEBUG") != "" {
+		return true
+	}
 	captchaMu.Lock()
 	defer captchaMu.Unlock()
 

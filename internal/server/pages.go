@@ -210,7 +210,7 @@ input,button,select{font-family:inherit}
 .checkbox-label{display:flex;align-items:flex-start;gap:.4rem;cursor:pointer;font-size:.8rem;color:var(--text)}
 .checkbox-label input{margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
 .checkbox-label .desc{margin-top:.2rem}
-.modal-lg{max-width:680px}
+.modal-lg{max-width:900px}
 .modal-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
 .modal-header-row h3{margin:0}
 .modal-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dim);padding:4px 8px;border-radius:6px;transition:all .15s}
@@ -229,7 +229,7 @@ input,button,select{font-family:inherit}
 .org-panel-input{padding:9px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;outline:none;transition:border-color .15s,box-shadow .15s;background:var(--ink);color:var(--text);width:100%}
 .org-panel-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,127,55,.08)}
 [data-theme="dark"] .org-panel-input:focus{box-shadow:0 0 0 3px rgba(57,211,83,.08)}
-.org-bound{display:grid;grid-template-columns:340px 1fr;gap:0}
+.org-bound{display:grid;grid-template-columns:1fr 1.5fr;gap:0}
 .org-bound-left{padding:1.5rem;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:1rem}
 .org-bound-right{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
 .org-header{display:flex;align-items:center;gap:.6rem}

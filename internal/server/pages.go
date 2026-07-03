@@ -44,57 +44,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 .lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:4px 10px;border-radius:5px;color:var(--dim);transition:all .15s}
 .lang-toggle a.active{background:var(--surface-2);color:var(--accent)}
 @media(max-width:640px){.hero{padding:2rem 0}.hero .logo{font-size:2.2rem}.features{grid-template-columns:1fr}.wrap{padding:1.5rem 1rem}.lang-toggle{top:1rem;right:1rem}}
-.badge-org{background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.3);padding:1px 6px;border-radius:3px;font-size:.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px}
-[data-theme="dark"] .badge-org{color:#60a5fa;border-color:rgba(96,165,250,.3)}
-.org-toggle-field{margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line)}
-.checkbox-label{display:flex;align-items:flex-start;gap:.4rem;cursor:pointer;font-size:.8rem;color:var(--text)}
-.checkbox-label input{margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
-.checkbox-label .desc{margin-top:.2rem}
-.org-card .card-body{padding:0}
-.org-empty{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.org-empty-panel{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
-.org-empty-panel:first-child{border-right:1px solid var(--line)}
-.org-panel-title{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem}
-.org-panel-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.org-panel-icon.create{background:rgba(26,127,55,.1);color:var(--accent)}
-.org-panel-icon.join{background:rgba(59,130,246,.1);color:#3b82f6}
-[data-theme="dark"] .org-panel-icon.create{background:rgba(57,211,83,.1);color:var(--accent)}
-[data-theme="dark"] .org-panel-icon.join{background:rgba(96,165,250,.1);color:#60a5fa}
-.org-panel-desc{font-size:.75rem;color:var(--dim);line-height:1.5}
-.org-panel-input{padding:9px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;outline:none;transition:border-color .15s,box-shadow .15s;background:var(--ink);color:var(--text);width:100%}
-.org-panel-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,127,55,.08)}
-[data-theme="dark"] .org-panel-input:focus{box-shadow:0 0 0 3px rgba(57,211,83,.08)}
-.org-bound{display:grid;grid-template-columns:340px 1fr;gap:0}
-.org-bound-left{padding:1.5rem;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:1rem}
-.org-bound-right{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
-.org-header{display:flex;align-items:center;gap:.6rem}
-.org-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dim));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1rem;font-weight:700;color:#fff;flex-shrink:0}
-.org-title{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--text);word-break:break-word}
-.org-role-badge{font-size:.65rem;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px}
-.org-role-badge.owner{background:rgba(210,153,34,.12);color:var(--warn);border:1px solid rgba(210,153,34,.25)}
-.org-role-badge.member{background:rgba(57,211,83,.12);color:var(--accent);border:1px solid rgba(57,211,83,.25)}
-.org-invite-box{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.8rem}
-.org-invite-box label{font-size:.7rem;color:var(--dim);display:block;margin-bottom:.4rem;font-weight:600}
-.org-invite-row{display:flex;align-items:center;gap:.4rem}
-.org-invite-code{font-family:var(--mono);font-size:.9rem;color:var(--accent);letter-spacing:1px;flex:1;word-break:break-all}
-.org-copy-btn{padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--dim);cursor:pointer;font-size:.7rem;font-weight:600;display:flex;align-items:center;gap:.3rem;transition:all .15s;white-space:nowrap}
-.org-copy-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface-2)}
-.org-actions-row{display:flex;gap:.5rem}
-.org-actions-row .btn{flex:1}
-.org-members-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-.org-members-header h3{font-family:var(--mono);font-size:.8rem;font-weight:600;color:var(--text)}
-.org-members-count{font-family:var(--mono);font-size:.7rem;color:var(--dim);background:var(--surface-2);padding:2px 8px;border-radius:10px}
-.org-member-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;border:1px solid var(--line);border-radius:6px;margin-bottom:.4rem;transition:border-color .15s}
-.org-member-item:hover{border-color:var(--accent)}
-.org-member-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--dim);flex-shrink:0;font-family:var(--mono)}
-.org-member-avatar.owner{background:rgba(210,153,34,.12);color:var(--warn)}
-.org-member-info{flex:1;min-width:0}
-.org-member-email{font-size:.8rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.org-member-role{font-size:.65rem;color:var(--dim);font-family:var(--mono)}
-.org-member-remove{padding:4px 8px;border:1px solid var(--danger);border-radius:5px;background:transparent;color:var(--danger);cursor:pointer;font-size:.7rem;font-weight:600;transition:all .15s;white-space:nowrap}
-.org-member-remove:hover{background:var(--danger);color:#fff}
-@media(max-width:768px){.org-empty{grid-template-columns:1fr}.org-empty-panel:first-child{border-right:none;border-bottom:1px solid var(--line)}.org-bound{grid-template-columns:1fr}.org-bound-left{border-right:none;border-bottom:1px solid var(--line)}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <script>var _t="light";try{_t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",_t)</script>
 </head>
@@ -253,7 +203,56 @@ input,button,select{font-family:inherit}
 .modal .modal-field input:focus{border-color:var(--accent)}
 .modal .modal-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
 .pwd-wrap{position:relative;display:flex;align-items:center}.pwd-wrap input{width:100%;padding-right:38px!important;box-sizing:border-box}.pwd-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:5px;color:var(--dim);padding:0;transition:color .15s,background .15s}.pwd-toggle:hover{color:var(--text);background:var(--surface-2)}.pwd-toggle svg{width:16px;height:16px;flex-shrink:0}
-@media(max-width:768px){.dashboard-grid{grid-template-columns:1fr}.sidebar{position:static}}
+@media(max-width:768px){.dashboard-grid{grid-template-columns:1fr}.sidebar{position:static}.org-empty{grid-template-columns:1fr}.org-empty-panel:first-child{border-right:none;border-bottom:1px solid var(--line)}.org-bound{grid-template-columns:1fr}.org-bound-left{border-right:none;border-bottom:1px solid var(--line)}}
+.badge-org{background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.3);padding:1px 6px;border-radius:3px;font-size:.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px}
+[data-theme="dark"] .badge-org{color:#60a5fa;border-color:rgba(96,165,250,.3)}
+.org-toggle-field{margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line)}
+.checkbox-label{display:flex;align-items:flex-start;gap:.4rem;cursor:pointer;font-size:.8rem;color:var(--text)}
+.checkbox-label input{margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
+.checkbox-label .desc{margin-top:.2rem}
+.org-card .card-body{padding:0}
+.org-empty{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.org-empty-panel{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
+.org-empty-panel:first-child{border-right:1px solid var(--line)}
+.org-panel-title{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem}
+.org-panel-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.org-panel-icon.create{background:rgba(26,127,55,.1);color:var(--accent)}
+.org-panel-icon.join{background:rgba(59,130,246,.1);color:#3b82f6}
+[data-theme="dark"] .org-panel-icon.create{background:rgba(57,211,83,.1);color:var(--accent)}
+[data-theme="dark"] .org-panel-icon.join{background:rgba(96,165,250,.1);color:#60a5fa}
+.org-panel-desc{font-size:.75rem;color:var(--dim);line-height:1.5}
+.org-panel-input{padding:9px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;outline:none;transition:border-color .15s,box-shadow .15s;background:var(--ink);color:var(--text);width:100%}
+.org-panel-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,127,55,.08)}
+[data-theme="dark"] .org-panel-input:focus{box-shadow:0 0 0 3px rgba(57,211,83,.08)}
+.org-bound{display:grid;grid-template-columns:340px 1fr;gap:0}
+.org-bound-left{padding:1.5rem;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:1rem}
+.org-bound-right{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
+.org-header{display:flex;align-items:center;gap:.6rem}
+.org-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dim));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1rem;font-weight:700;color:#fff;flex-shrink:0}
+.org-title{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--text);word-break:break-word}
+.org-role-badge{font-size:.65rem;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px}
+.org-role-badge.owner{background:rgba(210,153,34,.12);color:var(--warn);border:1px solid rgba(210,153,34,.25)}
+.org-role-badge.member{background:rgba(57,211,83,.12);color:var(--accent);border:1px solid rgba(57,211,83,.25)}
+.org-invite-box{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.8rem}
+.org-invite-box label{font-size:.7rem;color:var(--dim);display:block;margin-bottom:.4rem;font-weight:600}
+.org-invite-row{display:flex;align-items:center;gap:.4rem}
+.org-invite-code{font-family:var(--mono);font-size:.9rem;color:var(--accent);letter-spacing:1px;flex:1;word-break:break-all}
+.org-copy-btn{padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--dim);cursor:pointer;font-size:.7rem;font-weight:600;display:flex;align-items:center;gap:.3rem;transition:all .15s;white-space:nowrap}
+.org-copy-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface-2)}
+.org-actions-row{display:flex;gap:.5rem}
+.org-actions-row .btn{flex:1}
+.org-members-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.org-members-header h3{font-family:var(--mono);font-size:.8rem;font-weight:600;color:var(--text)}
+.org-members-count{font-family:var(--mono);font-size:.7rem;color:var(--dim);background:var(--surface-2);padding:2px 8px;border-radius:10px}
+.org-member-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;border:1px solid var(--line);border-radius:6px;margin-bottom:.4rem;transition:border-color .15s}
+.org-member-item:hover{border-color:var(--accent)}
+.org-member-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--dim);flex-shrink:0;font-family:var(--mono)}
+.org-member-avatar.owner{background:rgba(210,153,34,.12);color:var(--warn)}
+.org-member-info{flex:1;min-width:0}
+.org-member-email{font-size:.8rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.org-member-role{font-size:.65rem;color:var(--dim);font-family:var(--mono)}
+.org-member-remove{padding:4px 8px;border:1px solid var(--danger);border-radius:5px;background:transparent;color:var(--danger);cursor:pointer;font-size:.7rem;font-weight:600;transition:all .15s;white-space:nowrap}
+.org-member-remove:hover{background:var(--danger);color:#fff}
 @media(max-width:640px){.navbar{padding:0 .5rem;height:48px}.navbar .logo{font-size:.85rem}.navbar .nav-right .email{display:none}.navbar .btn-icon span{display:none}.navbar .btn-icon{padding:4px 6px;font-size:.85rem}.lang-toggle a{padding:2px 5px;font-size:.7rem}.container{padding:0 .75rem;margin-top:1rem}.auth-card{padding:1.5rem}.auth-card h1{font-size:1.1rem}.auth-field input{padding:9px 10px;font-size:.85rem}.captcha-row .captcha-img{width:120px;height:38px}.site-item .site-head{flex-direction:column;align-items:flex-start;gap:.5rem}.site-item .site-head .actions{width:100%;justify-content:flex-start;flex-wrap:wrap;gap:.3rem}.site-item .site-head .name{font-size:.8rem;flex-wrap:wrap}.site-item .site-detail .detail-row{flex-direction:column;gap:.1rem}.site-item .site-detail .detail-row .label{min-width:auto}.modal{max-width:calc(100vw - 2rem);padding:1.2rem}.toast{bottom:1rem;right:1rem;left:1rem;text-align:center}.list-toolbar input[type=text]{font-size:.85rem}.form-field input{font-size:.85rem}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -339,7 +338,7 @@ function renderDashboard(){
 var al=currentUser.isAdmin?'<a class="admin-link" href="'+BASE+'admin">'+t("adminPanel")+'</a>':'';
 var th='<a id="theme-toggle" class="btn-icon" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a>';
 var lh='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card org-card" style="margin-bottom:1.5rem"><div class="card-header"><h2>'+t("orgManage")+'</h2></div><div class="card-body" id="org-section"></div></div><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-open"> <span>'+t("orgOpenLabel")+'</span></label><div class="desc">'+t("orgOpenDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint"><span id="site-limit-badge" style="margin-right:.5rem"></span>'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="card org-card" style="margin-bottom:1.5rem"><div class="card-header"><h2>'+t("orgManage")+'</h2></div><div class="card-body" id="org-section"></div></div><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-open"> <span>'+t("orgOpenLabel")+'</span></label><div class="desc">'+t("orgOpenDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint"><span id="site-limit-badge" style="margin-right:.5rem"></span>'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
 loadSites();
 loadOrg();
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){if(d.data&&d.data.maxUploadSize)maxUploadMB=d.data.maxUploadSize;if(d.data&&d.data.maxSitesPerUser)maxSites=d.data.maxSitesPerUser}).catch(function(){});

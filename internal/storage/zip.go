@@ -39,6 +39,40 @@ var blockedExtensions = map[string]bool{
 	".reg": true, ".lnk": true, ".desktop": true,
 }
 
+// excludedDirs are directories whose contents are junk / metadata
+// and should be stripped during zip extraction.
+var excludedDirs = map[string]bool{
+	"__MACOSX":     true, // macOS resource-fork metadata
+	".git":         true, // git repository metadata
+	".svn":         true, // subversion metadata
+	".hg":          true, // mercurial metadata
+	"node_modules": true, // npm dependencies (usually huge, not needed for static deploy)
+}
+
+// excludedFiles are individual filenames to strip.
+var excludedFiles = map[string]bool{
+	".DS_Store":      true, // macOS desktop store
+	"Thumbs.db":      true, // Windows thumbnail cache
+	"desktop.ini":    true, // Windows folder config
+	".gitattributes": true,
+	".gitignore":     true,
+}
+
+// isExcludedPath returns true if any path segment is an excluded dir
+// or the final filename is an excluded file.
+func isExcludedPath(name string) bool {
+	if name == "" {
+		return false
+	}
+	segs := strings.Split(name, "/")
+	for _, seg := range segs {
+		if excludedDirs[seg] {
+			return true
+		}
+	}
+	return excludedFiles[segs[len(segs)-1]]
+}
+
 // IsBlockedExtension returns true if the file extension is in the blocklist.
 func IsBlockedExtension(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
@@ -136,12 +170,12 @@ func ExtractZip(r io.ReaderAt, size int64, destDir string, maxSingleFileSize int
 		if f.Name[0] == '/' || strings.Contains(f.Name, "..") {
 			return nil, fmt.Errorf("unsafe path in zip: %s", f.Name)
 		}
-		// Skip dotfiles for prefix detection
+		// Skip dotfiles and excluded junk dirs (e.g. __MACOSX) for prefix detection
 		firstSeg := f.Name
 		if idx := strings.Index(f.Name, "/"); idx > 0 {
 			firstSeg = f.Name[:idx]
 		}
-		if strings.HasPrefix(firstSeg, ".") {
+		if strings.HasPrefix(firstSeg, ".") || excludedDirs[firstSeg] {
 			continue
 		}
 		parts := strings.SplitN(f.Name, "/", 2)
@@ -168,6 +202,11 @@ func ExtractZip(r io.ReaderAt, size int64, destDir string, maxSingleFileSize int
 			name = strings.TrimPrefix(name, prefix)
 		}
 		if name == "" {
+			continue
+		}
+
+		// Skip junk / metadata files and directories (__MACOSX, .git, .DS_Store, etc.)
+		if isExcludedPath(name) {
 			continue
 		}
 

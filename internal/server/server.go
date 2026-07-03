@@ -149,6 +149,14 @@ func (s *Server) stripBaseURL(next http.Handler) http.Handler {
 	})
 }
 
+// urlPath prepends the configured BaseURL to an absolute path.
+// Used for redirects and server-rendered hrefs so they include the
+// reverse-proxy prefix (e.g. /vibecast/s/foo/ instead of /s/foo/).
+// When BaseURL is empty (root deployment), this is a pass-through.
+func (s *Server) urlPath(path string) string {
+	return s.config.BaseURL + path
+}
+
 // handleIndex serves the landing page.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {

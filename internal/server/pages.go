@@ -927,9 +927,9 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:
 .card h1{font-family:var(--mono);font-size:1.2rem;margin-bottom:.3rem}
 .card .site-name{color:var(--accent);font-weight:600}
 .card p{color:var(--dim);margin-bottom:1.2rem;font-size:.8rem;font-family:var(--mono)}
-input[type=password]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
-input[type=password]:focus{border-color:var(--accent)}
-input[type=password]::placeholder{color:var(--placeholder)}
+input[type=password],input[type=text]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
+input[type=password]:focus,input[type=text]:focus{border-color:var(--accent)}
+input[type=password]::placeholder,input[type=text]::placeholder{color:var(--placeholder)}
 input[type=password]::-ms-reveal,input[type=text]::-ms-reveal,input[type=password]::-ms-clear,input[type=text]::-ms-clear{display:none}
 .pwd-wrap{position:relative;display:flex;align-items:center}
 .pwd-wrap input{width:100%%;padding-right:38px!important;box-sizing:border-box;margin-bottom:0}
@@ -976,9 +976,9 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:
 .card h1{font-family:var(--mono);font-size:1.2rem;margin-bottom:.3rem}
 .card .site-name{color:var(--accent);font-weight:600}
 .card p{color:var(--dim);margin-bottom:1.2rem;font-size:.8rem;font-family:var(--mono)}
-input[type=password]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
-input[type=password]:focus{border-color:var(--accent)}
-input[type=password]::placeholder{color:var(--placeholder)}
+input[type=password],input[type=text]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
+input[type=password]:focus,input[type=text]:focus{border-color:var(--accent)}
+input[type=password]::placeholder,input[type=text]::placeholder{color:var(--placeholder)}
 input[type=password]::-ms-reveal,input[type=text]::-ms-reveal,input[type=password]::-ms-clear,input[type=text]::-ms-clear{display:none}
 .pwd-wrap{position:relative;display:flex;align-items:center}
 .pwd-wrap input{width:100%%;padding-right:38px!important;box-sizing:border-box;margin-bottom:0}

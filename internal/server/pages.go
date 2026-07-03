@@ -347,7 +347,8 @@ function copyText(text){if(navigator.clipboard){navigator.clipboard.writeText(te
 function fallbackCopy(text){var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast(t("copied"))}catch(e){toast(t("copyFailed"),"error")}document.body.removeChild(ta)}
 function shareSite(name,url,pwd){
 var fullUrl=location.origin+url;
-var txt=t("shareTemplate").replace("{name}",name).replace("{url}",fullUrl).replace("{password}",pwd||"");
+var txt=t("shareTemplate").replace("{name}",name).replace("{url}",fullUrl);
+if(pwd){txt=txt.replace("{password}",pwd)}else{txt=txt.replace("\\n"+t("sharePwdLabel")+": {password}","")}
 copyText(txt);
 toast(t("shareCopied"));
 }

@@ -16,6 +16,17 @@ import (
 var version = "dev"
 
 func main() {
+	// Custom usage so config flags show --addr style, action flags show -version style.
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: vibecast [options]\n\nOptions:\n")
+		fmt.Fprintf(os.Stderr, "  --addr <addr>\n    	listen address (default \":8080\", env VIBECAST_ADDR)\n")
+		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    	site files storage directory (default \"./data/sites\", env VIBECAST_STORAGE)\n")
+		fmt.Fprintf(os.Stderr, "  --db <path>\n    	SQLite database path (default \"./data/vibecast.db\", env VIBECAST_DB)\n")
+		fmt.Fprintf(os.Stderr, "  -v, -version\n    	print version and exit\n")
+		fmt.Fprintf(os.Stderr, "  -update\n    	check for updates and self-update\n")
+		fmt.Fprintf(os.Stderr, "  -h, -help\n    	show this help message\n")
+	}
+
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
 	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")

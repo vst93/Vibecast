@@ -112,7 +112,7 @@ Grab the binary for your platform from the [Releases](../../releases) page, make
 vibecast
 
 # or with custom config
-vibecast -addr :3000 -storage ./data/sites -db ./data/vibecast.db
+vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 Open `http://localhost:8080/dashboard` — the first registered user becomes admin.
@@ -143,9 +143,9 @@ The update system fetches the latest release from GitHub, verifies the asset mat
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `-addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
-| `-storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
-| `-db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
+| `--addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
+| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
+| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
 
 Additional settings (upload size limit, site limit per user, registration, public access, email domain restriction) are configurable at runtime from the admin panel.
 
@@ -279,7 +279,7 @@ make build
 vibecast
 
 # 或指定配置
-vibecast -addr :3000 -storage ./data/sites -db ./data/vibecast.db
+vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 打开 `http://localhost:8080/dashboard`，首个注册用户自动成为管理员。
@@ -310,9 +310,9 @@ vibecast -update
 
 | 参数 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
-| `-addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
-| `-storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
-| `-db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
+| `--addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
+| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
+| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
 
 其余设置（上传大小限制、每用户站点限额、注册开关、公开访问、邮箱域名限制）可在管理后台运行时配置。
 

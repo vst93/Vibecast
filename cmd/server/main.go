@@ -16,35 +16,45 @@ import (
 var version = "dev"
 
 func main() {
-	// Custom usage so config flags show --addr style, action flags show -version style.
+	// Custom usage: Options (config flags with --) and Commands (subcommands).
+	flag.CommandLine.SetOutput(os.Stderr)
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: vibecast [options]\n\nOptions:\n")
-		fmt.Fprintf(os.Stderr, "  --addr <addr>\n    	listen address (default \":8080\", env VIBECAST_ADDR)\n")
-		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    	site files storage directory (default \"./data/sites\", env VIBECAST_STORAGE)\n")
-		fmt.Fprintf(os.Stderr, "  --db <path>\n    	SQLite database path (default \"./data/vibecast.db\", env VIBECAST_DB)\n")
-		fmt.Fprintf(os.Stderr, "  -v, -version\n    	print version and exit\n")
-		fmt.Fprintf(os.Stderr, "  -update\n    	check for updates and self-update\n")
-		fmt.Fprintf(os.Stderr, "  -h, -help\n    	show this help message\n")
+		fmt.Fprintf(os.Stderr, "Usage: vibecast [options] [command]\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		fmt.Fprintf(os.Stderr, "  --addr <addr>\n    \tlisten address (default \":8080\", env VIBECAST_ADDR)\n")
+		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    \tsite files storage directory (default \"./data/sites\", env VIBECAST_STORAGE)\n")
+		fmt.Fprintf(os.Stderr, "  --db <path>\n    \tSQLite database path (default \"./data/vibecast.db\", env VIBECAST_DB)\n")
+		fmt.Fprintf(os.Stderr, "\nCommands:\n")
+		fmt.Fprintf(os.Stderr, "  version, v   print version and exit\n")
+		fmt.Fprintf(os.Stderr, "  update       check for updates and self-update\n")
+		fmt.Fprintf(os.Stderr, "  help, h      show this help message\n")
 	}
 
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
 	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")
-	versionFlag := flag.Bool("version", false, "print version and exit")
-	vShort := flag.Bool("v", false, "shorthand for -version")
-	updateFlag := flag.Bool("update", false, "check for updates and self-update")
 	flag.Parse()
 
-	if *versionFlag || *vShort {
-		fmt.Printf("vibecast v%s\n", version)
-		return
-	}
-
-	if *updateFlag {
-		if err := server.RunUpdateCLI(version); err != nil {
-			log.Fatalf("Update failed: %v", err)
+	// Subcommands (bare words, no dash prefix)
+	args := flag.Args()
+	if len(args) > 0 {
+		switch args[0] {
+		case "version", "v":
+			fmt.Printf("vibecast v%s\n", version)
+			return
+		case "update":
+			if err := server.RunUpdateCLI(version); err != nil {
+				log.Fatalf("Update failed: %v", err)
+			}
+			return
+		case "help", "h":
+			flag.Usage()
+			return
+		default:
+			fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", args[0])
+			flag.Usage()
+			os.Exit(2)
 		}
-		return
 	}
 
 	cfg := &server.Config{

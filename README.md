@@ -38,9 +38,9 @@ No Nginx, no external web server — one binary handles everything: authenticati
 ### System
 
 - **In-App Self-Update** — Check for new versions and update directly from the admin panel
-- **CLI Update** — `vibecast -update` to upgrade from the command line
+- **CLI Update** — `vibecast update` to upgrade from the command line
 - **GitHub Mirror Support** — Auto-fallback to China mirrors for downloads behind GFW
-- **Version Info** — `vibecast -v` or `-version` prints the version; admin panel shows it in the navbar
+- **Version Info** — `vibecast version` (or `v`) prints the version; admin panel shows it in the navbar
 - **Reverse-Proxy Ready** — All URLs are relative, works behind any sub-path without config
 - **Zero External Dependencies** — Pure Go + SQLite, no CGO, no Nginx, no Node.js
 
@@ -132,7 +132,7 @@ Admins can toggle open registration, disable public access, restrict email domai
 
 ```bash
 # Check and update from the command line
-vibecast -update
+vibecast update
 
 # Or update from the admin panel → System → Check for Updates
 ```
@@ -205,9 +205,9 @@ MIT
 ### 系统
 
 - **应用内自更新** — 在管理后台直接检查新版本并一键更新
-- **命令行更新** — `vibecast -update` 从命令行升级
+- **命令行更新** — `vibecast update` 从命令行升级
 - **GitHub 镜像加速** — 国内自动回退到镜像代理下载
-- **版本信息** — `vibecast -v` 或 `-version` 查看版本号，管理后台导航栏显示版本
+- **版本信息** — `vibecast version`（或 `v`）查看版本号，管理后台导航栏显示版本
 - **反向代理友好** — 所有 URL 均为相对路径，支持任意子路径部署，无需配置
 - **零外部依赖** — 纯 Go + SQLite，无需 CGO、Nginx、Node.js
 
@@ -299,7 +299,7 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 
 ```bash
 # 命令行检查并更新
-vibecast -update
+vibecast update
 
 # 或在管理后台 → 系统 → 检查更新
 ```

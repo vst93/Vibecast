@@ -37,7 +37,7 @@ jobs:
           if [ -n "$FORCE" ] && [ "$FORCE" != "" ]; then
             VERSION="$FORCE"
           else
-            BASE=$(date +%Y%m%d)
+            BASE=$(TZ=Asia/Shanghai date +%Y%m%d)
             VERSION="$BASE"
             N=1
             while git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; do

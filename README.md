@@ -26,11 +26,12 @@ No Nginx, no external web server — one binary handles everything: authenticati
 
 ### Management
 
+- **Organizations** — Create or join an organization with a 12-character invite code. One org per user. Owners can manage members (search, paginate, kick). Sites can be set "open to org" — logged-in org members skip password authentication automatically
 - **Admin Panel** — User management, site oversight, storage cleanup, system settings
 - **Visit Stats** — Per-site daily / monthly / total visit counts
 - **One-Click Share** — Generate share text with site URL and password, copy to clipboard
 - **Password Protection** — Optional per-site password gate (7-day session cookie)
-- **Password Toggle** — Show/hide toggle on all password inputs
+- **Password Toggle** — Show/hide toggle on all password inputs (login, register, site creation, password gate)
 - **Random Slugs** — Auto-generated unguessable URLs, no need to pick a slug
 - **Directory Listing** — nginx-style auto-index when no `index.html` exists
 - **File Tree** — Click any site to expand and browse its files
@@ -138,11 +139,12 @@ Run `vibecast help` to see this output at any time.
 ## Usage
 
 1. **Register** at `/dashboard` — first user is auto-promoted to admin
-2. **Create a site** — just give it a name; a random slug is generated for you
+2. **Create a site** — just give it a name; a random slug is generated for you. Optionally set a password and toggle "Open to org members"
 3. **Deploy** — upload a ZIP or a single file
 4. **Visit** — your site goes live at `/s/{slug}/`
 5. **Share** — click the share button to copy a ready-to-paste message with URL and password
-6. **Manage** — expand any site to view its file tree and visit stats; admin panel at `/admin`
+6. **Organizations** — create an org or join one with an invite code. Org members can access "org-open" sites without a password
+7. **Manage** — expand any site to view its file tree and visit stats; admin panel at `/admin`
 
 Admins can toggle open registration, disable public access, restrict email domains, configure upload size and site limits, clean up orphaned directories, check for updates, and manage all users and sites from `/admin`.
 
@@ -171,8 +173,8 @@ Additional settings (upload size limit, site limit per user, registration, publi
 
 ```
 cmd/server/main.go        — Entry point, CLI flags, graceful shutdown, update CLI
-internal/db/              — SQLite schema, migrations, data models, settings, visit stats
-internal/auth/            — bcrypt, session tokens, middleware
+internal/db/              — SQLite schema, migrations, data models, settings, visit stats, organizations
+internal/auth/            — bcrypt, session tokens, middleware, cookie-based auth, captcha
 internal/storage/         — ZIP extraction, single file save, path traversal & file type protection
 internal/server/          — HTTP handlers, routing, static serving, captcha, i18n, self-update, all UI
 ```
@@ -211,11 +213,12 @@ MIT
 
 ### 管理
 
+- **组织** — 创建或加入组织（12 位随机邀请码）。一个用户只能属于一个组织。创建者可管理成员（搜索、翻页、踢出）。站点可设为"对组织开放"，同一组织的已登录用户无需密码即可访问
 - **管理后台** — 用户管理、站点总览、存储清理、系统设置
 - **访问统计** — 每站点的今日 / 本月 / 总计访问量
 - **一键分享** — 生成包含站点 URL 和密码的分享文本，一键复制
 - **密码保护** — 可选的站点级密码门禁（7 天有效 Cookie）
-- **密码显隐** — 所有密码输入框支持显示/隐藏切换
+- **密码显隐** — 所有密码输入框支持显示/隐藏切换（登录、注册、创建站点、密码门禁页）
 - **随机 Slug** — 自动生成不可猜测的 URL，无需手动填写
 - **目录列表** — 无 index.html 时自动展示 nginx 风格目录列表
 - **文件树** — 点击展开任意站点查看文件列表
@@ -323,11 +326,12 @@ Commands:
 ## 使用方式
 
 1. **注册** — 在 `/dashboard` 注册，首用户自动成为管理员
-2. **创建站点** — 填个名字即可，系统自动生成随机 slug
+2. **创建站点** — 填个名字即可，系统自动生成随机 slug。可选设密码和"对组织开放"
 3. **部署** — 上传 ZIP 压缩包或单个文件
 4. **访问** — 站点上线地址为 `/s/{slug}/`
 5. **分享** — 点击分享按钮，复制包含 URL 和密码的分享文本
-6. **管理** — 点击站点展开查看文件树和访问统计；管理后台在 `/admin`
+6. **组织** — 创建组织或用邀请码加入，组织内成员可免密码访问"对组织开放"的站点
+7. **管理** — 点击站点展开查看文件树和访问统计；管理后台在 `/admin`
 
 管理员可在 `/admin` 开关注册、禁用公开访问、限制邮箱域名、配置上传大小和站点限额、清理孤立目录、检查更新，以及管理所有用户和站点。
 
@@ -356,8 +360,8 @@ vibecast update
 
 ```
 cmd/server/main.go        — 入口，CLI 参数，优雅关闭，更新命令行
-internal/db/              — SQLite schema、迁移、数据模型、设置、访问统计
-internal/auth/            — bcrypt、Session Token、认证中间件
+internal/db/              — SQLite schema、迁移、数据模型、设置、访问统计、组织
+internal/auth/            — bcrypt、Session Token、认证中间件、Cookie 认证、验证码
 internal/storage/         — ZIP 解压、单文件保存、路径遍历与文件类型防护
 internal/server/          — HTTP Handler、路由、静态服务、验证码、i18n、自更新、全部前端页面
 ```

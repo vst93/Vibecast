@@ -21,8 +21,7 @@ No Nginx, no external web server — one binary handles everything: authenticati
 - **Single File Upload** — Upload individual files without creating a ZIP
 - **Smart Extraction** — Strips junk paths (`__MACOSX`, `.git`, `.DS_Store`, `node_modules`, dotfiles)
 - **File Type Filtering** — Blocks dangerous extensions (`.exe`, `.sh`, `.cgi`, `.php`, etc.)
-- **Configurable Upload Limit** — Admin-adjustable max upload size (default 50 MB)
-- **Per-User Site Limit** — Cap how many sites each user can create (default 30)
+- **Configurable Limits** — Admin-adjustable max upload size and per-user site count
 
 ### Management
 
@@ -31,28 +30,22 @@ No Nginx, no external web server — one binary handles everything: authenticati
 - **Visit Stats** — Per-site daily / monthly / total visit counts
 - **One-Click Share** — Generate share text with site URL and password, copy to clipboard
 - **Password Protection** — Optional per-site password gate (7-day session cookie)
-- **Password Toggle** — Show/hide toggle on all password inputs
 - **Random Slugs** — Auto-generated unguessable URLs, no need to pick a slug
-- **Directory Listing** — nginx-style auto-index when no `index.html` exists
-- **File Tree** — Click any site to expand and browse its files
 
 ### System
 
 - **In-App Self-Update** — Check for new versions and update directly from the admin panel
 - **CLI Update** — `vibecast update` to upgrade from the command line
 - **GitHub Mirror Support** — Auto-fallback to China mirrors for downloads behind GFW
-- **Version Info** — `vibecast version` (or `v`) prints the version; admin panel shows it in the navbar
 - **Reverse-Proxy Ready** — All URLs are relative, works behind any sub-path without config
 - **Zero External Dependencies** — Pure Go + SQLite, no CGO, no Nginx, no Node.js
 
 ### UI / UX
 
 - **Dark / Light Theme** — Toggle with CSS variables, persisted per user
-- **Mobile Optimized** — Responsive admin layout with bottom nav bar, horizontal table scroll
+- **Mobile Optimized** — Responsive layout, bottom nav bar, horizontal table scroll
 - **Bilingual EN / 中文** — Full i18n across UI and API error messages
 - **SVG Captcha** — Math captcha rendered as SVG with noise and rotation
-- **Custom Dialogs** — No ugly browser `confirm()` / `alert()` — all dialogs are custom-built
-- **V Logo** — Favicon and navbar icon across all pages
 
 ## Screenshots
 
@@ -208,8 +201,7 @@ MIT
 - **单文件上传** — 无需打包 ZIP，直接上传单个文件
 - **智能解压** — 自动剔除垃圾路径（`__MACOSX`、`.git`、`.DS_Store`、`node_modules`、 dotfiles）
 - **文件类型过滤** — 拦截危险扩展名（`.exe`、`.sh`、`.cgi`、`.php` 等）
-- **可配置上传限制** — 管理员可调整最大上传大小（默认 50 MB）
-- **用户站点限额** — 限制每用户可创建站点数（默认 30）
+- **可配置限额** — 管理员可调整最大上传大小和每用户站点数
 
 ### 管理
 
@@ -218,28 +210,22 @@ MIT
 - **访问统计** — 每站点的今日 / 本月 / 总计访问量
 - **一键分享** — 生成包含站点 URL 和密码的分享文本，一键复制
 - **密码保护** — 可选的站点级密码门禁（7 天有效 Cookie）
-- **密码显隐** — 所有密码输入框支持显示/隐藏切换
 - **随机 Slug** — 自动生成不可猜测的 URL，无需手动填写
-- **目录列表** — 无 index.html 时自动展示 nginx 风格目录列表
-- **文件树** — 点击展开任意站点查看文件列表
 
 ### 系统
 
 - **应用内自更新** — 在管理后台直接检查新版本并一键更新
 - **命令行更新** — `vibecast update` 从命令行升级
 - **GitHub 镜像加速** — 国内自动回退到镜像代理下载
-- **版本信息** — `vibecast version`（或 `v`）查看版本号，管理后台导航栏显示版本
 - **反向代理友好** — 所有 URL 均为相对路径，支持任意子路径部署，无需配置
 - **零外部依赖** — 纯 Go + SQLite，无需 CGO、Nginx、Node.js
 
 ### 界面 / 体验
 
 - **深色 / 浅色主题** — CSS 变量切换，用户偏好持久化
-- **移动端优化** — 响应式后台布局，底部导航栏，表格横向滚动
+- **移动端优化** — 响应式布局，底部导航栏，表格横向滚动
 - **中英文双语** — UI 和 API 错误提示全面支持
 - **SVG 验证码** — 数学验证码，含噪点和旋转干扰
-- **自定义弹窗** — 不使用浏览器原生 `confirm()` / `alert()`，全部自实现
-- **V 标志** — 全站 favicon 和导航栏图标
 
 ## 截图
 

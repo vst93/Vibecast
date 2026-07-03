@@ -26,12 +26,12 @@ No Nginx, no external web server — one binary handles everything: authenticati
 
 ### Management
 
-- **Organizations** — Create or join an organization with a 12-character invite code. One org per user. Owners can manage members (search, paginate, kick). Sites can be set "open to org" — logged-in org members skip password authentication automatically
+- **Organizations** — Create or join an organization with an invite code. One org per user. Owners can manage members (search, kick). Sites can be set "open to org" — logged-in org members skip password authentication automatically
 - **Admin Panel** — User management, site oversight, storage cleanup, system settings
 - **Visit Stats** — Per-site daily / monthly / total visit counts
 - **One-Click Share** — Generate share text with site URL and password, copy to clipboard
 - **Password Protection** — Optional per-site password gate (7-day session cookie)
-- **Password Toggle** — Show/hide toggle on all password inputs (login, register, site creation, password gate)
+- **Password Toggle** — Show/hide toggle on all password inputs
 - **Random Slugs** — Auto-generated unguessable URLs, no need to pick a slug
 - **Directory Listing** — nginx-style auto-index when no `index.html` exists
 - **File Tree** — Click any site to expand and browse its files
@@ -173,15 +173,15 @@ Additional settings (upload size limit, site limit per user, registration, publi
 
 ```
 cmd/server/main.go        — Entry point, CLI flags, graceful shutdown, update CLI
-internal/db/              — SQLite schema, migrations, data models, settings, visit stats, organizations
-internal/auth/            — bcrypt, session tokens, middleware, cookie-based auth, captcha
-internal/storage/         — ZIP extraction, single file save, path traversal & file type protection
-internal/server/          — HTTP handlers, routing, static serving, captcha, i18n, self-update, all UI
+internal/db/              — SQLite schema, migrations, data models, settings
+internal/auth/            — Authentication, session management, captcha
+internal/storage/         — ZIP extraction, single file save, file type protection
+internal/server/          — HTTP handlers, routing, static serving, i18n, self-update, all UI
 ```
 
 ## Tech Stack
 
-Go 1.23+ · SQLite (pure Go driver) · bcrypt · vanilla JS SPA · no build step
+Go 1.23+ · SQLite · vanilla JS SPA · no build step
 
 ## License
 
@@ -213,12 +213,12 @@ MIT
 
 ### 管理
 
-- **组织** — 创建或加入组织（12 位随机邀请码）。一个用户只能属于一个组织。创建者可管理成员（搜索、翻页、踢出）。站点可设为"对组织开放"，同一组织的已登录用户无需密码即可访问
+- **组织** — 创建或加入组织。一个用户只能属于一个组织。创建者可管理成员（搜索、踢出）。站点可设为"对组织开放"，同一组织的已登录用户无需密码即可访问
 - **管理后台** — 用户管理、站点总览、存储清理、系统设置
 - **访问统计** — 每站点的今日 / 本月 / 总计访问量
 - **一键分享** — 生成包含站点 URL 和密码的分享文本，一键复制
 - **密码保护** — 可选的站点级密码门禁（7 天有效 Cookie）
-- **密码显隐** — 所有密码输入框支持显示/隐藏切换（登录、注册、创建站点、密码门禁页）
+- **密码显隐** — 所有密码输入框支持显示/隐藏切换
 - **随机 Slug** — 自动生成不可猜测的 URL，无需手动填写
 - **目录列表** — 无 index.html 时自动展示 nginx 风格目录列表
 - **文件树** — 点击展开任意站点查看文件列表
@@ -360,15 +360,15 @@ vibecast update
 
 ```
 cmd/server/main.go        — 入口，CLI 参数，优雅关闭，更新命令行
-internal/db/              — SQLite schema、迁移、数据模型、设置、访问统计、组织
-internal/auth/            — bcrypt、Session Token、认证中间件、Cookie 认证、验证码
-internal/storage/         — ZIP 解压、单文件保存、路径遍历与文件类型防护
-internal/server/          — HTTP Handler、路由、静态服务、验证码、i18n、自更新、全部前端页面
+internal/db/              — SQLite schema、迁移、数据模型、设置
+internal/auth/            — 认证、Session 管理、验证码
+internal/storage/         — ZIP 解压、单文件保存、文件类型防护
+internal/server/          — HTTP Handler、路由、静态服务、i18n、自更新、全部前端页面
 ```
 
 ## 技术栈
 
-Go 1.23+ · SQLite（纯 Go 驱动）· bcrypt · 原生 JS 单页应用 · 无构建步骤
+Go 1.23+ · SQLite · 原生 JS 单页应用 · 无构建步骤
 
 ## 开源协议
 

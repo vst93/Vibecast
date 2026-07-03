@@ -233,6 +233,7 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 			AllowPublicAccess bool   `json:"allowPublicAccess"`
 			DomainRestriction bool   `json:"domainRestriction"`
 			AllowedDomains    string `json:"allowedDomains"`
+			MaxUploadSize     int    `json:"maxUploadSize"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -253,6 +254,12 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 		if err := db.SetSetting(s.database, "allowed_domains", body.AllowedDomains); err != nil {
 			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
+		}
+		if body.MaxUploadSize > 0 {
+			if err := db.SetSetting(s.database, "max_upload_size", strconv.Itoa(body.MaxUploadSize)); err != nil {
+				writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
+				return
+			}
 		}
 		writeJSON(w, 200, jsonResp{Message: "settings updated"})
 	default:

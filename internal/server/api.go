@@ -16,7 +16,16 @@ import (
 	"vibecast/internal/storage"
 )
 
-const maxUploadSize = 100 << 20 // 100 MB
+const defaultMaxUploadSize = 50 << 20 // 50 MB default, overridable via admin settings
+
+// getMaxUploadSize reads the configured max upload size from DB settings.
+func (s *Server) getMaxUploadSize() int64 {
+	mb := db.GetSettingInt(s.database, "max_upload_size", 50)
+	if mb < 1 {
+		mb = 50
+	}
+	return int64(mb) << 20
+}
 
 type jsonResp struct {
 	Error   string      `json:"error,omitempty"`
@@ -471,11 +480,16 @@ func (s *Server) deleteSite(w http.ResponseWriter, r *http.Request, user *db.Use
 }
 
 func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.User, site *db.Site) {
-	// Limit upload size
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	// Limit upload size (configurable via admin settings)
+	maxSize := s.getMaxUploadSize()
+	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
+		if err.Error() == "http: request body too large" || strings.Contains(err.Error(), "too large") {
+			writeJSON(w, 413, jsonResp{Error: tMsg(r, "file_too_large")})
+			return
+		}
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "file_required")})
 		return
 	}
@@ -485,17 +499,37 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 	isZip := strings.HasSuffix(filename, ".zip")
 	siteDir := fmt.Sprintf("%s/%s", s.config.StorageDir, site.Slug)
 
+	// Check single file size before processing
+	if header.Size > maxSize {
+		writeJSON(w, 413, jsonResp{Error: tMsg(r, "file_too_large")})
+		return
+	}
+
 	if isZip {
 		// ZIP deploy — extract and replace entire site
 		data, err := io.ReadAll(file)
 		if err != nil {
+			if err.Error() == "http: request body too large" || strings.Contains(err.Error(), "too large") {
+				writeJSON(w, 413, jsonResp{Error: tMsg(r, "file_too_large")})
+				return
+			}
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "read_upload_failed")})
 			return
 		}
 
-		result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir)
+		result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir, maxSize)
 		if err != nil {
-			writeJSON(w, 500, jsonResp{Error: tMsg(r, "extract_zip_failed") + ": " + err.Error()})
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "file too large") && strings.Contains(errMsg, "limit") {
+				// Extract the filename from the error message
+				writeJSON(w, 413, jsonResp{Error: tMsg(r, "zip_file_too_large") + ": " + errMsg})
+				return
+			}
+			if strings.Contains(errMsg, "zip bomb") {
+				writeJSON(w, 413, jsonResp{Error: tMsg(r, "zip_bomb")})
+				return
+			}
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "extract_zip_failed") + ": " + errMsg})
 			return
 		}
 
@@ -523,7 +557,7 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 		return
 	}
 
-	fileSize, err := storage.SaveSingleFile(file, header.Filename, siteDir)
+	fileSize, err := storage.SaveSingleFile(file, header.Filename, siteDir, maxSize)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "save_file_failed") + ": " + err.Error()})
 		return

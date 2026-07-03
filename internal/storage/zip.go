@@ -12,8 +12,11 @@ import (
 const (
 	maxDecompressedSize = 500 * 1024 * 1024 // 500 MB total uncompressed
 	maxFileCount        = 10000             // max files in a single zip
-	maxSingleFileSize   = 100 * 1024 * 1024 // 100 MB per file
 )
+
+// maxSingleFileSize is the default per-file limit (100 MB).
+// ExtractZip and SaveSingleFile accept a custom limit via parameter.
+const defaultMaxSingleFileSize = 100 * 1024 * 1024
 
 // blockedExtensions are file types that are dangerous to serve or execute.
 // They are either server-side scripts, native executables, or system-level files.
@@ -44,8 +47,12 @@ func IsBlockedExtension(filename string) bool {
 
 // SaveSingleFile saves a single uploaded file to the site directory.
 // It replaces the entire site content (same as ZIP deploy — atomic replace).
+// maxFileSize is the per-file size limit in bytes (0 = use default 100 MB).
 // Returns the file size.
-func SaveSingleFile(src io.Reader, filename string, destDir string) (int64, error) {
+func SaveSingleFile(src io.Reader, filename string, destDir string, maxFileSize int64) (int64, error) {
+	if maxFileSize <= 0 {
+		maxFileSize = defaultMaxSingleFileSize
+	}
 	if IsBlockedExtension(filename) {
 		return 0, fmt.Errorf("file type not allowed: %s", filepath.Ext(filename))
 	}
@@ -75,9 +82,9 @@ func SaveSingleFile(src io.Reader, filename string, destDir string) (int64, erro
 	}
 	out.Close()
 
-	if n > maxSingleFileSize {
+	if n > maxFileSize {
 		_ = os.RemoveAll(tmpDir)
-		return 0, fmt.Errorf("file too large: %d bytes > %d limit", n, maxSingleFileSize)
+		return 0, fmt.Errorf("file too large: %d bytes > %d limit", n, maxFileSize)
 	}
 
 	// Atomic swap
@@ -100,7 +107,11 @@ type ExtractZipResult struct {
 // ExtractZip extracts a zip reader contents into destDir.
 // It strips common top-level directory if all entries share one (e.g. "site/" prefix).
 // Dangerous file types are skipped. Zip bombs are rejected.
-func ExtractZip(r io.ReaderAt, size int64, destDir string) (*ExtractZipResult, error) {
+// maxSingleFileSize is the per-file limit in bytes (0 = use default 100 MB).
+func ExtractZip(r io.ReaderAt, size int64, destDir string, maxSingleFileSize int64) (*ExtractZipResult, error) {
+	if maxSingleFileSize <= 0 {
+		maxSingleFileSize = defaultMaxSingleFileSize
+	}
 	tmpDir := destDir + ".tmp"
 	_ = os.RemoveAll(tmpDir)
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
@@ -168,7 +179,7 @@ func ExtractZip(r io.ReaderAt, size int64, destDir string) (*ExtractZipResult, e
 		}
 
 		// Check single file size (uncompressed)
-		if f.UncompressedSize64 > maxSingleFileSize {
+		if f.UncompressedSize64 > uint64(maxSingleFileSize) {
 			return nil, fmt.Errorf("file too large: %s (%d bytes > %d limit)", name, f.UncompressedSize64, maxSingleFileSize)
 		}
 

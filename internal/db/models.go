@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -432,6 +433,19 @@ func SetSetting(db *sql.DB, key, value string) error {
 	return err
 }
 
+// GetSettingInt returns an integer setting with a default value.
+func GetSettingInt(db *sql.DB, key string, defaultVal int) int {
+	val, err := GetSetting(db, key)
+	if err != nil || val == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
+	return n
+}
+
 func GetAllSettings(db *sql.DB) (map[string]string, error) {
 	rows, err := db.Query(`SELECT key, value FROM settings`)
 	if err != nil {
@@ -476,6 +490,7 @@ type Settings struct {
 	AllowPublicAccess bool   `json:"allowPublicAccess"`
 	DomainRestriction bool   `json:"domainRestriction"`
 	AllowedDomains    string `json:"allowedDomains"`
+	MaxUploadSize     int    `json:"maxUploadSize"`
 }
 
 func GetSettings(db *sql.DB) (*Settings, error) {
@@ -500,6 +515,16 @@ func GetSettings(db *sql.DB) (*Settings, error) {
 		return nil, err
 	}
 	s.AllowedDomains = val4
+	val5, err := GetSetting(db, "max_upload_size")
+	if err != nil {
+		return nil, err
+	}
+	s.MaxUploadSize = 50 // default 50 MB
+	if val5 != "" {
+		if n, err := strconv.Atoi(val5); err == nil && n > 0 {
+			s.MaxUploadSize = n
+		}
+	}
 	return s, nil
 }
 

@@ -20,10 +20,11 @@ func main() {
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
 	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")
 	versionFlag := flag.Bool("version", false, "print version and exit")
+	vShort := flag.Bool("v", false, "shorthand for -version")
 	updateFlag := flag.Bool("update", false, "check for updates and self-update")
 	flag.Parse()
 
-	if *versionFlag {
+	if *versionFlag || *vShort {
 		fmt.Printf("vibecast v%s\n", version)
 		return
 	}

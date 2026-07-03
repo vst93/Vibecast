@@ -38,9 +38,9 @@ No Nginx, no external web server — one binary handles everything: authenticati
 ### System
 
 - **In-App Self-Update** — Check for new versions and update directly from the admin panel
-- **CLI Update** — `vibecast update` to upgrade from the command line
+- **CLI Update** — `vibecast -update` to upgrade from the command line
 - **GitHub Mirror Support** — Auto-fallback to China mirrors for downloads behind GFW
-- **Version Info** — `vibecast --version` prints the version; admin panel shows it in the navbar
+- **Version Info** — `vibecast -v` or `-version` prints the version; admin panel shows it in the navbar
 - **Reverse-Proxy Ready** — All URLs are relative, works behind any sub-path without config
 - **Zero External Dependencies** — Pure Go + SQLite, no CGO, no Nginx, no Node.js
 
@@ -112,7 +112,7 @@ Grab the binary for your platform from the [Releases](../../releases) page, make
 vibecast
 
 # or with custom config
-vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
+vibecast -addr :3000 -storage ./data/sites -db ./data/vibecast.db
 ```
 
 Open `http://localhost:8080/dashboard` — the first registered user becomes admin.
@@ -132,7 +132,7 @@ Admins can toggle open registration, disable public access, restrict email domai
 
 ```bash
 # Check and update from the command line
-vibecast --update
+vibecast -update
 
 # Or update from the admin panel → System → Check for Updates
 ```
@@ -143,9 +143,9 @@ The update system fetches the latest release from GitHub, verifies the asset mat
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
-| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
-| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
+| `-addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
+| `-storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
+| `-db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
 
 Additional settings (upload size limit, site limit per user, registration, public access, email domain restriction) are configurable at runtime from the admin panel.
 
@@ -205,9 +205,9 @@ MIT
 ### 系统
 
 - **应用内自更新** — 在管理后台直接检查新版本并一键更新
-- **命令行更新** — `vibecast update` 从命令行升级
+- **命令行更新** — `vibecast -update` 从命令行升级
 - **GitHub 镜像加速** — 国内自动回退到镜像代理下载
-- **版本信息** — `vibecast --version` 查看版本号，管理后台导航栏显示版本
+- **版本信息** — `vibecast -v` 或 `-version` 查看版本号，管理后台导航栏显示版本
 - **反向代理友好** — 所有 URL 均为相对路径，支持任意子路径部署，无需配置
 - **零外部依赖** — 纯 Go + SQLite，无需 CGO、Nginx、Node.js
 
@@ -279,7 +279,7 @@ make build
 vibecast
 
 # 或指定配置
-vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
+vibecast -addr :3000 -storage ./data/sites -db ./data/vibecast.db
 ```
 
 打开 `http://localhost:8080/dashboard`，首个注册用户自动成为管理员。
@@ -299,7 +299,7 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 
 ```bash
 # 命令行检查并更新
-vibecast --update
+vibecast -update
 
 # 或在管理后台 → 系统 → 检查更新
 ```
@@ -310,9 +310,9 @@ vibecast --update
 
 | 参数 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
-| `--addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
-| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
-| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
+| `-addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
+| `-storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
+| `-db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
 
 其余设置（上传大小限制、每用户站点限额、注册开关、公开访问、邮箱域名限制）可在管理后台运行时配置。
 

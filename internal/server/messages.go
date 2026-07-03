@@ -31,6 +31,7 @@ var messageMap = map[string]map[string]string{
 	"generate_slug_failed":  {"en": "Failed to generate slug", "zh": "生成 Slug 失败"},
 	"site_password_too_short": {"en": "Site password must be at least 4 characters", "zh": "站点密码至少 4 位"},
 	"public_access_disabled": {"en": "Public access is disabled: site must have a password", "zh": "已禁用公开访问：站点必须设置密码"},
+	"site_limit_reached":    {"en": "Site limit reached. Delete an existing site or contact admin.", "zh": "已达站点数量上限，请删除已有站点或联系管理员"},
 	"create_site_failed":    {"en": "Failed to create site", "zh": "创建站点失败"},
 	"list_sites_failed":     {"en": "Failed to list sites", "zh": "获取站点列表失败"},
 	"count_sites_failed":    {"en": "Failed to count sites", "zh": "统计站点失败"},

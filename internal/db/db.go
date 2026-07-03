@@ -92,6 +92,7 @@ func migrate(db *sql.DB) error {
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allow_public_access', '1')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('domain_restriction', '0')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allowed_domains', '')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_sites_per_user', '30')`)
 
 	return nil
 }

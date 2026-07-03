@@ -417,6 +417,16 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		}
 	}
 
+	// Check site limit per user
+	maxSites := db.GetSettingInt(s.database, "max_sites_per_user", 30)
+	if maxSites > 0 {
+		count, _ := db.CountSitesByUser(s.database, user.ID, "")
+		if count >= int64(maxSites) {
+			writeJSON(w, 403, jsonResp{Error: tMsg(r, "site_limit_reached")})
+			return
+		}
+	}
+
 	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_site_failed")})

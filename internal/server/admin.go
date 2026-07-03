@@ -40,6 +40,7 @@ func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
 		"openRegistration": settings.OpenRegistration,
 		"maxUploadSize":    maxMB,
+		"maxSitesPerUser":  db.GetSettingInt(s.database, "max_sites_per_user", 30),
 	}})
 }
 
@@ -239,6 +240,7 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 			DomainRestriction bool   `json:"domainRestriction"`
 			AllowedDomains    string `json:"allowedDomains"`
 			MaxUploadSize     int    `json:"maxUploadSize"`
+			MaxSitesPerUser   int    `json:"maxSitesPerUser"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -262,6 +264,12 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 		}
 		if body.MaxUploadSize > 0 {
 			if err := db.SetSetting(s.database, "max_upload_size", strconv.Itoa(body.MaxUploadSize)); err != nil {
+				writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
+				return
+			}
+		}
+		if body.MaxSitesPerUser >= 0 {
+			if err := db.SetSetting(s.database, "max_sites_per_user", strconv.Itoa(body.MaxSitesPerUser)); err != nil {
 				writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 				return
 			}

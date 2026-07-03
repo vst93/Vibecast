@@ -491,6 +491,7 @@ type Settings struct {
 	DomainRestriction bool   `json:"domainRestriction"`
 	AllowedDomains    string `json:"allowedDomains"`
 	MaxUploadSize     int    `json:"maxUploadSize"`
+	MaxSitesPerUser   int    `json:"maxSitesPerUser"`
 }
 
 func GetSettings(db *sql.DB) (*Settings, error) {
@@ -523,6 +524,16 @@ func GetSettings(db *sql.DB) (*Settings, error) {
 	if val5 != "" {
 		if n, err := strconv.Atoi(val5); err == nil && n > 0 {
 			s.MaxUploadSize = n
+		}
+	}
+	val6, err := GetSetting(db, "max_sites_per_user")
+	if err != nil {
+		return nil, err
+	}
+	s.MaxSitesPerUser = 30 // default 30
+	if val6 != "" {
+		if n, err := strconv.Atoi(val6); err == nil && n >= 0 {
+			s.MaxSitesPerUser = n
 		}
 	}
 	return s, nil

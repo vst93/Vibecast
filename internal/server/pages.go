@@ -930,6 +930,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:
 input[type=password]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
 input[type=password]:focus{border-color:var(--accent)}
 input[type=password]::placeholder{color:var(--placeholder)}
+input[type=password]::-ms-reveal,input[type=text]::-ms-reveal,input[type=password]::-ms-clear,input[type=text]::-ms-clear{display:none}
 .pwd-wrap{position:relative;display:flex;align-items:center}
 .pwd-wrap input{width:100%%;padding-right:38px!important;box-sizing:border-box;margin-bottom:0}
 .pwd-toggle{position:absolute;right:8px;top:50%%;transform:translateY(-50%%);background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:5px;color:var(--dim);padding:0;transition:color .15s,background .15s}
@@ -939,14 +940,16 @@ button[type=submit]{width:100%%;padding:10px;background:var(--accent);color:var(
 button[type=submit]:hover{background:var(--accent-dim)}
 .err{color:var(--danger);margin-bottom:.8rem;font-size:.8rem;font-family:var(--mono)}
 </style>
-<script>var _t="light";try{_t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",_t)</script>
+<script>var _t="light";try{_t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",_t)
+function togglePwd(btn){var inp=btn.parentElement.querySelector("input");if(!inp)return;var show=inp.type==="password";inp.type=show?"text":"password";if(show){btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'}else{btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>'}}
+</script>
 </head>
 <body>
 <div class="card">
 <h1>🔒 <span class="site-name">%s</span></h1>
 <p>This site is password-protected. Enter the password to continue.</p>
 <form method="POST" action="">
-<div class="pwd-wrap"><input type="password" id="password" name="password" placeholder="Password" autofocus required><button type="button" class="pwd-toggle" onclick="var i=document.getElementById('password');var s=i.type==='password';i.type=s?'text':'password';this.innerHTML=s?'<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24\\'/><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'/></svg>':'<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z\\'/><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'/></svg>'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+<div class="pwd-wrap"><input type="password" id="password" name="password" placeholder="Password" autofocus required><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
 <button type="submit">Enter Site</button>
 </form>
 </div>
@@ -976,6 +979,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:
 input[type=password]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
 input[type=password]:focus{border-color:var(--accent)}
 input[type=password]::placeholder{color:var(--placeholder)}
+input[type=password]::-ms-reveal,input[type=text]::-ms-reveal,input[type=password]::-ms-clear,input[type=text]::-ms-clear{display:none}
 .pwd-wrap{position:relative;display:flex;align-items:center}
 .pwd-wrap input{width:100%%;padding-right:38px!important;box-sizing:border-box;margin-bottom:0}
 .pwd-toggle{position:absolute;right:8px;top:50%%;transform:translateY(-50%%);background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:5px;color:var(--dim);padding:0;transition:color .15s,background .15s}
@@ -985,7 +989,9 @@ button[type=submit]{width:100%%;padding:10px;background:var(--accent);color:var(
 button[type=submit]:hover{background:var(--accent-dim)}
 .err{color:var(--danger);margin-bottom:.8rem;font-size:.8rem;font-family:var(--mono)}
 </style>
-<script>var _t="light";try{_t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",_t)</script>
+<script>var _t="light";try{_t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",_t)
+function togglePwd(btn){var inp=btn.parentElement.querySelector("input");if(!inp)return;var show=inp.type==="password";inp.type=show?"text":"password";if(show){btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'}else{btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>'}}
+</script>
 </head>
 <body>
 <div class="card">
@@ -993,7 +999,7 @@ button[type=submit]:hover{background:var(--accent-dim)}
 <p>This site is password-protected. Enter the password to continue.</p>
 <div class="err">%s</div>
 <form method="POST" action="">
-<div class="pwd-wrap"><input type="password" name="password" placeholder="Password" autofocus required><button type="button" class="pwd-toggle" onclick="var i=this.parentElement.querySelector('input');var s=i.type==='password';i.type=s?'text':'password';this.innerHTML=s?'<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24\\'/><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'/></svg>':'<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z\\'/><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'/></svg>'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+<div class="pwd-wrap"><input type="password" name="password" placeholder="Password" autofocus required><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
 <button type="submit">Enter Site</button>
 </form>
 </div>

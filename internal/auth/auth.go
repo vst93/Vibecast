@@ -38,29 +38,42 @@ func CheckPassword(hash, plain string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 
-// GetSessionToken extracts the Bearer token from the Authorization header.
-// Supports both "Authorization: Bearer <token>" and "Authorization: <token>".
-func GetSessionToken(r *http.Request) string {
+// getTokenFromHeader extracts the Bearer token from the Authorization header only.
+// Internal helper — does NOT check cookies.
+func getTokenFromHeader(r *http.Request) string {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
 		return ""
 	}
 	auth = strings.TrimSpace(auth)
-	// Strip "Bearer " prefix if present
 	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
 		return strings.TrimSpace(auth[7:])
 	}
 	return auth
 }
 
-// GetSiteToken extracts the site access token from the Authorization header,
-// a cookie, or the ?token= query parameter (fallback for old links).
-func GetSiteToken(r *http.Request) string {
-	// Try Authorization header first (API clients)
-	if token := GetSessionToken(r); token != "" {
+// GetSessionToken extracts the user session token from the Authorization header, or
+// falls back to the vibecast_session cookie (set on login for browser navigation).
+func GetSessionToken(r *http.Request) string {
+	if token := getTokenFromHeader(r); token != "" {
 		return token
 	}
-	// Try cookie (browser navigation — set by password gate)
+	// Fall back to cookie (browser navigation to /s/ pages)
+	if cookie, err := r.Cookie("vibecast_session"); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+	return ""
+}
+
+// GetSiteToken extracts the site access token from the Authorization header,
+// the site_token cookie, or the ?token= query parameter (fallback for old links).
+// NOTE: does NOT use vibecast_session cookie — that's a user login token, not a site token.
+func GetSiteToken(r *http.Request) string {
+	// Try Authorization header first (API clients)
+	if token := getTokenFromHeader(r); token != "" {
+		return token
+	}
+	// Try site_token cookie (browser navigation — set by password gate)
 	if cookie, err := r.Cookie("site_token"); err == nil && cookie.Value != "" {
 		return cookie.Value
 	}
@@ -93,4 +106,29 @@ func RequireAuth(database *sql.DB, next func(http.ResponseWriter, *http.Request,
 		}
 		next(w, r, user)
 	}
+}
+
+// SetSessionCookie sets the vibecast_session cookie so browser navigation to /s/
+// pages carries auth (for org_open bypass). Path "/" covers the entire site.
+func SetSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "vibecast_session",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(SessionDuration.Seconds()),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// ClearSessionCookie expires the vibecast_session cookie.
+func ClearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "vibecast_session",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }

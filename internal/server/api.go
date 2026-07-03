@@ -116,6 +116,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_session_failed")})
 		return
 	}
+	auth.SetSessionCookie(w, token)
 
 	writeJSON(w, 201, jsonResp{
 		Message: "registered",
@@ -166,6 +167,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_session_failed")})
 		return
 	}
+	auth.SetSessionCookie(w, token)
 
 	writeJSON(w, 200, jsonResp{
 		Message: "logged in",
@@ -187,6 +189,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if token != "" {
 		_ = db.DeleteSession(s.database, token)
 	}
+	auth.ClearSessionCookie(w)
 	writeJSON(w, 200, jsonResp{Message: "logged out"})
 }
 

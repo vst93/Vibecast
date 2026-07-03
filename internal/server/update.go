@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -33,6 +34,32 @@ var githubMirrors = []string{
 // updateInProgress is an atomic flag (0 = idle, 1 = running) preventing
 // concurrent update operations from the admin API.
 var updateInProgress int32
+
+// updateState tracks the current async update progress for status polling.
+type updateState struct {
+	Status        string `json:"status"`        // "idle", "downloading", "verifying", "installing", "done", "error"
+	Progress      int    `json:"progress"`      // 0-100 (download percentage)
+	Message       string `json:"message"`       // human-readable detail
+	PrevVersion   string `json:"prevVersion"`   // set when done
+	NewVersion    string `json:"newVersion"`    // set when done
+	Error         string `json:"error"`         // set when status == "error"
+}
+
+var updateTracker = updateState{Status: "idle"}
+var updateMu sync.Mutex
+
+func setUpdateState(s updateState) {
+	updateMu.Lock()
+	updateTracker = s
+	updateMu.Unlock()
+}
+
+func getUpdateState() updateState {
+	updateMu.Lock()
+	s := updateTracker
+	updateMu.Unlock()
+	return s
+}
 
 // releaseInfo represents a GitHub release.
 type releaseInfo struct {
@@ -530,6 +557,9 @@ func (s *Server) adminCheckUpdate(w http.ResponseWriter, r *http.Request, user *
 }
 
 // adminApplyUpdate handles POST /api/admin/update/apply
+// This is an ASYNC endpoint: it starts the update in a goroutine and returns
+// immediately with status "downloading". The client polls /admin/update/status
+// for progress.
 func (s *Server) adminApplyUpdate(w http.ResponseWriter, r *http.Request, user *db.User) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
@@ -541,61 +571,110 @@ func (s *Server) adminApplyUpdate(w http.ResponseWriter, r *http.Request, user *
 		writeJSON(w, 409, jsonResp{Error: tMsg(r, "updateInProgress")})
 		return
 	}
-	defer atomic.StoreInt32(&updateInProgress, 0)
 
 	currentVersion := s.version
 	if currentVersion == "" {
 		currentVersion = "dev"
 	}
 
-	rel, err := fetchLatestRelease()
-	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_fetch_failed") + ": " + err.Error()})
-		return
-	}
+	// Launch the update in background.
+	go func() {
+		defer atomic.StoreInt32(&updateInProgress, 0)
 
-	asset := findAsset(rel)
-	if asset == nil {
-		writeJSON(w, 404, jsonResp{Error: tMsg(r, "update_asset_not_found")})
-		return
-	}
+		setUpdateState(updateState{Status: "downloading", Progress: 0, Message: tStatic("updateDownloadProgress")})
 
-	// Download + verify SHA256.
-	tmpPath, err := downloadAndVerifyAsset(asset.BrowserDownloadURL, asset.Name)
-	if err != nil {
-		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_download_failed") + ": " + err.Error()})
-		return
-	}
-	defer os.Remove(tmpPath)
-
-	info, err := os.Stat(tmpPath)
-	if err != nil || info.Size() == 0 {
-		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_download_failed")})
-		return
-	}
-
-	if err := selfReplace(tmpPath); err != nil {
-		errStr := err.Error()
-		// Provide platform-specific guidance for common failures.
-		if strings.Contains(errStr, "permission denied") {
-			writeJSON(w, 403, jsonResp{Error: tMsg(r, "update_permission_denied")})
+		rel, err := fetchLatestRelease()
+		if err != nil {
+			setUpdateState(updateState{Status: "error", Error: tStatic("update_fetch_failed") + ": " + err.Error()})
 			return
 		}
-		if runtime.GOOS == "windows" && (strings.Contains(errStr, "being used by another process") || strings.Contains(errStr, "Access is denied") || strings.Contains(errStr, "cannot replace running binary")) {
-			writeJSON(w, 409, jsonResp{Error: tMsg(r, "update_windows_locked")})
+
+		asset := findAsset(rel)
+		if asset == nil {
+			setUpdateState(updateState{Status: "error", Error: tStatic("update_asset_not_found")})
 			return
 		}
-		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_install_failed") + ": " + errStr})
-		return
-	}
+
+		// Download with progress tracking.
+		tmpPath, err := downloadAsset(asset.BrowserDownloadURL, asset.Size, func(downloaded, total int64) {
+			pct := 0
+			if total > 0 {
+				pct = int(float64(downloaded) / float64(total) * 100)
+			}
+			if pct > 99 {
+				pct = 99
+			}
+			setUpdateState(updateState{Status: "downloading", Progress: pct, Message: tStatic("updateDownloadProgress")})
+		})
+		if err != nil {
+			setUpdateState(updateState{Status: "error", Error: tStatic("update_download_failed") + ": " + err.Error()})
+			return
+		}
+		defer os.Remove(tmpPath)
+
+		info, err := os.Stat(tmpPath)
+		if err != nil || info.Size() == 0 {
+			setUpdateState(updateState{Status: "error", Error: tStatic("update_download_failed")})
+			return
+		}
+
+		// Verify SHA256.
+		setUpdateState(updateState{Status: "verifying", Progress: 100, Message: tStatic("updateVerifying")})
+		sumsURL := asset.BrowserDownloadURL[:strings.LastIndex(asset.BrowserDownloadURL, "/")+1] + "SHA256SUMS"
+		sumsOK, verifyErr := verifySHA256(tmpPath, asset.Name, sumsURL)
+		if !sumsOK {
+			if verifyErr == errNoChecksum {
+				fmt.Fprintf(os.Stderr, "WARNING: %s\n", tStatic("updateNoChecksum"))
+			} else {
+				setUpdateState(updateState{Status: "error", Error: tStatic("updateVerifyFailed") + ": " + verifyErr.Error()})
+				return
+			}
+		}
+
+		// Install.
+		setUpdateState(updateState{Status: "installing", Progress: 100, Message: tStatic("updateInstalling")})
+		if err := selfReplace(tmpPath); err != nil {
+			errStr := err.Error()
+			msg := tStatic("update_install_failed") + ": " + errStr
+			if strings.Contains(errStr, "permission denied") {
+				msg = tStatic("update_permission_denied")
+			} else if runtime.GOOS == "windows" && (strings.Contains(errStr, "being used by another process") || strings.Contains(errStr, "Access is denied") || strings.Contains(errStr, "cannot replace running binary")) {
+				msg = tStatic("update_windows_locked")
+			}
+			setUpdateState(updateState{Status: "error", Error: msg})
+			return
+		}
+
+		newVersion := strings.TrimPrefix(rel.TagName, "v")
+		setUpdateState(updateState{
+			Status:      "done",
+			Progress:    100,
+			PrevVersion: currentVersion,
+			NewVersion:  newVersion,
+			Message:     tStatic("updateSuccess"),
+		})
+	}()
 
 	writeJSON(w, 200, jsonResp{
-		Message: "updated",
+		Message: "update_started",
 		Data: map[string]interface{}{
-			"previousVersion": currentVersion,
-			"newVersion":      strings.TrimPrefix(rel.TagName, "v"),
+			"status":   "downloading",
+			"message":  tMsg(r, "updateDownloadProgress"),
+			"progress": 0,
 		},
 	})
+}
+
+// adminUpdateStatus handles GET /api/admin/update/status
+// Returns the current async update progress for polling.
+func (s *Server) adminUpdateStatus(w http.ResponseWriter, r *http.Request, user *db.User) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+		return
+	}
+
+	st := getUpdateState()
+	writeJSON(w, 200, jsonResp{Data: st})
 }
 
 // adminRestartUpdate handles POST /api/admin/update/restart

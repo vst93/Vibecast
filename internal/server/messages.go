@@ -80,6 +80,10 @@ var messageMap = map[string]map[string]string{
 	"updateVerifyFailed":      {"en": "Checksum verification failed", "zh": "校验和验证失败"},
 	"updateNoChecksum":        {"en": "No checksum available (skipped verification)", "zh": "无校验和（已跳过验证）"},
 	"updateDownloadProgress":  {"en": "Downloading", "zh": "下载中"},
+	"updateVerifying":         {"en": "Verifying checksum...", "zh": "正在校验..."},
+	"updateInstalling":        {"en": "Installing...", "zh": "正在安装..."},
+	"updatePreparing":         {"en": "Preparing update...", "zh": "准备更新..."},
+	"updateDownloaded":        {"en": "Download complete", "zh": "下载完成"},
 	// organizations
 	"already_in_org":          {"en": "You are already in an organization. Leave or delete it first.", "zh": "你已在组织中，请先退出或删除当前组织"},
 	"create_org_failed":       {"en": "Failed to create organization", "zh": "创建组织失败"},

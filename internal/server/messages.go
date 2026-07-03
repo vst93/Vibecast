@@ -181,6 +181,28 @@ var cliMessages = map[string]map[string]string{
 	"cli_dl_failed":     {"en": "download failed", "zh": "下载失败"},
 	"cli_install_failed": {"en": "installation failed", "zh": "安装失败"},
 	"cli_empty_file":    {"en": "downloaded file is empty or invalid", "zh": "下载的文件为空或无效"},
+	// service subcommand
+	"svc_windows_unsupported": {"en": "Service management is not supported on Windows. Please register Vibecast as a Windows Service manually or use Task Scheduler.", "zh": "Windows 不支持服务管理。请手动注册为 Windows 服务或使用任务计划程序。"},
+	"svc_windows_hint":        {"en": "Hint: You can use nssm (https://nssm.cc) to register vibecast as a Windows service.", "zh": "提示：可以使用 nssm (https://nssm.cc) 将 vibecast 注册为 Windows 服务。"},
+	"svc_unsupported":         {"en": "Service management is not supported on this platform", "zh": "此平台不支持服务管理"},
+	"svc_installing":          {"en": "Installing service", "zh": "正在安装服务"},
+	"svc_install_failed":      {"en": "Service installation failed", "zh": "服务安装失败"},
+	"svc_installed":           {"en": "Service installed and started", "zh": "服务已安装并启动"},
+	"svc_stopped":             {"en": "Service stopped", "zh": "服务已停止"},
+	"svc_restarted":           {"en": "Service restarted", "zh": "服务已重启"},
+	"svc_uninstalled":         {"en": "Service uninstalled", "zh": "服务已卸载"},
+	"svc_unknown_action":     {"en": "Unknown service action", "zh": "未知服务操作"},
+	"svc_status_cmd":         {"en": "check service status", "zh": "查看服务状态"},
+	"svc_stop_cmd":           {"en": "stop service", "zh": "停止服务"},
+	"svc_restart_cmd":        {"en": "restart service", "zh": "重启服务"},
+	"svc_uninstall_cmd":      {"en": "uninstall service", "zh": "卸载服务"},
+	"svc_usage":              {"en": "Usage: vibecast service <action>", "zh": "用法: vibecast service <操作>"},
+	"svc_install_desc":      {"en": "install and start the service", "zh": "安装并启动服务"},
+	"svc_status_desc":       {"en": "check service status", "zh": "查看服务状态"},
+	"svc_stop_desc":          {"en": "stop the service", "zh": "停止服务"},
+	"svc_restart_desc":       {"en": "restart the service", "zh": "重启服务"},
+	"svc_uninstall_desc":    {"en": "stop and remove the service", "zh": "停止并删除服务"},
+	"cli_service_cmd":       {"en": "manage system service (install/status/stop/restart/uninstall)", "zh": "管理系统服务（安装/状态/停止/重启/卸载）"},
 }
 
 // TCLIMsg returns a CLI-specific message (from cliMessages) based on timezone.

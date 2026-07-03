@@ -103,10 +103,8 @@ func fetchLatestRelease() (*releaseInfo, error) {
 func findAsset(rel *releaseInfo) *asset {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
-	prefix := fmt.Sprintf("vibecast-%s-%s", rel.TagName, goos)
-	if goos == "windows" {
-		prefix += ".exe"
-	}
+	// Expected name: vibecast-{version}-{os}-{arch}[.exe]
+	prefix := fmt.Sprintf("vibecast-%s-%s-%s", rel.TagName, goos, goarch)
 	for i, a := range rel.Assets {
 		if a.Name == prefix || strings.HasPrefix(a.Name, prefix) {
 			return &rel.Assets[i]
@@ -306,12 +304,45 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// compareVersions compares two version strings (semantic versioning).
+// compareVersions compares two version strings.
+// Supports both semantic versioning (1.2.3) and date-based versioning (YYYYMMDD-N).
 // Returns: 1 if a > b, -1 if a < b, 0 if equal.
 func compareVersions(a, b string) int {
 	a = strings.TrimLeft(a, "vV ")
 	b = strings.TrimLeft(b, "vV ")
 
+	// Date-based format: YYYYMMDD-N (e.g. "20260703-6")
+	// Split on '-' and compare date first, then suffix number.
+	if strings.Contains(a, "-") || strings.Contains(b, "-") {
+		partsA := strings.SplitN(a, "-", 2)
+		partsB := strings.SplitN(b, "-", 2)
+		var dateA, dateB int
+		fmt.Sscanf(partsA[0], "%d", &dateA)
+		fmt.Sscanf(partsB[0], "%d", &dateB)
+		if dateA != dateB {
+			if dateA > dateB {
+				return 1
+			}
+			return -1
+		}
+		// Same date — compare suffix number (default 0 if no suffix).
+		var subA, subB int
+		if len(partsA) > 1 {
+			fmt.Sscanf(partsA[1], "%d", &subA)
+		}
+		if len(partsB) > 1 {
+			fmt.Sscanf(partsB[1], "%d", &subB)
+		}
+		if subA > subB {
+			return 1
+		}
+		if subA < subB {
+			return -1
+		}
+		return 0
+	}
+
+	// Semantic versioning: split on '.'
 	partsA := strings.Split(a, ".")
 	partsB := strings.Split(b, ".")
 
@@ -423,7 +454,10 @@ func (s *Server) adminCheckUpdate(w http.ResponseWriter, r *http.Request, user *
 
 	latestVersion := strings.TrimPrefix(rel.TagName, "v")
 	updateAvailable := false
-	if currentVersion != "dev" {
+	if currentVersion == "dev" {
+		// Dev builds can always update to a release.
+		updateAvailable = true
+	} else {
 		updateAvailable = compareVersions(latestVersion, currentVersion) > 0
 	}
 

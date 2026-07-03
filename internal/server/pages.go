@@ -708,7 +708,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:
 input[type=password]{width:100%%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;margin-bottom:.8rem;outline:none;background:var(--ink);color:var(--text)}
 input[type=password]:focus{border-color:var(--accent)}
 input[type=password]::placeholder{color:var(--placeholder)}
-.pwd-wrap{position:relative;display:flex;align-items:center}.pwd-wrap input{padding-right:38px}.pwd-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:5px;color:var(--dim);padding:0}.pwd-toggle:hover{color:var(--text)}.pwd-toggle svg{width:16px;height:16px;flex-shrink:0}
+.pwd-wrap{position:relative;display:flex;align-items:center}.pwd-wrap input{padding-right:38px}.pwd-toggle{position:absolute;right:8px;top:50%%;transform:translateY(-50%%);background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:5px;color:var(--dim);padding:0}.pwd-toggle:hover{color:var(--text)}.pwd-toggle svg{width:16px;height:16px;flex-shrink:0}
 button{width:100%%;padding:10px;background:var(--accent);color:var(--ink);border:none;border-radius:6px;font-family:var(--mono);font-size:.85rem;font-weight:700;cursor:pointer}
 button:hover{background:var(--accent-dim)}
 .err{color:var(--danger);margin-bottom:.8rem;font-size:.8rem;font-family:var(--mono)}

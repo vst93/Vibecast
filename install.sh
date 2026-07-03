@@ -59,21 +59,36 @@ case "$ARCH" in
   *) error "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-# If version not specified, get latest release tag
+# If version not specified, get latest release tag.
+# API calls: try DIRECT first (mirrors return 403 on api.github.com),
+# then fall back to mirrors.
 if [[ -z "$VERSION" ]]; then
   info "Fetching latest release..."
   API_URL="https://api.github.com/repos/${REPO}/releases/latest"
-  for mirror in "${MIRRORS[@]}"; do
-    url="${mirror}${API_URL}"
-    if command -v curl &>/dev/null; then
-      VERSION=$(curl -fsSL --connect-timeout 10 "$url" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-    else
-      VERSION=$(wget -qO- --timeout=10 "$url" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-    fi
-    if [[ -n "$VERSION" ]]; then
-      break
-    fi
-  done
+
+  # Direct first
+  if command -v curl &>/dev/null; then
+    VERSION=$(curl -fsSL --connect-timeout 10 "$API_URL" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+  else
+    VERSION=$(wget -qO- --timeout=10 "$API_URL" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+  fi
+
+  # Fallback to mirrors if direct failed
+  if [[ -z "$VERSION" ]]; then
+    for mirror in "${MIRRORS[@]}"; do
+      [[ -z "$mirror" ]] && continue  # skip empty (already tried direct above)
+      url="${mirror}${API_URL}"
+      if command -v curl &>/dev/null; then
+        VERSION=$(curl -fsSL --connect-timeout 10 "$url" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+      else
+        VERSION=$(wget -qO- --timeout=10 "$url" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+      fi
+      if [[ -n "$VERSION" ]]; then
+        break
+      fi
+    done
+  fi
+
   if [[ -z "$VERSION" ]]; then
     error "Could not determine latest version. Specify with --version."
     exit 1
@@ -116,6 +131,41 @@ if [[ "$downloaded" != "true" ]] || [[ ! -s "$TMP_FILE" ]]; then
   exit 1
 fi
 
+# Verify SHA256 checksum (if SHA256SUMS is available for this release)
+SUMS_URL="https://github.com/${REPO}/releases/download/${VERSION}/SHA256SUMS"
+sums_ok=false
+for mirror in "${MIRRORS[@]}"; do
+  url="${mirror}${SUMS_URL}"
+  if command -v curl &>/dev/null; then
+    SUMS_DATA=$(curl -fsSL --connect-timeout 10 "$url" 2>/dev/null) || true
+  else
+    SUMS_DATA=$(wget -qO- --timeout=10 "$url" 2>/dev/null) || true
+  fi
+  if [[ -n "$SUMS_DATA" ]]; then
+    sums_ok=true
+    break
+  fi
+done
+
+if [[ "$sums_ok" == "true" ]]; then
+  EXPECTED_HASH=$(echo "$SUMS_DATA" | grep "$ASSET_NAME" | awk '{print $1}')
+  if [[ -n "$EXPECTED_HASH" ]]; then
+    ACTUAL_HASH=$(sha256sum "$TMP_FILE" | awk '{print $1}')
+    if [[ "${ACTUAL_HASH,,}" != "${EXPECTED_HASH,,}" ]]; then
+      error "Checksum mismatch!"
+      error "  Expected: $EXPECTED_HASH"
+      error "  Got:      $ACTUAL_HASH"
+      rm -f "$TMP_FILE"
+      exit 1
+    fi
+    info "Checksum verified"
+  else
+    warn "Asset not found in SHA256SUMS, skipping verification"
+  fi
+else
+  warn "No SHA256SUMS found, skipping verification"
+fi
+
 chmod +x "$TMP_FILE"
 
 # Install
@@ -135,5 +185,7 @@ echo "Quick start:"
 echo "  vibecast                          # run with defaults"
 echo "  vibecast --addr :3000             # custom port"
 echo "  vibecast --storage /var/lib/vibecast/sites --db /var/lib/vibecast/vibecast.db"
+echo ""
+echo "  vibecast update                   # check and apply updates"
 echo ""
 echo "Then open http://localhost:8080/dashboard"

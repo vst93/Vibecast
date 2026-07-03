@@ -9,27 +9,27 @@ import (
 	"strings"
 )
 
-// --- Service management for `vibecast service` subcommand ---
+// --- Service registration (Hermes-style) ---
 //
-// Supported platforms:
-//   - Linux: systemd
-//   - macOS: launchd
-//   - Windows: not supported (user must register as a Windows Service manually)
+// `vibecast setup` writes a service unit file and enables it. After that,
+// the user manages the service with standard system commands:
 //
-// The service runs vibecast with the same flags the user specified at
-// registration time, so the binary path, addr, storage, and db are all
-// captured into the service unit file.
+//   Linux:   systemctl --user status/stop/restart vibecast
+//   macOS:   launchctl list/stop/start com.vibecast
+//
+// Only `setup` (install) and `uninstall` are handled here — no wrapper
+// commands for status/stop/restart. The user already knows systemctl.
+//
+// Windows is not supported; the user is told to use nssm or Task Scheduler.
 
-// serviceConfig holds the resolved binary path and flags to pass to the
-// service unit.
+// serviceConfig holds the resolved binary path and flags for the service unit.
 type serviceConfig struct {
-	exePath    string // absolute path to the vibecast binary
+	exePath    string
 	addr       string
 	storageDir string
 	dbPath     string
 }
 
-// resolveServiceConfig builds a serviceConfig from the CLI flags.
 func resolveServiceConfig(addr, storageDir, dbPath string) (*serviceConfig, error) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -47,87 +47,101 @@ func resolveServiceConfig(addr, storageDir, dbPath string) (*serviceConfig, erro
 	}, nil
 }
 
-// --- systemd (Linux) ---
+// --- systemd user service (Linux) ---
 
 const systemdUnitTemplate = `[Unit]
 Description=Vibecast Static Site Hosting
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 ExecStart=%s --addr %s --storage %s --db %s
+WorkingDirectory=%s
 Restart=on-failure
 RestartSec=5
-WorkingDirectory=%s
+StandardOutput=journal
+StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 `
 
 const systemdUnitName = "vibecast.service"
-const systemdUnitPath = "/etc/systemd/system/" + systemdUnitName
 
-func systemdInstall(cfg *serviceConfig) error {
-	// Resolve working directory (parent of the binary or /opt/vibecast).
+func systemdUserDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "systemd", "user")
+}
+
+func systemdUnitPath() string {
+	return filepath.Join(systemdUserDir(), systemdUnitName)
+}
+
+func systemdSetup(cfg *serviceConfig) error {
+	dir := systemdUserDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create systemd user dir: %w", err)
+	}
+
 	workDir := filepath.Dir(cfg.exePath)
-
 	unit := fmt.Sprintf(systemdUnitTemplate,
 		cfg.exePath, cfg.addr, cfg.storageDir, cfg.dbPath, workDir)
 
-	if err := writeFileAsRoot(systemdUnitPath, unit); err != nil {
+	unitPath := systemdUnitPath()
+	if err := os.WriteFile(unitPath, []byte(unit), 0644); err != nil {
 		return fmt.Errorf("write unit file: %w", err)
 	}
 
-	// systemctl daemon-reload + enable + start
-	for _, cmd := range [][]string{
-		{"systemctl", "daemon-reload"},
-		{"systemctl", "enable", "vibecast"},
-		{"systemctl", "start", "vibecast"},
+	// Enable linger so the user service survives logout.
+	enableLinger()
+
+	// daemon-reload + enable --now
+	for _, args := range [][]string{
+		{"--user", "daemon-reload"},
+		{"--user", "enable", "--now", "vibecast"},
 	} {
-		if out, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
-			return fmt.Errorf("%s: %w (%s)", strings.Join(cmd, " "), err, strings.TrimSpace(string(out)))
+		if out, err := exec.Command("systemctl", args...).CombinedOutput(); err != nil {
+			return fmt.Errorf("systemctl %s: %w (%s)",
+				strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 		}
 	}
 	return nil
 }
 
-func systemdStatus() error {
-	cmd := exec.Command("systemctl", "status", "vibecast", "--no-pager")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run() // exit code conveys status
-	return nil
-}
-
-func systemdStop() error {
-	if out, err := exec.Command("systemctl", "stop", "vibecast").CombinedOutput(); err != nil {
-		return fmt.Errorf("stop: %w (%s)", err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func systemdRestart() error {
-	if out, err := exec.Command("systemctl", "restart", "vibecast").CombinedOutput(); err != nil {
-		return fmt.Errorf("restart: %w (%s)", err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func systemdUninstall() error {
-	// Stop + disable first
-	for _, cmd := range [][]string{
-		{"systemctl", "stop", "vibecast"},
-		{"systemctl", "disable", "vibecast"},
+func systemdTeardown() error {
+	// stop + disable (ignore errors if not running/installed)
+	for _, args := range [][]string{
+		{"--user", "stop", "vibecast"},
+		{"--user", "disable", "vibecast"},
 	} {
-		_ = exec.Command(cmd[0], cmd[1:]...).Run() // ignore errors if not running
+		_ = exec.Command("systemctl", args...).Run()
 	}
-	// Remove the unit file
-	if err := removeFileAsRoot(systemdUnitPath); err != nil {
+	// remove unit file
+	unitPath := systemdUnitPath()
+	if err := os.Remove(unitPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove unit file: %w", err)
 	}
 	// daemon-reload
-	_ = exec.Command("systemctl", "daemon-reload").Run()
+	_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
 	return nil
+}
+
+// enableLinger enables systemd linger for the current user so user services
+// survive logout. Uses loginctl; ignores failure (not all systems have it).
+func enableLinger() {
+	user := os.Getenv("USER")
+	if user == "" {
+		user = os.Getenv("LOGNAME")
+	}
+	if user == "" {
+		return
+	}
+	// loginctl enable-linger may need sudo on some systems; try without first.
+	if err := exec.Command("loginctl", "enable-linger", user).Run(); err != nil {
+		// Try with sudo
+		_ = exec.Command("sudo", "loginctl", "enable-linger", user).Run()
+	}
 }
 
 // --- launchd (macOS) ---
@@ -165,102 +179,45 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 const launchdLabel = "com.vibecast"
 const launchdPlistPath = "/Library/LaunchDaemons/com.vibecast.plist"
 
-func launchdInstall(cfg *serviceConfig) error {
+func launchdSetup(cfg *serviceConfig) error {
 	workDir := filepath.Dir(cfg.exePath)
-
 	plist := fmt.Sprintf(launchdPlistTemplate,
 		cfg.exePath, cfg.addr, cfg.storageDir, cfg.dbPath, workDir)
 
 	if err := writeFileAsRoot(launchdPlistPath, plist); err != nil {
 		return fmt.Errorf("write plist: %w", err)
 	}
-
-	// load + start
 	if out, err := exec.Command("launchctl", "load", launchdPlistPath).CombinedOutput(); err != nil {
 		return fmt.Errorf("launchctl load: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
-func launchdStatus() error {
-	// launchctl list prints all loaded services; grep for our label
-	out, err := exec.Command("launchctl", "list").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("launchctl list: %w", err)
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.Contains(line, launchdLabel) {
-			fmt.Println(line)
-			// Also show recent log
-			if logData, err := os.ReadFile("/tmp/vibecast.log"); err == nil && len(logData) > 0 {
-				lines := strings.Split(string(logData), "\n")
-				start := len(lines) - 15
-				if start < 0 {
-					start = 0
-				}
-				fmt.Println("\n--- Recent log ---")
-				for _, l := range lines[start:] {
-					if l != "" {
-						fmt.Println(l)
-					}
-				}
-			}
-			return nil
-		}
-	}
-	fmt.Println("Vibecast service is not loaded.")
-	return nil
-}
-
-func launchdStop() error {
-	if out, err := exec.Command("launchctl", "unload", launchdPlistPath).CombinedOutput(); err != nil {
-		return fmt.Errorf("launchctl unload: %w (%s)", err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func launchdRestart() error {
-	// unload then load
+func launchdTeardown() error {
 	_ = exec.Command("launchctl", "unload", launchdPlistPath).Run()
-	if out, err := exec.Command("launchctl", "load", launchdPlistPath).CombinedOutput(); err != nil {
-		return fmt.Errorf("launchctl load: %w (%s)", err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func launchdUninstall() error {
-	// unload first
-	_ = exec.Command("launchctl", "unload", launchdPlistPath).Run()
-	// remove plist
 	if err := removeFileAsRoot(launchdPlistPath); err != nil {
 		return fmt.Errorf("remove plist: %w", err)
 	}
 	return nil
 }
 
-// --- helpers for root-owned file operations ---
+// --- root-owned file helpers (macOS only; Linux uses user-level dir) ---
 
-// writeFileAsRoot writes content to a path, using sudo if the current user
-// is not root. On Linux/macOS, service unit files live in /etc or /Library
-// which require root.
 func writeFileAsRoot(path, content string) error {
 	if os.Geteuid() == 0 {
 		return os.WriteFile(path, []byte(content), 0644)
 	}
-	// Use tee via sudo to write the file content
 	cmd := exec.Command("sudo", "tee", path)
 	cmd.Stdin = strings.NewReader(content)
-	cmd.Stdout = os.Stdout // suppress
+	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	// Set permissions
 	_ = exec.Command("sudo", "chmod", "644", path).Run()
 	return nil
 }
 
-// removeFileAsRoot removes a file, using sudo if not root.
 func removeFileAsRoot(path string) error {
 	if os.Geteuid() == 0 {
 		return os.Remove(path)
@@ -271,12 +228,10 @@ func removeFileAsRoot(path string) error {
 	return nil
 }
 
-// --- RunServiceCLI is called from main.go when `vibecast service` is invoked ---
+// --- RunSetupCLI handles `vibecast setup` (install service) ---
+// --- RunUninstallCLI handles `vibecast uninstall` (remove service) ---
 
-// RunServiceCLI handles the `vibecast service <action>` subcommand.
-// Actions: install, status, stop, restart, uninstall
-// The install action captures the current --addr, --storage, --db flags.
-func RunServiceCLI(action, addr, storageDir, dbPath string) error {
+func RunSetupCLI(addr, storageDir, dbPath string) error {
 	if runtime.GOOS == "windows" {
 		fmt.Println("⚠ " + TCLIMsg("svc_windows_unsupported"))
 		fmt.Println()
@@ -284,95 +239,60 @@ func RunServiceCLI(action, addr, storageDir, dbPath string) error {
 		return nil
 	}
 
-	switch action {
-	case "install":
-		cfg, err := resolveServiceConfig(addr, storageDir, dbPath)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s: %s\n", TCLIMsg("svc_installing"), cfg.exePath)
-		fmt.Printf("  --addr %s --storage %s --db %s\n", cfg.addr, cfg.storageDir, cfg.dbPath)
-		fmt.Println()
-
-		switch runtime.GOOS {
-		case "linux":
-			if err := systemdInstall(cfg); err != nil {
-				return fmt.Errorf("%s: %w", TCLIMsg("svc_install_failed"), err)
-			}
-		case "darwin":
-			if err := launchdInstall(cfg); err != nil {
-				return fmt.Errorf("%s: %w", TCLIMsg("svc_install_failed"), err)
-			}
-		default:
-			return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
-		}
-
-		fmt.Printf("✓ %s\n", TCLIMsg("svc_installed"))
-		fmt.Printf("  vibecast service status   # %s\n", TCLIMsg("svc_status_cmd"))
-		fmt.Printf("  vibecast service stop     # %s\n", TCLIMsg("svc_stop_cmd"))
-		fmt.Printf("  vibecast service restart  # %s\n", TCLIMsg("svc_restart_cmd"))
-		fmt.Printf("  vibecast service uninstall # %s\n", TCLIMsg("svc_uninstall_cmd"))
-		return nil
-
-	case "status":
-		switch runtime.GOOS {
-		case "linux":
-			return systemdStatus()
-		case "darwin":
-			return launchdStatus()
-		default:
-			return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
-		}
-
-	case "stop":
-		switch runtime.GOOS {
-		case "linux":
-			if err := systemdStop(); err != nil {
-				return err
-			}
-		case "darwin":
-			if err := launchdStop(); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
-		}
-		fmt.Printf("✓ %s\n", TCLIMsg("svc_stopped"))
-		return nil
-
-	case "restart":
-		switch runtime.GOOS {
-		case "linux":
-			if err := systemdRestart(); err != nil {
-				return err
-			}
-		case "darwin":
-			if err := launchdRestart(); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
-		}
-		fmt.Printf("✓ %s\n", TCLIMsg("svc_restarted"))
-		return nil
-
-	case "uninstall":
-		switch runtime.GOOS {
-		case "linux":
-			if err := systemdUninstall(); err != nil {
-				return err
-			}
-		case "darwin":
-			if err := launchdUninstall(); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
-		}
-		fmt.Printf("✓ %s\n", TCLIMsg("svc_uninstalled"))
-		return nil
-
-	default:
-		return fmt.Errorf("%s: %s", TCLIMsg("svc_unknown_action"), action)
+	cfg, err := resolveServiceConfig(addr, storageDir, dbPath)
+	if err != nil {
+		return err
 	}
+
+	fmt.Printf("%s: %s\n", TCLIMsg("svc_installing"), cfg.exePath)
+	fmt.Printf("  --addr %s --storage %s --db %s\n", cfg.addr, cfg.storageDir, cfg.dbPath)
+	fmt.Println()
+
+	switch runtime.GOOS {
+	case "linux":
+		if err := systemdSetup(cfg); err != nil {
+			return fmt.Errorf("%s: %w", TCLIMsg("svc_install_failed"), err)
+		}
+	case "darwin":
+		if err := launchdSetup(cfg); err != nil {
+			return fmt.Errorf("%s: %w", TCLIMsg("svc_install_failed"), err)
+		}
+	default:
+		return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
+	}
+
+	fmt.Printf("✓ %s\n", TCLIMsg("svc_installed"))
+	fmt.Println()
+	// Tell the user how to manage the service with standard commands.
+	if runtime.GOOS == "linux" {
+		fmt.Println(TCLIMsg("svc_manage_hint_linux"))
+	} else if runtime.GOOS == "darwin" {
+		fmt.Println(TCLIMsg("svc_manage_hint_macos"))
+	}
+	fmt.Println()
+	fmt.Printf("  vibecast uninstall  # %s\n", TCLIMsg("svc_uninstall_cmd"))
+	return nil
+}
+
+func RunUninstallCLI() error {
+	if runtime.GOOS == "windows" {
+		fmt.Println("⚠ " + TCLIMsg("svc_windows_unsupported"))
+		return nil
+	}
+
+	switch runtime.GOOS {
+	case "linux":
+		if err := systemdTeardown(); err != nil {
+			return fmt.Errorf("%s: %w", TCLIMsg("svc_uninstall_failed"), err)
+		}
+	case "darwin":
+		if err := launchdTeardown(); err != nil {
+			return fmt.Errorf("%s: %w", TCLIMsg("svc_uninstall_failed"), err)
+		}
+	default:
+		return fmt.Errorf("%s", TCLIMsg("svc_unsupported"))
+	}
+
+	fmt.Printf("✓ %s\n", TCLIMsg("svc_uninstalled"))
+	return nil
 }

@@ -27,7 +27,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n%s\n", server.TCLIMsg("cli_commands"))
 		fmt.Fprintf(os.Stderr, "  version, v   %s\n", server.TCLIMsg("cli_version_cmd"))
 		fmt.Fprintf(os.Stderr, "  update       %s\n", server.TCLIMsg("cli_update_cmd"))
-		fmt.Fprintf(os.Stderr, "  service      %s\n", server.TCLIMsg("cli_service_cmd"))
+		fmt.Fprintf(os.Stderr, "  setup        %s\n", server.TCLIMsg("cli_setup_cmd"))
+		fmt.Fprintf(os.Stderr, "  uninstall    %s\n", server.TCLIMsg("cli_uninstall_cmd"))
 		fmt.Fprintf(os.Stderr, "  help, h      %s\n", server.TCLIMsg("cli_help_cmd"))
 	}
 
@@ -48,23 +49,14 @@ func main() {
 				log.Fatalf("Update failed: %v", err)
 			}
 			return
-		case "service":
-			// `vibecast service <action>` — install/status/stop/restart/uninstall
-			serviceAction := ""
-			if len(args) > 1 {
-				serviceAction = args[1]
+		case "setup":
+			if err := server.RunSetupCLI(*addr, *storageDir, *dbPath); err != nil {
+				log.Fatalf("Setup failed: %v", err)
 			}
-			if serviceAction == "" {
-				fmt.Fprintf(os.Stderr, "%s\n\n", server.TCLIMsg("svc_usage"))
-				fmt.Fprintf(os.Stderr, "  vibecast service install    # %s\n", server.TCLIMsg("svc_install_desc"))
-				fmt.Fprintf(os.Stderr, "  vibecast service status     # %s\n", server.TCLIMsg("svc_status_desc"))
-				fmt.Fprintf(os.Stderr, "  vibecast service stop       # %s\n", server.TCLIMsg("svc_stop_desc"))
-				fmt.Fprintf(os.Stderr, "  vibecast service restart    # %s\n", server.TCLIMsg("svc_restart_desc"))
-				fmt.Fprintf(os.Stderr, "  vibecast service uninstall  # %s\n", server.TCLIMsg("svc_uninstall_desc"))
-				return
-			}
-			if err := server.RunServiceCLI(serviceAction, *addr, *storageDir, *dbPath); err != nil {
-				log.Fatalf("Service: %v", err)
+			return
+		case "uninstall":
+			if err := server.RunUninstallCLI(); err != nil {
+				log.Fatalf("Uninstall failed: %v", err)
 			}
 			return
 		case "help", "h":

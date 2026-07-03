@@ -117,6 +117,24 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 
 Open `http://localhost:8080/dashboard` — the first registered user becomes admin.
 
+## CLI
+
+```
+Usage: vibecast [options] [command]
+
+Options:
+  --addr <addr>      listen address (default ":8080", env VIBECAST_ADDR)
+  --storage <dir>    site files storage directory (default "./data/sites", env VIBECAST_STORAGE)
+  --db <path>        SQLite database path (default "./data/vibecast.db", env VIBECAST_DB)
+
+Commands:
+  version, v         print version and exit
+  update             check for updates and self-update
+  help, h            show this help message
+```
+
+Run `vibecast help` to see this output at any time.
+
 ## Usage
 
 1. **Register** at `/dashboard` — first user is auto-promoted to admin
@@ -283,6 +301,24 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```
 
 打开 `http://localhost:8080/dashboard`，首个注册用户自动成为管理员。
+
+## 命令行
+
+```
+Usage: vibecast [options] [command]
+
+Options:
+  --addr <addr>      监听地址（默认 ":8080"，环境变量 VIBECAST_ADDR）
+  --storage <dir>    站点文件存储目录（默认 "./data/sites"，环境变量 VIBECAST_STORAGE）
+  --db <path>        SQLite 数据库路径（默认 "./data/vibecast.db"，环境变量 VIBECAST_DB）
+
+Commands:
+  version, v         打印版本号
+  update             检查更新并自更新
+  help, h            显示帮助信息
+```
+
+随时运行 `vibecast help` 查看此说明。
 
 ## 使用方式
 

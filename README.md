@@ -132,7 +132,7 @@ Admins can toggle open registration, disable public access, restrict email domai
 
 ```bash
 # Check and update from the command line
-vibecast update
+vibecast --update
 
 # Or update from the admin panel → System → Check for Updates
 ```
@@ -299,7 +299,7 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 
 ```bash
 # 命令行检查并更新
-vibecast update
+vibecast --update
 
 # 或在管理后台 → 系统 → 检查更新
 ```

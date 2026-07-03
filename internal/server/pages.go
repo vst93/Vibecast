@@ -9,7 +9,13 @@ import (
 const logoFavicon = `<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%22112%22%20height%3D%22112%22%20rx%3D%2224%22%20fill%3D%22%2300e5a0%22%2F%3E%3Cpolyline%20points%3D%2238%2C43%2064%2C97%2090%2C43%22%20fill%3D%22none%22%20stroke%3D%22%230a0a0c%22%20stroke-width%3D%2210%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2231%22%20r%3D%226%22%20fill%3D%22%230a0a0c%22%2F%3E%3C%2Fsvg%3E">`
 
 // logoIcon is the inline SVG logo for navbar display.
-const logoIcon = `<svg viewBox="0 0 128 128" width="20" height="20" style="vertical-align:middle;margin-right:6px"><rect x="8" y="8" width="112" height="112" rx="24" fill="#00e5a0"/><polyline points="38,43 64,97 90,43" fill="none" stroke="#0a0a0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="31" r="6" fill="#0a0a0c"/></svg>`
+const logoIcon = `<svg viewBox="0 0 128 128" width="20" height="20" style="vertical-align:middle;margin-right:6px;flex-shrink:0"><rect x="8" y="8" width="112" height="112" rx="24" fill="#00e5a0"/><polyline points="38,43 64,97 90,43" fill="none" stroke="#0a0a0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="31" r="6" fill="#0a0a0c"/></svg>`
+
+// logoIconLarge is the inline SVG logo for hero/auth display.
+const logoIconLarge = `<svg viewBox="0 0 128 128" width="48" height="48" style="vertical-align:middle;margin-right:10px;flex-shrink:0"><rect x="8" y="8" width="112" height="112" rx="24" fill="#00e5a0"/><polyline points="38,43 64,97 90,43" fill="none" stroke="#0a0a0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="31" r="6" fill="#0a0a0c"/></svg>`
+
+// logoIconMedium is the inline SVG logo for auth card display.
+const logoIconMedium = `<svg viewBox="0 0 128 128" width="32" height="32" style="vertical-align:middle;margin-right:8px;flex-shrink:0"><rect x="8" y="8" width="112" height="112" rx="24" fill="#00e5a0"/><polyline points="38,43 64,97 90,43" fill="none" stroke="#0a0a0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="31" r="6" fill="#0a0a0c"/></svg>`
 
 // Icon constants — flat stroke style (Lucide-inspired), 24x24 viewBox, stroke-width=2
 // Using display:inline-flex for proper vertical alignment inside flex containers
@@ -56,7 +62,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 .lang-toggle{position:absolute;top:1.5rem;right:1.5rem;display:flex;gap:.25rem}
 .lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:4px 10px;border-radius:5px;color:var(--dim);transition:all .15s;display:inline-flex;align-items:center;gap:.2rem}
 .lang-toggle a.active{background:var(--surface-2);color:var(--accent)}
-.lang-toggle a svg{flex-shrink:0}
+.lang-toggle a#theme-toggle{padding:4px 8px;border:1px solid transparent;border-radius:5px;transition:all .15s}.lang-toggle a#theme-toggle:hover{background:var(--surface-2);border-color:var(--line);color:var(--text)}
 @media(max-width:640px){.hero{padding:2rem 0}.hero .logo{font-size:2.2rem}.features{grid-template-columns:1fr}.wrap{padding:1.5rem 1rem}.lang-toggle{top:1rem;right:1rem}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -66,7 +72,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 <div class="lang-toggle"><a id="theme-toggle" onclick="toggleTheme()">` + iconMoon + `</a><a id="langEn" class="active" onclick="setLang('en')">EN</a><a id="langZh" onclick="setLang('zh')">中文</a></div>
 <div class="wrap">
 <div class="hero">
-<div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div>
+<div class="logo">` + logoIconLarge + `Vibe<span class="accent">cast</span></div>
 <p class="tagline" data-i="tagline">Build with vibe. Cast instantly.</p>
 <a href="dashboard" class="cta" data-i="getStarted">Get Started</a>
 <div class="features">
@@ -112,13 +118,13 @@ input,button,select{font-family:inherit}
 .navbar .logo .accent{color:var(--accent)}
 .navbar .nav-right{display:flex;align-items:center;gap:.5rem;flex-wrap:nowrap}
 .navbar .nav-right .email{font-family:var(--mono);font-size:.75rem;color:var(--dim);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.navbar .nav-right .btn-link{font-size:.8rem;cursor:pointer;color:var(--dim);background:none;border:none;white-space:nowrap;transition:color .15s}
+.navbar .nav-right .btn-link{font-size:.8rem;cursor:pointer;color:var(--dim);background:none;border:none;white-space:nowrap;transition:color .15s;display:inline-flex;align-items:center;gap:.3rem}
 .navbar .nav-right .btn-link:hover{color:var(--text)}
-.navbar .admin-link{font-size:.8rem;color:var(--warn);font-weight:600;white-space:nowrap}
+.navbar .admin-link{font-size:.8rem;color:var(--warn);font-weight:600;white-space:nowrap;display:inline-flex;align-items:center}
 .navbar .btn-icon{font-size:.8rem;cursor:pointer;color:var(--dim);background:none;border:1px solid transparent;padding:4px 8px;border-radius:5px;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:.3rem}
 .navbar .btn-icon:hover{background:var(--surface-2);border-color:var(--line);color:var(--text)}
-.navbar .btn-icon svg{flex-shrink:0}
-.lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:3px 7px;border-radius:4px;color:var(--dim);transition:all .15s;display:inline-flex;align-items:center;gap:.2rem}
+.navbar .btn-icon svg,.navbar .btn-link svg{flex-shrink:0;display:inline-flex;align-self:center}
+.lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:3px 7px;border-radius:4px;color:var(--dim);transition:all .15s;display:inline-flex;align-items:center;gap:.2rem;height:26px}
 .lang-toggle a.active{background:var(--surface-2);color:var(--accent)}
 .lang-toggle a svg{flex-shrink:0}
 .container{max-width:1280px;margin:1.5rem auto;padding:0 1.5rem}
@@ -251,7 +257,7 @@ input,button,select{font-family:inherit}
 .org-bound-right{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
 /* Mobile: fold to single column — must come AFTER base rules to win cascade */
 .org-mobile-toggle{display:none}
-@media(max-width:768px){.org-bound{grid-template-columns:1fr!important}.org-bound-left{border-right:none;border-bottom:1px solid var(--line)}.org-empty{grid-template-columns:1fr!important}.org-empty-panel:first-child{border-right:none;border-bottom:1px solid var(--line)}.modal-lg{max-width:calc(100vw - 2rem)!important}.org-mobile-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:.5rem 0;margin:-.5rem 0 0}.org-bound-detail{display:block}.org-collapsed .org-bound-detail{display:none}.org-toggle-chevron{transition:transform .2s;flex-shrink:0;color:var(--dim)}.org-collapsed .org-toggle-chevron{transform:rotate(-90deg)}}
+@media(max-width:768px){.org-bound{grid-template-columns:1fr!important}.org-bound-left{border-right:none;border-bottom:1px solid var(--line)}.org-empty{grid-template-columns:1fr!important}.org-empty-panel:first-child{border-right:none;border-bottom:1px solid var(--line)}.modal-lg{max-width:calc(100vw - 2rem)!important}.org-mobile-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:.5rem 0;margin:-.5rem 0 0}.org-bound-detail{display:block}.org-collapsed .org-bound-detail{display:none}.org-collapsed .org-bound-right{display:none}.org-toggle-chevron{transition:transform .2s;flex-shrink:0;color:var(--dim)}.org-collapsed .org-toggle-chevron{transform:rotate(-90deg)}}
 @media(max-width:640px){.org-bound-left{padding:1rem}.org-bound-right{padding:1rem}.org-empty-panel{padding:1rem}.modal-lg{max-width:calc(100vw - 1rem)!important;padding:1rem!important}#org-modal .modal{max-height:90vh}}
 .org-header{display:flex;align-items:center;gap:.6rem}
 .org-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dim));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1rem;font-weight:700;color:#fff;flex-shrink:0}
@@ -338,7 +344,7 @@ else{registerCaptchaId=d.data.id;var el=document.getElementById("register-captch
 }
 function renderAuth(){
 var lh='<div class="lang-toggle" style="position:absolute;top:1rem;right:1rem"><a id="theme-toggle" onclick="toggleTheme()">'+(getTheme()==="dark"?'` + iconSun + `':'` + iconMoon + `')+'</a><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML=lh+'<div class="auth-screen"><div class="auth-card"><h1>` + logoIcon + `Vibe<span class="accent">cast</span></h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
+document.getElementById("app").innerHTML=lh+'<div class="auth-screen"><div class="auth-card"><h1>` + logoIconMedium + `Vibe<span class="accent">cast</span></h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){regOpen=d.data&&d.data.openRegistration!==false;showLogin()}).catch(function(){regOpen=true;showLogin()});
 }
 function showLogin(){
@@ -494,7 +500,7 @@ var name=orgInfo.name||"";
 var isOwner=orgInfo.isOwner||false;
 var initials=name.substring(0,2).toUpperCase();
 var roleBadge=isOwner?'<span class="org-role-badge owner">'+t("orgOwner")+'</span>':'<span class="org-role-badge member">'+t("orgMember")+'</span>';
-var h='<div class="org-bound"><div class="org-bound-left"><div class="org-mobile-toggle" onclick="var el=this.parentElement;el.classList.toggle(\"org-collapsed\")"><div class="org-header"><div class="org-avatar">'+esc(initials)+'</div><div><div class="org-title">'+esc(name)+'</div>'+roleBadge+'</div></div><svg class="org-toggle-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div><div class="org-bound-detail">';
+var h='<div class="org-bound"><div class="org-bound-left"><div class="org-mobile-toggle" onclick="var el=this.closest(\'.org-bound\');el.classList.toggle(\'org-collapsed\')"><div class="org-header"><div class="org-avatar">'+esc(initials)+'</div><div><div class="org-title">'+esc(name)+'</div>'+roleBadge+'</div></div><svg class="org-toggle-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div><div class="org-bound-detail">';
 if(isOwner){h+='<div class="org-invite-box"><label>'+t("orgInviteCode")+'</label><div class="org-invite-row"><code class="org-invite-code">'+esc(inviteCode)+'</code><button class="org-copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'+t("copy")+'</button></div></div>'}
 h+='<div class="org-actions-row">';
 if(isOwner){h+='<button class="btn btn-danger btn-sm" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}
@@ -565,11 +571,15 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:
 a{color:var(--accent);text-decoration:none}
 button{font-family:inherit;cursor:pointer}
 .navbar{display:flex;justify-content:space-between;align-items:center;padding:0 1rem;height:52px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:100}
-.navbar .logo{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--warn)}
-.navbar .nav-right{display:flex;align-items:center;gap:.75rem}
-.navbar .nav-right .btn-link{font-size:.8rem;cursor:pointer;color:var(--dim);background:none;border:none;transition:color .15s}
+.navbar .logo{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--warn);display:inline-flex;align-items:center}
+.navbar .logo .accent{color:var(--accent)}
+.navbar .nav-right{display:flex;align-items:center;gap:.5rem;flex-wrap:nowrap}
+.navbar .nav-right .btn-link{font-size:.8rem;cursor:pointer;color:var(--dim);background:none;border:none;transition:color .15s;display:inline-flex;align-items:center;gap:.3rem}
 .navbar .nav-right .btn-link:hover{color:var(--text)}
-.lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:3px 7px;border-radius:4px;color:var(--dim);transition:all .15s;display:inline-flex;align-items:center;gap:.2rem}
+.navbar .btn-icon{font-size:.8rem;cursor:pointer;color:var(--dim);background:none;border:1px solid transparent;padding:4px 8px;border-radius:5px;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:.3rem}
+.navbar .btn-icon:hover{background:var(--surface-2);border-color:var(--line);color:var(--text)}
+.navbar .btn-icon svg,.navbar .btn-link svg{flex-shrink:0;display:inline-flex;align-self:center}
+.lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:3px 7px;border-radius:4px;color:var(--dim);transition:all .15s;display:inline-flex;align-items:center;gap:.2rem;height:26px}
 .lang-toggle a.active{background:var(--surface-2);color:var(--accent)}
 .lang-toggle a svg{flex-shrink:0}
 .container{max-width:1280px;margin:1.5rem auto;padding:0 1.5rem}

@@ -5,12 +5,19 @@ import (
 	"strings"
 )
 
+// logoFavicon is the SVG logo as a data URI for use as favicon.
+const logoFavicon = `<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%22112%22%20height%3D%22112%22%20rx%3D%2224%22%20fill%3D%22%2300e5a0%22%2F%3E%3Cpolyline%20points%3D%2238%2C43%2064%2C97%2090%2C43%22%20fill%3D%22none%22%20stroke%3D%22%230a0a0c%22%20stroke-width%3D%2210%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2231%22%20r%3D%226%22%20fill%3D%22%230a0a0c%22%2F%3E%3C%2Fsvg%3E">`
+
+// logoIcon is the inline SVG logo for navbar display.
+const logoIcon = `<svg viewBox="0 0 128 128" width="20" height="20" style="vertical-align:middle;margin-right:6px"><rect x="8" y="8" width="112" height="112" rx="24" fill="#00e5a0"/><polyline points="38,43 64,97 90,43" fill="none" stroke="#0a0a0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="31" r="6" fill="#0a0a0c"/></svg>`
+
 // landingPageHTML is the public landing page.
 var landingPageHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+` + logoFavicon + `
 <title>Vibecast — Build with vibe. Cast instantly.</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -45,7 +52,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 <div class="lang-toggle"><a id="theme-toggle" onclick="toggleTheme()">🌙</a><a id="langEn" class="active" onclick="setLang('en')">EN</a><a id="langZh" onclick="setLang('zh')">中文</a></div>
 <div class="wrap">
 <div class="hero">
-<div class="logo">Vibe<span class="accent">cast</span></div>
+<div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div>
 <p class="tagline" data-i="tagline">Build with vibe. Cast instantly.</p>
 <a href="dashboard" class="cta" data-i="getStarted">Get Started</a>
 <div class="features">
@@ -76,6 +83,7 @@ var dashboardHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+` + logoFavicon + `
 <title>Vibecast Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -254,7 +262,7 @@ else{registerCaptchaId=d.data.id;var el=document.getElementById("register-captch
 }
 function renderAuth(){
 var lh='<div class="lang-toggle" style="position:absolute;top:1rem;right:1rem"><a id="theme-toggle" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML=lh+'<div class="auth-screen"><div class="auth-card"><h1>Vibe<span class="accent">cast</span></h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
+document.getElementById("app").innerHTML=lh+'<div class="auth-screen"><div class="auth-card"><h1>` + logoIcon + `Vibe<span class="accent">cast</span></h1><p class="subtitle">Build with vibe. Cast instantly.</p><div id="auth-form"></div></div></div>';
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){regOpen=d.data&&d.data.openRegistration!==false;showLogin()}).catch(function(){regOpen=true;showLogin()});
 }
 function showLogin(){
@@ -280,7 +288,7 @@ function renderDashboard(){
 var al=currentUser.isAdmin?'<a class="admin-link" href="'+BASE+'admin">'+t("adminPanel")+'</a>':'';
 var th='<a id="theme-toggle" class="btn-icon" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a>';
 var lh='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint">'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
 loadSites();
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){if(d.data&&d.data.maxUploadSize)maxUploadMB=d.data.maxUploadSize}).catch(function(){});
 }
@@ -384,6 +392,7 @@ var adminPageHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+` + logoFavicon + `
 <title>Vibecast Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -534,7 +543,7 @@ var icons={overview:'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.
 var navItems=[["overview","tabOverview"],["users","tabUsers"],["sites","tabSites"],["settings","tabSettings"],["maintenance","tabMaintenance"],["system","tabSystem"]];
 var navHtml='';
 for(var i=0;i<navItems.length;i++){var k=navItems[i][0],lk=navItems[i][1];navHtml+='<div class="admin-nav-item'+(adminTab===k?" active":"")+'" onclick="switchTab(\''+k+'\')">'+(icons[k]||'')+'<span>'+t(lk)+'</span></div>'}
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">Vibecast Admin <span id="ver" style="font-size:.6rem;color:var(--dim);font-weight:400"></span></div><div class="nav-right">'+lh+'<a href="'+BASE+'dashboard" style="font-size:.8rem;color:var(--dim)">'+t("dashboard")+'</a><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="admin-layout"><div class="admin-sidebar">'+navHtml+'</div><div class="admin-main"><div class="admin-tab-content" id="tab-overview"><div class="card"><div class="card-header"><h2>'+t("overview")+'</h2></div><div class="card-body"><div id="stats" class="stats-grid"></div></div></div></div><div class="admin-tab-content" id="tab-users"><div class="card"><div class="card-header"><h2>'+t("users")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="user-search" placeholder="'+t("searchUsersPh")+'" onkeydown="if(event.key===\'Enter\')searchUsers()" value="'+esc(userSearch)+'"></div><div id="users"></div></div></div></div><div class="admin-tab-content" id="tab-sites"><div class="card"><div class="card-header"><h2>'+t("allSites")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="admin-site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchAdminSites()" value="'+esc(adminSiteSearch)+'"></div><div id="sites"></div></div></div></div><div class="admin-tab-content" id="tab-settings"><div class="card"><div class="card-header"><h2>'+t("settings")+'</h2></div><div class="card-body"><div id="settings"></div></div></div></div><div class="admin-tab-content" id="tab-maintenance"><div class="card"><div class="card-header"><h2>'+t("cleanup")+'</h2></div><div class="card-body"><div id="cleanup-section"><p style="font-size:.8rem;color:var(--dim);margin-bottom:.8rem">'+t("cleanupDesc")+'</p><button class="btn btn-outline" onclick="checkCleanup()">'+t("checkOrphans")+'</button><div id="cleanup-result" style="margin-top:.8rem"></div></div></div></div></div><div class="admin-tab-content" id="tab-system"><div class="card"><div class="card-header"><h2>'+t("systemInfo")+'</h2></div><div class="card-body"><p style="font-size:.8rem;color:var(--dim);margin-bottom:1rem">'+t("systemInfoDesc")+'</p><div id="sysinfo" class="info-grid"></div><div class="update-inline"><div id="update-section"><p style="font-size:.8rem;color:var(--dim);margin-bottom:.8rem">'+t("currentVersion")+': <span id="update-current-ver" style="font-family:var(--mono);color:var(--text)">—</span></p><button class="btn btn-outline" id="update-check-btn" onclick="checkUpdate()">'+t("updateCheck")+'</button><div id="update-result" style="margin-top:.8rem"></div></div></div></div></div></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `Vibecast Admin <span id="ver" style="font-size:.6rem;color:var(--dim);font-weight:400"></span></div><div class="nav-right">'+lh+'<a href="'+BASE+'dashboard" style="font-size:.8rem;color:var(--dim)">'+t("dashboard")+'</a><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="admin-layout"><div class="admin-sidebar">'+navHtml+'</div><div class="admin-main"><div class="admin-tab-content" id="tab-overview"><div class="card"><div class="card-header"><h2>'+t("overview")+'</h2></div><div class="card-body"><div id="stats" class="stats-grid"></div></div></div></div><div class="admin-tab-content" id="tab-users"><div class="card"><div class="card-header"><h2>'+t("users")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="user-search" placeholder="'+t("searchUsersPh")+'" onkeydown="if(event.key===\'Enter\')searchUsers()" value="'+esc(userSearch)+'"></div><div id="users"></div></div></div></div><div class="admin-tab-content" id="tab-sites"><div class="card"><div class="card-header"><h2>'+t("allSites")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="admin-site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchAdminSites()" value="'+esc(adminSiteSearch)+'"></div><div id="sites"></div></div></div></div><div class="admin-tab-content" id="tab-settings"><div class="card"><div class="card-header"><h2>'+t("settings")+'</h2></div><div class="card-body"><div id="settings"></div></div></div></div><div class="admin-tab-content" id="tab-maintenance"><div class="card"><div class="card-header"><h2>'+t("cleanup")+'</h2></div><div class="card-body"><div id="cleanup-section"><p style="font-size:.8rem;color:var(--dim);margin-bottom:.8rem">'+t("cleanupDesc")+'</p><button class="btn btn-outline" onclick="checkCleanup()">'+t("checkOrphans")+'</button><div id="cleanup-result" style="margin-top:.8rem"></div></div></div></div></div><div class="admin-tab-content" id="tab-system"><div class="card"><div class="card-header"><h2>'+t("systemInfo")+'</h2></div><div class="card-body"><p style="font-size:.8rem;color:var(--dim);margin-bottom:1rem">'+t("systemInfoDesc")+'</p><div id="sysinfo" class="info-grid"></div><div class="update-inline"><div id="update-section"><p style="font-size:.8rem;color:var(--dim);margin-bottom:.8rem">'+t("currentVersion")+': <span id="update-current-ver" style="font-family:var(--mono);color:var(--text)">—</span></p><button class="btn btn-outline" id="update-check-btn" onclick="checkUpdate()">'+t("updateCheck")+'</button><div id="update-result" style="margin-top:.8rem"></div></div></div></div></div></div></div></div>';
 switchTab(adminTab);
 loadStats();loadSettings();loadUsers();loadSites();loadSystemInfo();
 fetch(BASE+"api/version").then(function(r){return r.json()}).then(function(d){var ver=(d.data?d.data.version:"dev");var v=document.getElementById("ver");if(v)v.textContent="v"+ver;var uv=document.getElementById("update-current-ver");if(uv)uv.textContent="v"+ver}).catch(function(){})
@@ -694,6 +703,7 @@ func passwordPageHTML(slug, siteName string) string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+%s
 <title>%s — Password Required</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -725,7 +735,7 @@ button:hover{background:var(--accent-dim)}
 </form>
 </div>
 </body>
-</html>`, escHTML(siteName), escHTML(siteName))
+</html>`, logoFavicon, escHTML(siteName), escHTML(siteName))
 }
 
 // passwordPageHTMLWithErr returns the password gate page with an error message.
@@ -735,6 +745,7 @@ func passwordPageHTMLWithErr(slug, siteName, errMsg string) string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+%s
 <title>%s — Password Required</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -766,7 +777,7 @@ button:hover{background:var(--accent-dim)}
 </form>
 </div>
 </body>
-</html>`, escHTML(siteName), escHTML(siteName), escHTML(errMsg))
+</html>`, logoFavicon, escHTML(siteName), escHTML(siteName), escHTML(errMsg))
 }
 
 // escHTML escapes HTML special characters to prevent XSS.

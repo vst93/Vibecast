@@ -586,7 +586,6 @@ func (s *Server) adminSystemInfo(w http.ResponseWriter, r *http.Request, user *d
 		"storagePath": s.config.StorageDir,
 		"dbPath":      s.config.DBPath,
 		"listenAddr":  s.config.Addr,
-		"baseURL":     s.config.BaseURL,
 		"goVersion":   runtime.Version(),
 		"os":          runtime.GOOS,
 		"arch":        runtime.GOARCH,

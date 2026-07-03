@@ -30,12 +30,11 @@ func paginationParams(r *http.Request) (page, perPage, offset int, search string
 func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := db.GetSettings(s.database)
 	if err != nil {
-		writeJSON(w, 200, jsonResp{Data: map[string]interface{}{"openRegistration": true, "baseURL": s.config.BaseURL}})
+		writeJSON(w, 200, jsonResp{Data: map[string]interface{}{"openRegistration": true}})
 		return
 	}
 	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
 		"openRegistration": settings.OpenRegistration,
-		"baseURL":          s.config.BaseURL,
 	}})
 }
 
@@ -264,6 +263,5 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 // handleAdminPage serves the admin dashboard SPA.
 func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(adminPageHTML, "__BASE_URL__", s.config.BaseURL)
-	w.Write([]byte(html))
+	w.Write([]byte(adminPageHTML))
 }

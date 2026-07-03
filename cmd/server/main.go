@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"vibecast/internal/server"
@@ -28,7 +27,6 @@ func main() {
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
 	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
 	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")
-	baseURL := flag.String("base-url", getEnv("VIBECAST_BASE_URL", ""), "base URL path prefix for reverse proxy sub-path deployment (e.g. /vibecast)")
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -41,7 +39,6 @@ func main() {
 		Addr:       *addr,
 		StorageDir: *storageDir,
 		DBPath:     *dbPath,
-		BaseURL:    normalizeBaseURL(*baseURL),
 		Version:    version,
 	}
 
@@ -87,17 +84,4 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-// normalizeBaseURL ensures the base URL is either empty or starts with / and doesn't end with /.
-func normalizeBaseURL(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	if !strings.HasPrefix(s, "/") {
-		s = "/" + s
-	}
-	s = strings.TrimSuffix(s, "/")
-	return s
 }

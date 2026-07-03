@@ -110,7 +110,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 			ss, err := db.GetSiteSession(s.database, token)
 			return err != nil || ss == nil || ss.ID != site.ID
 		}() {
-			http.Redirect(w, r, s.urlPath("/p/"+slug), http.StatusSeeOther)
+			w.Header().Set("Location", "../../p/"+slug)
+		w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 	}
@@ -223,6 +224,8 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request, path string, 
 }
 
 // serveDirListing renders an nginx-style directory listing.
+// All hrefs are relative to the current page URL so they work behind
+// any reverse-proxy prefix without configuration.
 func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath, slug, subPath string) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -230,22 +233,26 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 		return
 	}
 
-	// Build breadcrumb
-	baseURL := s.urlPath("/s/" + slug + "/")
+	// Build breadcrumb using relative paths.
+	// Current page is at /s/{slug}/[sub/]  —  relative base is "./"
+	// For parent levels we prepend "../" for each level up.
 	parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/")
 	var crumbs []string
-	crumbs = append(crumbs, `<a href="`+baseURL+`">/</a>`)
+	crumbs = append(crumbs, `<a href="./">/</a>`)
 	acc := ""
 	for i, p := range parts {
 		if p == "" {
 			continue
 		}
 		acc += p + "/"
+		// Build relative path: go up from current level to root, then down to acc
+		levelsUp := len(parts) - 1 - i
+		rel := strings.Repeat("../", levelsUp) + acc
 		sep := ""
 		if i > 0 || subPath != "" {
 			sep = "/"
 		}
-		crumbs = append(crumbs, `<a href="`+baseURL+acc+`">`+p+`</a>`+sep)
+		crumbs = append(crumbs, `<a href="`+rel+`">`+p+`</a>`+sep)
 	}
 
 	var b strings.Builder
@@ -264,11 +271,7 @@ th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
 
 	// ".." link for subdirectories
 	if subPath != "" {
-		parent := baseURL
-		if parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/"); len(parts) > 1 {
-			parent = baseURL + strings.Join(parts[:len(parts)-1], "/") + "/"
-		}
-		b.WriteString(`<tr><td class="dir"><a href="` + parent + `">../</a></td><td>-</td></tr>`)
+		b.WriteString(`<tr><td class="dir"><a href="../">../</a></td><td>-</td></tr>`)
 	}
 
 	for _, e := range entries {
@@ -282,14 +285,7 @@ th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
 			size = formatSize(info.Size())
 		}
 		displayName := name
-		href := baseURL
-		if subPath != "" {
-			href += subPath
-			if !strings.HasSuffix(href, "/") {
-				href += "/"
-			}
-		}
-		href += name
+		href := "./" + name
 		cls := ""
 		if e.IsDir() {
 			displayName += "/"

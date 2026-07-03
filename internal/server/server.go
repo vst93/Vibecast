@@ -18,7 +18,6 @@ type Config struct {
 	Addr       string // listen address, e.g. ":8080"
 	StorageDir string // path to site files storage
 	DBPath     string // path to SQLite database
-	BaseURL    string // base URL path prefix for reverse proxy (e.g. "/vibecast"), empty for root
 	Version    string // build version (injected via ldflags)
 }
 
@@ -101,9 +100,7 @@ func (s *Server) Router() http.Handler {
 	// Landing page
 	mux.HandleFunc("/", s.handleIndex)
 
-	// Wrap with base URL prefix stripping (for reverse proxy sub-path deployment)
-	handler := s.stripBaseURL(mux)
-	return s.recoverMiddleware(s.logMiddleware(handler))
+	return s.recoverMiddleware(s.logMiddleware(mux))
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
@@ -123,40 +120,6 @@ func (s *Server) logMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// stripBaseURL strips the configured base URL prefix from incoming requests
-// so that internal route matching works without knowing the prefix.
-// e.g. GET /vibecast/s/foo/ → /s/foo/ for the mux.
-// When BaseURL is empty, this is a pass-through.
-func (s *Server) stripBaseURL(next http.Handler) http.Handler {
-	base := s.config.BaseURL
-	if base == "" {
-		return next
-	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) >= len(base) && r.URL.Path[:len(base)] == base {
-			r.URL.Path = r.URL.Path[len(base):]
-			if r.URL.Path == "" {
-				r.URL.Path = "/"
-			}
-			if r.URL.RawPath != "" && len(r.URL.RawPath) >= len(base) && r.URL.RawPath[:len(base)] == base {
-				r.URL.RawPath = r.URL.RawPath[len(base):]
-				if r.URL.RawPath == "" {
-					r.URL.RawPath = "/"
-				}
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-// urlPath prepends the configured BaseURL to an absolute path.
-// Used for redirects and server-rendered hrefs so they include the
-// reverse-proxy prefix (e.g. /vibecast/s/foo/ instead of /s/foo/).
-// When BaseURL is empty (root deployment), this is a pass-through.
-func (s *Server) urlPath(path string) string {
-	return s.config.BaseURL + path
-}
-
 // handleIndex serves the landing page.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -164,15 +127,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(landingPageHTML, "__BASE_URL__", s.config.BaseURL)
-	fmt.Fprint(w, html)
+	fmt.Fprint(w, landingPageHTML)
 }
 
 // handleDashboard serves the admin dashboard SPA.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(dashboardHTML, "__BASE_URL__", s.config.BaseURL)
-	fmt.Fprint(w, html)
+	fmt.Fprint(w, dashboardHTML)
 }
 
 // handleVersion returns the build version.

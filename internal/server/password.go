@@ -32,8 +32,9 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if site.Password == "" {
-		// Not protected — redirect to site
-		http.Redirect(w, r, s.urlPath("/s/"+slug+"/"), http.StatusSeeOther)
+		// Not protected — redirect to site (relative path, browser resolves with proxy prefix)
+		w.Header().Set("Location", "../s/"+slug+"/")
+		w.WriteHeader(http.StatusSeeOther)
 		return
 	}
 
@@ -99,7 +100,8 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				HttpOnly: true,
 				SameSite: http.SameSiteLaxMode,
 			})
-			http.Redirect(w, r, s.urlPath("/s/"+slug+"/"), http.StatusSeeOther)
+			w.Header().Set("Location", "../s/"+slug+"/")
+			w.WriteHeader(http.StatusSeeOther)
 		}
 		return
 	}

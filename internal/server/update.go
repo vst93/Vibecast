@@ -370,23 +370,36 @@ func compareVersions(a, b string) int {
 }
 
 // selfReplace replaces the current binary with the new one.
+// On Windows, the running binary is locked, so we rename the old binary
+// aside and copy the new one in. On Unix, we can overwrite in place.
 func selfReplace(newBinaryPath string) error {
 	currentExe, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("get executable path: %w", err)
 	}
-	currentExe, _ = filepath.EvalSymlinks(currentExe)
+	// Resolve symlinks, but keep the original path if resolution fails
+	// (e.g. on some macOS or container setups where /proc/self/exe is weird).
+	resolved, err := filepath.EvalSymlinks(currentExe)
+	if err == nil && resolved != "" {
+		currentExe = resolved
+	}
+	if currentExe == "" {
+		return fmt.Errorf("could not determine executable path")
+	}
 
 	if err := os.Chmod(newBinaryPath, 0755); err != nil {
 		return fmt.Errorf("chmod new binary: %w", err)
 	}
 
-	backupPath := currentExe + ".old"
-	_ = os.Remove(backupPath)
-
-	if err := os.Rename(currentExe, backupPath); err == nil {
+	// Windows: cannot overwrite a running .exe — must rename it aside first.
+	if runtime.GOOS == "windows" {
+		backupPath := currentExe + ".old"
+		_ = os.Remove(backupPath)
+		if err := os.Rename(currentExe, backupPath); err != nil {
+			return fmt.Errorf("cannot replace running binary (close vibecast first): %w", err)
+		}
 		if copyErr := copyFile(newBinaryPath, currentExe); copyErr != nil {
-			os.Rename(backupPath, currentExe)
+			os.Rename(backupPath, currentExe) // restore
 			return fmt.Errorf("install new binary: %w", copyErr)
 		}
 		os.Chmod(currentExe, 0755)
@@ -394,6 +407,23 @@ func selfReplace(newBinaryPath string) error {
 		return nil
 	}
 
+	// Unix: try rename (same filesystem → fast + atomic), fallback to copy.
+	backupPath := currentExe + ".old"
+	_ = os.Remove(backupPath)
+
+	if err := os.Rename(currentExe, backupPath); err == nil {
+		// Rename succeeded — copy new binary into place.
+		if copyErr := copyFile(newBinaryPath, currentExe); copyErr != nil {
+			os.Rename(backupPath, currentExe) // restore old binary
+			return fmt.Errorf("install new binary: %w", copyErr)
+		}
+		os.Chmod(currentExe, 0755)
+		_ = os.Remove(backupPath)
+		return nil
+	}
+
+	// Rename failed (cross-device or permission) — overwrite in place via copy.
+	// On Linux, writing to a running binary is fine with O_TRUNC.
 	if err := copyFile(newBinaryPath, currentExe); err != nil {
 		return fmt.Errorf("install new binary (copy): %w", err)
 	}
@@ -403,25 +433,41 @@ func selfReplace(newBinaryPath string) error {
 
 // copyFile copies a file from src to dst, preserving permissions.
 func copyFile(src, dst string) error {
+	if src == "" {
+		return fmt.Errorf("source path is empty")
+	}
+	if dst == "" {
+		return fmt.Errorf("destination path is empty")
+	}
 	srcFile, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("open source: %w", err)
 	}
 	defer srcFile.Close()
 
 	info, err := srcFile.Stat()
 	if err != nil {
-		return err
+		return fmt.Errorf("stat source: %w", err)
 	}
 
 	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 	if err != nil {
-		return err
+		// Common on Linux when the binary is installed in a system directory
+		// (e.g. /usr/local/bin) and the process doesn't have write permission.
+		if os.IsPermission(err) {
+			return fmt.Errorf("permission denied writing to %s — try running as root or the same user that owns the binary", dst)
+		}
+		return fmt.Errorf("open destination: %w", err)
 	}
 	defer dstFile.Close()
 
 	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return err
+		return fmt.Errorf("copy data: %w", err)
+	}
+	// Sync to ensure data is flushed to disk before we return.
+	if err := dstFile.Sync(); err != nil {
+		// Sync failure is not fatal on all platforms (e.g. Windows).
+		_ = err
 	}
 	return nil
 }
@@ -529,7 +575,17 @@ func (s *Server) adminApplyUpdate(w http.ResponseWriter, r *http.Request, user *
 	}
 
 	if err := selfReplace(tmpPath); err != nil {
-		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_install_failed") + ": " + err.Error()})
+		errStr := err.Error()
+		// Provide platform-specific guidance for common failures.
+		if strings.Contains(errStr, "permission denied") {
+			writeJSON(w, 403, jsonResp{Error: tMsg(r, "update_permission_denied")})
+			return
+		}
+		if runtime.GOOS == "windows" && (strings.Contains(errStr, "being used by another process") || strings.Contains(errStr, "Access is denied") || strings.Contains(errStr, "cannot replace running binary")) {
+			writeJSON(w, 409, jsonResp{Error: tMsg(r, "update_windows_locked")})
+			return
+		}
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_install_failed") + ": " + errStr})
 		return
 	}
 
@@ -702,6 +758,16 @@ func RunUpdateCLI(currentVersion string) error {
 
 	fmt.Printf("%s\n", TCLIMsg("cli_installing"))
 	if err := selfReplace(tmpPath); err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "permission denied") {
+			if runtime.GOOS == "windows" {
+				return fmt.Errorf("%s", TCLIMsg("update_windows_locked"))
+			}
+			return fmt.Errorf("%s", TCLIMsg("update_permission_denied"))
+		}
+		if runtime.GOOS == "windows" && (strings.Contains(errStr, "being used by another process") || strings.Contains(errStr, "Access is denied") || strings.Contains(errStr, "cannot replace running binary")) {
+			return fmt.Errorf("%s", TCLIMsg("update_windows_locked"))
+		}
 		return fmt.Errorf("%s: %w", TCLIMsg("cli_install_failed"), err)
 	}
 

@@ -71,6 +71,8 @@ var messageMap = map[string]map[string]string{
 	"update_asset_not_found":  {"en": "No matching binary found for your platform", "zh": "未找到匹配当前平台的安装包"},
 	"update_download_failed":  {"en": "Failed to download update", "zh": "下载更新失败"},
 	"update_install_failed":   {"en": "Failed to install update", "zh": "安装更新失败"},
+	"update_permission_denied": {"en": "Permission denied — the binary is not writable by the current user. Try: sudo vibecast update (CLI) or restart the service as the owning user.", "zh": "权限不足 — 当前用户无法写入二进制文件。请尝试：sudo vibecast update（命令行）或以拥有该文件的用户重启服务。"},
+	"update_windows_locked":    {"en": "Cannot replace the running binary on Windows — stop the service first, then retry.", "zh": "Windows 下无法替换正在运行的程序 — 请先停止服务再重试。"},
 	"updateRestart":           {"en": "Restart Now", "zh": "立即重启"},
 	"updateRestarting":        {"en": "Restarting...", "zh": "正在重启..."},
 	"updateRestartSuccess":    {"en": "Server is restarting. Page will reload automatically.", "zh": "服务器正在重启，页面将自动刷新。"},

@@ -19,15 +19,15 @@ func main() {
 	// Custom usage: Options (config flags with --) and Commands (subcommands).
 	flag.CommandLine.SetOutput(os.Stderr)
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: vibecast [options] [command]\n\n")
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		fmt.Fprintf(os.Stderr, "  --addr <addr>\n    \tlisten address (default \":8080\", env VIBECAST_ADDR)\n")
-		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    \tsite files storage directory (default \"./data/sites\", env VIBECAST_STORAGE)\n")
-		fmt.Fprintf(os.Stderr, "  --db <path>\n    \tSQLite database path (default \"./data/vibecast.db\", env VIBECAST_DB)\n")
-		fmt.Fprintf(os.Stderr, "\nCommands:\n")
-		fmt.Fprintf(os.Stderr, "  version, v   print version and exit\n")
-		fmt.Fprintf(os.Stderr, "  update       check for updates and self-update\n")
-		fmt.Fprintf(os.Stderr, "  help, h      show this help message\n")
+		fmt.Fprintf(os.Stderr, "%s\n\n", server.TCLIMsg("cli_usage"))
+		fmt.Fprintf(os.Stderr, "%s\n", server.TCLIMsg("cli_options"))
+		fmt.Fprintf(os.Stderr, "  --addr <addr>\n    	%s (default \":8080\", env VIBECAST_ADDR)\n", server.TCLIMsg("cli_addr"))
+		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    	%s (default \"./data/sites\", env VIBECAST_STORAGE)\n", server.TCLIMsg("cli_storage"))
+		fmt.Fprintf(os.Stderr, "  --db <path>\n    	%s (default \"./data/vibecast.db\", env VIBECAST_DB)\n", server.TCLIMsg("cli_db"))
+		fmt.Fprintf(os.Stderr, "\n%s\n", server.TCLIMsg("cli_commands"))
+		fmt.Fprintf(os.Stderr, "  version, v   %s\n", server.TCLIMsg("cli_version_cmd"))
+		fmt.Fprintf(os.Stderr, "  update       %s\n", server.TCLIMsg("cli_update_cmd"))
+		fmt.Fprintf(os.Stderr, "  help, h      %s\n", server.TCLIMsg("cli_help_cmd"))
 	}
 
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
@@ -51,7 +51,7 @@ func main() {
 			flag.Usage()
 			return
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", args[0])
+			fmt.Fprintf(os.Stderr, "%s: %s\n\n", server.TCLIMsg("cli_unknown_cmd"), args[0])
 			flag.Usage()
 			os.Exit(2)
 		}
@@ -83,11 +83,11 @@ func main() {
 	fmt.Printf("Vibecast v%s\n", version)
 	fmt.Printf("Build with vibe. Cast instantly.\n")
 	fmt.Printf("────────────────────────────\n")
-	fmt.Printf("Listening:  http://localhost%s\n", *addr)
-	fmt.Printf("Storage:   %s\n", *storageDir)
-	fmt.Printf("Database:  %s\n", *dbPath)
+	fmt.Printf("%s  http://localhost%s\n", server.TCLIMsg("cli_listening"), *addr)
+	fmt.Printf("%s   %s\n", server.TCLIMsg("cli_storage_label"), *storageDir)
+	fmt.Printf("%s  %s\n", server.TCLIMsg("cli_database"), *dbPath)
 	fmt.Printf("────────────────────────────\n")
-	fmt.Printf("Dashboard: http://localhost%s/dashboard\n", *addr)
+	fmt.Printf("%s http://localhost%s/dashboard\n", server.TCLIMsg("cli_dashboard"), *addr)
 
 	// Use net.Listen + http.Server so we can gracefully shut down / restart.
 	ln, err := net.Listen("tcp", *addr)

@@ -637,28 +637,28 @@ var startTime = time.Now().Format(time.RFC3339)
 func RunUpdateCLI(currentVersion string) error {
 	fmt.Printf("Vibecast v%s\n", currentVersion)
 	fmt.Printf("────────────────────────────\n")
-	fmt.Printf("Checking for updates...\n")
+	fmt.Printf("%s\n", TCLIMsg("cli_checking"))
 
 	rel, err := fetchLatestRelease()
 	if err != nil {
-		return fmt.Errorf("failed to check for updates: %w", err)
+		return fmt.Errorf("%s: %w", TCLIMsg("cli_fetch_failed"), err)
 	}
 
 	latestVersion := strings.TrimPrefix(rel.TagName, "v")
-	fmt.Printf("Latest release: v%s\n", latestVersion)
+	fmt.Printf("%s v%s\n", TCLIMsg("cli_latest_rel"), latestVersion)
 
 	if currentVersion != "dev" && compareVersions(latestVersion, currentVersion) <= 0 {
-		fmt.Printf("✓ You are already running the latest version.\n")
+		fmt.Printf("✓ %s\n", TCLIMsg("cli_up_to_date"))
 		return nil
 	}
 
 	if currentVersion == "dev" {
-		fmt.Printf("Current version: dev (always allows update)\n")
+		fmt.Printf("%s\n", TCLIMsg("cli_dev_version"))
 	}
 
-	fmt.Printf("Update available! v%s → v%s\n", currentVersion, latestVersion)
+	fmt.Printf("%s v%s → v%s\n", TCLIMsg("cli_update_avail"), currentVersion, latestVersion)
 	if rel.Name != "" {
-		fmt.Printf("Release: %s\n", rel.Name)
+		fmt.Printf("%s %s\n", TCLIMsg("cli_release"), rel.Name)
 	}
 	if rel.Body != "" {
 		fmt.Printf("\n%s\n", rel.Body)
@@ -667,46 +667,46 @@ func RunUpdateCLI(currentVersion string) error {
 
 	asset := findAsset(rel)
 	if asset == nil {
-		return fmt.Errorf("no matching binary found for %s/%s", runtime.GOOS, runtime.GOARCH)
+		return fmt.Errorf("%s %s/%s", TCLIMsg("cli_no_binary"), runtime.GOOS, runtime.GOARCH)
 	}
-	fmt.Printf("Downloading %s (%s)...\n", asset.Name, formatSize(asset.Size))
+	fmt.Printf("%s %s (%s)...\n", TCLIMsg("cli_downloading"), asset.Name, formatSize(asset.Size))
 
 	// Download with progress.
 	tmpPath, err := downloadAsset(asset.BrowserDownloadURL, asset.Size, func(downloaded, total int64) {
 		pct := float64(downloaded) / float64(total) * 100
-		fmt.Printf("\r%s... %.0f%% [%s/%s]   ", tStatic("updateDownloadProgress"), pct, formatSize(downloaded), formatSize(total))
+		fmt.Printf("\r%s... %.0f%% [%s/%s]   ", TCLIMsg("cli_downloading"), pct, formatSize(downloaded), formatSize(total))
 	})
 	if err != nil {
-		return fmt.Errorf("download failed: %w", err)
+		return fmt.Errorf("%s: %w", TCLIMsg("cli_dl_failed"), err)
 	}
 	defer os.Remove(tmpPath)
-	fmt.Printf("\r✓ Downloaded (%s)                    \n", formatSize(asset.Size))
+	fmt.Printf("\r✓ %s (%s)                    \n", TCLIMsg("cli_downloaded"), formatSize(asset.Size))
 
 	// Verify SHA256.
 	sumsURL := asset.BrowserDownloadURL[:strings.LastIndex(asset.BrowserDownloadURL, "/")+1] + "SHA256SUMS"
 	sumsOK, verifyErr := verifySHA256(tmpPath, asset.Name, sumsURL)
 	if !sumsOK {
 		if verifyErr == errNoChecksum {
-			fmt.Printf("⚠ %s\n", tStatic("updateNoChecksum"))
+			fmt.Printf("⚠ %s\n", TCLIMsg("updateNoChecksum"))
 		} else {
-			return fmt.Errorf("%s: %w", tStatic("updateVerifyFailed"), verifyErr)
+			return fmt.Errorf("%s: %w", TCLIMsg("updateVerifyFailed"), verifyErr)
 		}
 	} else {
-		fmt.Printf("✓ Checksum verified\n")
+		fmt.Printf("✓ %s\n", TCLIMsg("cli_checksum_ok"))
 	}
 
 	info, err := os.Stat(tmpPath)
 	if err != nil || info.Size() == 0 {
-		return fmt.Errorf("downloaded file is empty or invalid")
+		return fmt.Errorf("%s", TCLIMsg("cli_empty_file"))
 	}
 
-	fmt.Printf("Installing...\n")
+	fmt.Printf("%s\n", TCLIMsg("cli_installing"))
 	if err := selfReplace(tmpPath); err != nil {
-		return fmt.Errorf("installation failed: %w", err)
+		return fmt.Errorf("%s: %w", TCLIMsg("cli_install_failed"), err)
 	}
 
-	fmt.Printf("✓ Updated to v%s\n", latestVersion)
-	fmt.Printf("Please restart vibecast to apply the update.\n")
+	fmt.Printf("✓ %s v%s\n", TCLIMsg("cli_updated"), latestVersion)
+	fmt.Printf("%s\n", TCLIMsg("cli_restart_hint"))
 	return nil
 }
 

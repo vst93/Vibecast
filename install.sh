@@ -25,6 +25,48 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
+# --- Timezone-based language detection ---
+# Detect if system is in UTC+8 (China Standard Time) → output Chinese, otherwise English.
+detect_lang() {
+  local offset
+  # Try /etc/timezone first (Debian/Ubuntu)
+  if [[ -f /etc/timezone ]]; then
+    local tz
+    tz=$(cat /etc/timezone 2>/dev/null || echo "")
+    if [[ "$tz" == "Asia/Shanghai" || "$tz" == "Asia/Urumqi" || "$tz" == "Asia/Hong_Kong" || "$tz" == "Asia/Taipei" ]]; then
+      LANG_ZH=1
+      return
+    fi
+  fi
+  # Try timedatectl (systemd)
+  if command -v timedatectl &>/dev/null; then
+    local tz
+    tz=$(timedatectl show -p Timezone --value 2>/dev/null || echo "")
+    if [[ "$tz" == "Asia/Shanghai" || "$tz" == "Asia/Urumqi" || "$tz" == "Asia/Hong_Kong" || "$tz" == "Asia/Taipei" ]]; then
+      LANG_ZH=1
+      return
+    fi
+  fi
+  # Fallback: check UTC offset via date
+  offset=$(date +%z 2>/dev/null || echo "+0000")
+  if [[ "$offset" == "+0800" ]]; then
+    LANG_ZH=1
+    return
+  fi
+  LANG_ZH=0
+}
+
+# i18n helper: $1 = English text, $2 = Chinese text
+i18n() {
+  if [[ "${LANG_ZH:-0}" == "1" ]]; then
+    echo -n "$2"
+  else
+    echo -n "$1"
+  fi
+}
+
+detect_lang
+
 info()  { echo -e "${GREEN}✓${NC} $1"; }
 warn()  { echo -e "${YELLOW}⚠${NC} $1"; }
 error() { echo -e "${RED}✗${NC} $1"; }
@@ -36,10 +78,10 @@ while [[ $# -gt 0 ]]; do
     --dir)     INSTALL_DIR="$2"; shift 2 ;;
     --help)
       echo "Usage: install.sh [--version <tag>] [--dir <path>]"
-      echo "  --version  Specific release tag (default: latest)"
-      echo "  --dir      Install directory (default: /usr/local/bin)"
+      echo "  --version  $(i18n "Specific release tag" "指定版本号") (default: latest)"
+      echo "  --dir      $(i18n "Install directory" "安装目录") (default: /usr/local/bin)"
       exit 0 ;;
-    *) error "Unknown option: $1"; exit 1 ;;
+    *) error "$(i18n "Unknown option" "未知选项"): $1"; exit 1 ;;
   esac
 done
 
@@ -50,20 +92,20 @@ ARCH="$(uname -m)"
 case "$OS" in
   linux)  OS="linux" ;;
   darwin) OS="darwin" ;;
-  *) error "Unsupported OS: $OS"; exit 1 ;;
+  *) error "$(i18n "Unsupported OS" "不支持的操作系统"): $OS"; exit 1 ;;
 esac
 
 case "$ARCH" in
   x86_64|amd64) ARCH="amd64" ;;
   aarch64|arm64) ARCH="arm64" ;;
-  *) error "Unsupported architecture: $ARCH"; exit 1 ;;
+  *) error "$(i18n "Unsupported architecture" "不支持的架构"): $ARCH"; exit 1 ;;
 esac
 
 # If version not specified, get latest release tag.
 # API calls: try DIRECT first (mirrors return 403 on api.github.com),
 # then fall back to mirrors.
 if [[ -z "$VERSION" ]]; then
-  info "Fetching latest release..."
+  info "$(i18n "Fetching latest release..." "正在获取最新版本...")"
   API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
   # Direct first
@@ -90,13 +132,13 @@ if [[ -z "$VERSION" ]]; then
   fi
 
   if [[ -z "$VERSION" ]]; then
-    error "Could not determine latest version. Specify with --version."
+    error "$(i18n "Could not determine latest version. Specify with --version." "无法确定最新版本，请使用 --version 指定。")"
     exit 1
   fi
 fi
 
-info "Version: ${VERSION}"
-info "Platform: ${OS}/${ARCH}"
+info "$(i18n "Version" "版本"): ${VERSION}"
+info "$(i18n "Platform" "平台"): ${OS}/${ARCH}"
 
 # Find the matching asset
 ASSET_NAME="vibecast-${VERSION}-${OS}-${ARCH}"
@@ -108,7 +150,7 @@ DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET_NA
 
 # Download via mirrors
 TMP_FILE=$(mktemp)
-info "Downloading ${ASSET_NAME}"
+info "$(i18n "Downloading" "下载中") ${ASSET_NAME}"
 downloaded=false
 for mirror in "${MIRRORS[@]}"; do
   url="${mirror}${DOWNLOAD_URL}"
@@ -126,7 +168,7 @@ for mirror in "${MIRRORS[@]}"; do
 done
 
 if [[ "$downloaded" != "true" ]] || [[ ! -s "$TMP_FILE" ]]; then
-  error "Download failed from all mirrors"
+  error "$(i18n "Download failed from all mirrors" "所有镜像下载均失败")"
   rm -f "$TMP_FILE"
   exit 1
 fi
@@ -152,18 +194,18 @@ if [[ "$sums_ok" == "true" ]]; then
   if [[ -n "$EXPECTED_HASH" ]]; then
     ACTUAL_HASH=$(sha256sum "$TMP_FILE" | awk '{print $1}')
     if [[ "${ACTUAL_HASH,,}" != "${EXPECTED_HASH,,}" ]]; then
-      error "Checksum mismatch!"
+      error "$(i18n "Checksum mismatch!" "校验和不匹配！")"
       error "  Expected: $EXPECTED_HASH"
       error "  Got:      $ACTUAL_HASH"
       rm -f "$TMP_FILE"
       exit 1
     fi
-    info "Checksum verified"
+    info "$(i18n "Checksum verified" "校验和验证通过")"
   else
-    warn "Asset not found in SHA256SUMS, skipping verification"
+    warn "$(i18n "Asset not found in SHA256SUMS, skipping verification" "未在 SHA256SUMS 中找到该文件，跳过验证")"
   fi
 else
-  warn "No SHA256SUMS found, skipping verification"
+  warn "$(i18n "No SHA256SUMS found, skipping verification" "未找到 SHA256SUMS，跳过验证")"
 fi
 
 chmod +x "$TMP_FILE"
@@ -172,20 +214,20 @@ chmod +x "$TMP_FILE"
 if [[ -w "$INSTALL_DIR" ]]; then
   mv "$TMP_FILE" "${INSTALL_DIR}/${BINARY_NAME}"
 else
-  warn "Needs sudo to install to ${INSTALL_DIR}"
+  warn "$(i18n "Needs sudo to install to" "需要 sudo 权限安装到") ${INSTALL_DIR}"
   sudo mv "$TMP_FILE" "${INSTALL_DIR}/${BINARY_NAME}"
   sudo chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
-info "Installed to ${INSTALL_DIR}/${BINARY_NAME}"
+info "$(i18n "Installed to" "已安装至") ${INSTALL_DIR}/${BINARY_NAME}"
 echo ""
-echo -e "${GREEN}Vibecast ${VERSION} installed!${NC}"
+echo -e "${GREEN}Vibecast ${VERSION} $(i18n "installed!" "已安装！")${NC}"
 echo ""
-echo "Quick start:"
-echo "  vibecast                          # run with defaults"
-echo "  vibecast --addr :3000             # custom port"
+echo "$(i18n "Quick start:" "快速开始：")"
+echo "  vibecast                          # $(i18n "run with defaults" "使用默认配置运行")"
+echo "  vibecast --addr :3000             # $(i18n "custom port" "自定义端口")"
 echo "  vibecast --storage /var/lib/vibecast/sites --db /var/lib/vibecast/vibecast.db"
 echo ""
-echo "  vibecast update                   # check and apply updates"
+echo "  vibecast update                   # $(i18n "check and apply updates" "检查并应用更新")"
 echo ""
-echo "Then open http://localhost:8080/dashboard"
+echo "$(i18n "Then open" "然后打开") http://localhost:8080/dashboard"

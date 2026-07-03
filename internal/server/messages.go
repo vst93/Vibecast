@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"strings"
+	"time"
 )
 
 var messageMap = map[string]map[string]string{
@@ -111,6 +112,83 @@ func tMsg(r *http.Request, key string) string {
 func tStatic(key string) string {
 	if msgs, ok := messageMap[key]; ok {
 		if msg, ok := msgs["en"]; ok {
+			return msg
+		}
+	}
+	return key
+}
+
+// isCST checks whether the system local timezone is China Standard Time (UTC+8).
+// Used by tCLI() to decide CLI output language.
+func isCST() bool {
+	loc, err := time.LoadLocation("Local")
+	if err != nil {
+		return false
+	}
+	_, offset := time.Now().In(loc).Zone()
+	// UTC+8 = 28800 seconds; also accept UTC+8 name
+	return offset == 8*3600
+}
+
+// tCLI returns a localized message for CLI output based on the system timezone.
+// UTC+8 (CST) → Chinese, otherwise → English.
+func tCLI(key string) string {
+	lang := "en"
+	if isCST() {
+		lang = "zh"
+	}
+	if msgs, ok := messageMap[key]; ok {
+		if msg, ok := msgs[lang]; ok {
+			return msg
+		}
+	}
+	return key
+}
+
+// CLI message keys (not used by HTTP handlers)
+var cliMessages = map[string]map[string]string{
+	"cli_usage":          {"en": "Usage: vibecast [options] [command]", "zh": "用法: vibecast [选项] [命令]"},
+	"cli_options":        {"en": "Options:", "zh": "选项:"},
+	"cli_commands":       {"en": "Commands:", "zh": "命令:"},
+	"cli_addr":           {"en": "listen address", "zh": "监听地址"},
+	"cli_storage":        {"en": "site files storage directory", "zh": "站点文件存储目录"},
+	"cli_db":             {"en": "SQLite database path", "zh": "SQLite 数据库路径"},
+	"cli_version_cmd":    {"en": "print version and exit", "zh": "打印版本号并退出"},
+	"cli_update_cmd":     {"en": "check for updates and self-update", "zh": "检查更新并自更新"},
+	"cli_help_cmd":       {"en": "show this help message", "zh": "显示帮助信息"},
+	"cli_unknown_cmd":   {"en": "unknown command", "zh": "未知命令"},
+	"cli_listening":     {"en": "Listening:", "zh": "监听地址:"},
+	"cli_storage_label": {"en": "Storage:", "zh": "存储路径:"},
+	"cli_database":      {"en": "Database:", "zh": "数据库:"},
+	"cli_dashboard":     {"en": "Dashboard:", "zh": "控制面板:"},
+	"cli_checking":      {"en": "Checking for updates...", "zh": "正在检查更新..."},
+	"cli_latest_rel":    {"en": "Latest release:", "zh": "最新版本:"},
+	"cli_up_to_date":    {"en": "You are already running the latest version.", "zh": "当前已是最新版本。"},
+	"cli_dev_version":   {"en": "Current version: dev (always allows update)", "zh": "当前版本: dev（始终允许更新）"},
+	"cli_update_avail": {"en": "Update available!", "zh": "有可用更新！"},
+	"cli_release":       {"en": "Release:", "zh": "版本:"},
+	"cli_downloading":   {"en": "Downloading", "zh": "下载中"},
+	"cli_downloaded":    {"en": "Downloaded", "zh": "下载完成"},
+	"cli_checksum_ok":   {"en": "Checksum verified", "zh": "校验和验证通过"},
+	"cli_installing":    {"en": "Installing...", "zh": "安装中..."},
+	"cli_updated":       {"en": "Updated to", "zh": "已更新至"},
+	"cli_restart_hint":  {"en": "Please restart vibecast to apply the update.", "zh": "请重启 vibecast 以应用更新。"},
+	"cli_update_failed": {"en": "Update failed", "zh": "更新失败"},
+	"cli_fetch_failed":  {"en": "failed to check for updates", "zh": "检查更新失败"},
+	"cli_no_binary":     {"en": "no matching binary found for", "zh": "未找到匹配的二进制文件"},
+	"cli_dl_failed":     {"en": "download failed", "zh": "下载失败"},
+	"cli_install_failed": {"en": "installation failed", "zh": "安装失败"},
+	"cli_empty_file":    {"en": "downloaded file is empty or invalid", "zh": "下载的文件为空或无效"},
+}
+
+// TCLIMsg returns a CLI-specific message (from cliMessages) based on timezone.
+func TCLIMsg(key string) string {
+	lang := "en"
+	if isCST() {
+		lang = "zh"
+	}
+	if msgs, ok := cliMessages[key]; ok {
+		if msg, ok := msgs[lang]; ok {
 			return msg
 		}
 	}

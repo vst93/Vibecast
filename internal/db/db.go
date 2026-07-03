@@ -48,6 +48,7 @@ func migrate(db *sql.DB) error {
 		name          TEXT NOT NULL DEFAULT '',
 		password      TEXT NOT NULL DEFAULT '',
 		password_plain TEXT NOT NULL DEFAULT '',
+		org_open      INTEGER NOT NULL DEFAULT 0,
 		created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
@@ -78,6 +79,25 @@ func migrate(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_visits_site ON site_visits(site_id);
 	CREATE INDEX IF NOT EXISTS idx_visits_date ON site_visits(visit_date);
 	CREATE INDEX IF NOT EXISTS idx_visits_month ON site_visits(visit_month);
+
+	CREATE TABLE IF NOT EXISTS organizations (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		invite_code TEXT NOT NULL UNIQUE,
+		name        TEXT NOT NULL DEFAULT '',
+		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_orgs_owner ON organizations(owner_id);
+	CREATE INDEX IF NOT EXISTS idx_orgs_invite ON organizations(invite_code);
+
+	CREATE TABLE IF NOT EXISTS org_members (
+		id        INTEGER PRIMARY KEY AUTOINCREMENT,
+		org_id    INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+		user_id   INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+		joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_org_members_org ON org_members(org_id);
+	CREATE INDEX IF NOT EXISTS idx_org_members_user ON org_members(user_id);
 	`
 	if _, err := db.Exec(schema); err != nil {
 		return err
@@ -86,6 +106,7 @@ func migrate(db *sql.DB) error {
 	// Step 2: add columns if they doesn't exist (for existing DBs)
 	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`)
 	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN password_plain TEXT NOT NULL DEFAULT ''`)
+	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN org_open INTEGER NOT NULL DEFAULT 0`)
 
 	// Step 3: seed default settings
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('open_registration', '1')`)

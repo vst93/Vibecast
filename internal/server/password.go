@@ -38,6 +38,17 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if user is in the same org as site owner (org_open bypass)
+	if site.OrgOpen {
+		currentUser := auth.CurrentUser(r, s.database)
+		if currentUser != nil && s.sameOrgAsSiteOwner(site, currentUser.ID) {
+			// Same org member — skip password, redirect to site
+			w.Header().Set("Location", "../s/"+slug+"/")
+			w.WriteHeader(http.StatusSeeOther)
+			return
+		}
+	}
+
 	if r.Method == http.MethodGet {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, passwordPageHTML(slug, site.Name))

@@ -22,9 +22,27 @@ type Site struct {
 	Name          string
 	Password      string // bcrypt hash, empty = no protection
 	PasswordPlain string // plaintext password for display
+	OrgOpen       bool   // open to organization members
 	OwnerEmail    string // only populated in admin views (JOIN with users)
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+type Organization struct {
+	ID         int64
+	OwnerID    int64
+	InviteCode string
+	Name       string
+	CreatedAt  time.Time
+}
+
+type OrgMember struct {
+	ID      int64
+	OrgID   int64
+	UserID  int64
+	Email   string // populated via JOIN
+	IsOwner bool   // true if this member is the org owner
+	JoinedAt time.Time
 }
 
 // --- Users ---
@@ -191,24 +209,31 @@ func DeleteSession(db *sql.DB, token string) error {
 
 // --- Sites ---
 
-func CreateSite(db *sql.DB, userID int64, slug, name, hashedPassword, plainPassword string) (*Site, error) {
+func CreateSite(db *sql.DB, userID int64, slug, name, hashedPassword, plainPassword string, orgOpen bool) (*Site, error) {
+	orgVal := 0
+	if orgOpen {
+		orgVal = 1
+	}
 	res, err := db.Exec(
-		`INSERT INTO sites (user_id, slug, name, password, password_plain) VALUES (?, ?, ?, ?, ?)`,
-		userID, slug, name, hashedPassword, plainPassword,
+		`INSERT INTO sites (user_id, slug, name, password, password_plain, org_open) VALUES (?, ?, ?, ?, ?, ?)`,
+		userID, slug, name, hashedPassword, plainPassword, orgVal,
 	)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
-	return &Site{ID: id, UserID: userID, Slug: slug, Name: name, Password: hashedPassword, PasswordPlain: plainPassword}, nil
+	return &Site{ID: id, UserID: userID, Slug: slug, Name: name, Password: hashedPassword, PasswordPlain: plainPassword, OrgOpen: orgOpen}, nil
 }
 
 func GetSiteBySlug(db *sql.DB, slug string) (*Site, error) {
 	s := &Site{}
+	var orgOpen int
+	_ = orgOpen
 	err := db.QueryRow(
-		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites WHERE slug = ?`,
+		`SELECT id, user_id, slug, name, password, password_plain, org_open, created_at, updated_at FROM sites WHERE slug = ?`,
 		slug,
-	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.CreatedAt, &s.UpdatedAt)
+	s.OrgOpen = orgOpen == 1
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -217,10 +242,12 @@ func GetSiteBySlug(db *sql.DB, slug string) (*Site, error) {
 
 func GetSiteByID(db *sql.DB, id int64) (*Site, error) {
 	s := &Site{}
+	var orgOpen int
 	err := db.QueryRow(
-		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites WHERE id = ?`,
+		`SELECT id, user_id, slug, name, password, password_plain, org_open, created_at, updated_at FROM sites WHERE id = ?`,
 		id,
-	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.CreatedAt, &s.UpdatedAt)
+	s.OrgOpen = orgOpen == 1
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -229,7 +256,7 @@ func GetSiteByID(db *sql.DB, id int64) (*Site, error) {
 
 func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 	rows, err := db.Query(
-		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites WHERE user_id = ? ORDER BY created_at DESC`,
+		`SELECT id, user_id, slug, name, password, password_plain, org_open, created_at, updated_at FROM sites WHERE user_id = ? ORDER BY created_at DESC`,
 		userID,
 	)
 	if err != nil {
@@ -239,9 +266,11 @@ func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		var orgOpen int
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
+		s.OrgOpen = orgOpen == 1
 		sites = append(sites, s)
 	}
 	return sites, rows.Err()
@@ -252,7 +281,7 @@ func ListSitesByUser(db *sql.DB, userID int64) ([]*Site, error) {
 func ListSitesByUserPaged(db *sql.DB, userID int64, search string, limit, offset int) ([]*Site, error) {
 	search = "%" + strings.ToLower(search) + "%"
 	rows, err := db.Query(
-		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at
+		`SELECT id, user_id, slug, name, password, password_plain, org_open, created_at, updated_at
 		 FROM sites
 		 WHERE user_id = ? AND (LOWER(name) LIKE ? OR LOWER(slug) LIKE ?)
 		 ORDER BY created_at DESC
@@ -266,9 +295,11 @@ func ListSitesByUserPaged(db *sql.DB, userID int64, search string, limit, offset
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		var orgOpen int
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
+		s.OrgOpen = orgOpen == 1
 		sites = append(sites, s)
 	}
 	return sites, rows.Err()
@@ -287,7 +318,7 @@ func CountSitesByUser(db *sql.DB, userID int64, search string) (int64, error) {
 
 func ListAllSites(db *sql.DB) ([]*Site, error) {
 	rows, err := db.Query(
-		`SELECT id, user_id, slug, name, password, password_plain, created_at, updated_at FROM sites ORDER BY created_at DESC`,
+		`SELECT id, user_id, slug, name, password, password_plain, org_open, created_at, updated_at FROM sites ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -296,9 +327,11 @@ func ListAllSites(db *sql.DB) ([]*Site, error) {
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		var orgOpen int
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
+		s.OrgOpen = orgOpen == 1
 		sites = append(sites, s)
 	}
 	return sites, rows.Err()
@@ -309,7 +342,7 @@ func ListAllSites(db *sql.DB) ([]*Site, error) {
 func ListAllSitesWithOwnerPaged(db *sql.DB, search string, limit, offset int) ([]*Site, error) {
 	search = "%" + strings.ToLower(search) + "%"
 	rows, err := db.Query(
-		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.password_plain, u.email, s.created_at, s.updated_at
+		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.password_plain, s.org_open, u.email, s.created_at, s.updated_at
 		 FROM sites s JOIN users u ON s.user_id = u.id
 		 WHERE LOWER(s.name) LIKE ? OR LOWER(s.slug) LIKE ? OR LOWER(u.email) LIKE ?
 		 ORDER BY s.created_at DESC
@@ -323,9 +356,11 @@ func ListAllSitesWithOwnerPaged(db *sql.DB, search string, limit, offset int) ([
 	var sites []*Site
 	for rows.Next() {
 		s := &Site{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.OwnerEmail, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		var orgOpen int
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.OwnerEmail, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
+		s.OrgOpen = orgOpen == 1
 		sites = append(sites, s)
 	}
 	return sites, rows.Err()
@@ -344,10 +379,14 @@ func CountAllSitesWithOwner(db *sql.DB, search string) (int64, error) {
 	return count, err
 }
 
-func UpdateSite(db *sql.DB, id int64, name, hashedPassword, plainPassword string) error {
+func UpdateSite(db *sql.DB, id int64, name, hashedPassword, plainPassword string, orgOpen bool) error {
+	orgVal := 0
+	if orgOpen {
+		orgVal = 1
+	}
 	_, err := db.Exec(
-		`UPDATE sites SET name = ?, password = ?, password_plain = ?, updated_at = datetime('now') WHERE id = ?`,
-		name, hashedPassword, plainPassword, id,
+		`UPDATE sites SET name = ?, password = ?, password_plain = ?, org_open = ?, updated_at = datetime('now') WHERE id = ?`,
+		name, hashedPassword, plainPassword, orgVal, id,
 	)
 	return err
 }
@@ -393,12 +432,14 @@ func CreateSiteSession(db *sql.DB, siteID int64, token string, expiresAt time.Ti
 
 func GetSiteSession(db *sql.DB, token string) (*Site, error) {
 	s := &Site{}
+	var orgOpen int
 	err := db.QueryRow(
-		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.password_plain, s.created_at, s.updated_at
+		`SELECT s.id, s.user_id, s.slug, s.name, s.password, s.password_plain, s.org_open, s.created_at, s.updated_at
 		 FROM site_sessions ss JOIN sites s ON ss.site_id = s.id
 		 WHERE ss.token = ? AND ss.expires_at > datetime('now')`,
 		token,
-	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.UserID, &s.Slug, &s.Name, &s.Password, &s.PasswordPlain, &orgOpen, &s.CreatedAt, &s.UpdatedAt)
+	s.OrgOpen = orgOpen == 1
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -682,4 +723,166 @@ func GetBatchVisitStats(db *sql.DB, siteIDs []int64) (map[int64]*VisitStats, err
 	}
 
 	return result, nil
+}
+
+// --- Organizations ---
+
+func CreateOrganization(db *sql.DB, ownerID int64, name, inviteCode string) (*Organization, error) {
+	res, err := db.Exec(
+		`INSERT INTO organizations (owner_id, invite_code, name) VALUES (?, ?, ?)`,
+		ownerID, inviteCode, name,
+	)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+	// Owner is also a member
+	_, _ = db.Exec(`INSERT OR IGNORE INTO org_members (org_id, user_id) VALUES (?, ?)`, id, ownerID)
+	return &Organization{ID: id, OwnerID: ownerID, InviteCode: inviteCode, Name: name}, nil
+}
+
+func GetOrganizationByID(db *sql.DB, id int64) (*Organization, error) {
+	o := &Organization{}
+	err := db.QueryRow(
+		`SELECT id, owner_id, invite_code, name, created_at FROM organizations WHERE id = ?`,
+		id,
+	).Scan(&o.ID, &o.OwnerID, &o.InviteCode, &o.Name, &o.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return o, err
+}
+
+func GetOrganizationByInviteCode(db *sql.DB, code string) (*Organization, error) {
+	o := &Organization{}
+	err := db.QueryRow(
+		`SELECT id, owner_id, invite_code, name, created_at FROM organizations WHERE invite_code = ?`,
+		code,
+	).Scan(&o.ID, &o.OwnerID, &o.InviteCode, &o.Name, &o.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return o, err
+}
+
+func GetOrganizationByOwner(db *sql.DB, ownerID int64) (*Organization, error) {
+	o := &Organization{}
+	err := db.QueryRow(
+		`SELECT id, owner_id, invite_code, name, created_at FROM organizations WHERE owner_id = ?`,
+		ownerID,
+	).Scan(&o.ID, &o.OwnerID, &o.InviteCode, &o.Name, &o.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return o, err
+}
+
+func DeleteOrganization(db *sql.DB, id int64) error {
+	_, err := db.Exec(`DELETE FROM organizations WHERE id = ?`, id)
+	return err
+}
+
+// GetUserOrganization returns the organization the user belongs to (as member or owner), or nil.
+func GetUserOrganization(db *sql.DB, userID int64) (*Organization, error) {
+	o := &Organization{}
+	err := db.QueryRow(
+		`SELECT o.id, o.owner_id, o.invite_code, o.name, o.created_at
+		 FROM organizations o
+		 LEFT JOIN org_members m ON m.org_id = o.id
+		 WHERE o.owner_id = ? OR m.user_id = ?
+		 LIMIT 1`,
+		userID, userID,
+	).Scan(&o.ID, &o.OwnerID, &o.InviteCode, &o.Name, &o.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return o, err
+}
+
+// IsOrgMember checks if userID is a member of orgID (owner counts as member).
+func IsOrgMember(db *sql.DB, orgID, userID int64) (bool, error) {
+	// Check if owner
+	var oOrgID int64
+	err := db.QueryRow(`SELECT id FROM organizations WHERE id = ? AND owner_id = ?`, orgID, userID).Scan(&oOrgID)
+	if err == nil {
+		return true, nil
+	}
+	if err != sql.ErrNoRows {
+		return false, err
+	}
+	// Check if member
+	var id int64
+	err = db.QueryRow(`SELECT id FROM org_members WHERE org_id = ? AND user_id = ?`, orgID, userID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+func JoinOrganization(db *sql.DB, orgID, userID int64) error {
+	_, err := db.Exec(`INSERT OR IGNORE INTO org_members (org_id, user_id) VALUES (?, ?)`, orgID, userID)
+	return err
+}
+
+func LeaveOrganization(db *sql.DB, orgID, userID int64) error {
+	_, err := db.Exec(`DELETE FROM org_members WHERE org_id = ? AND user_id = ?`, orgID, userID)
+	return err
+}
+
+// RemoveOrgMember removes a member from an organization (used by org owner).
+func RemoveOrgMember(db *sql.DB, orgID, userID int64) error {
+	_, err := db.Exec(`DELETE FROM org_members WHERE org_id = ? AND user_id = ?`, orgID, userID)
+	return err
+}
+
+// CountOrgMembers returns the number of non-owner members in an org.
+func CountOrgMembers(db *sql.DB, orgID int64) (int64, error) {
+	var count int64
+	err := db.QueryRow(`SELECT COUNT(*) FROM org_members WHERE org_id = ?`, orgID).Scan(&count)
+	return count, err
+}
+
+// ListOrgMembersPaged returns a page of org members with optional search.
+// Owner is always first in the list.
+func ListOrgMembersPaged(db *sql.DB, orgID int64, search string, limit, offset int) ([]*OrgMember, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	rows, err := db.Query(
+		`SELECT m.id, m.org_id, m.user_id, u.email, (o.owner_id = m.user_id) AS is_owner, m.joined_at
+		 FROM org_members m
+		 JOIN users u ON m.user_id = u.id
+		 JOIN organizations o ON m.org_id = o.id
+		 WHERE m.org_id = ? AND LOWER(u.email) LIKE ?
+		 ORDER BY is_owner DESC, m.joined_at ASC
+		 LIMIT ? OFFSET ?`,
+		orgID, search, limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var members []*OrgMember
+	for rows.Next() {
+		m := &OrgMember{}
+		var isOwner int
+		if err := rows.Scan(&m.ID, &m.OrgID, &m.UserID, &m.Email, &isOwner, &m.JoinedAt); err != nil {
+			return nil, err
+		}
+		m.IsOwner = isOwner == 1
+		members = append(members, m)
+	}
+	return members, rows.Err()
+}
+
+// CountOrgMembersWithSearch returns total member count with optional search.
+func CountOrgMembersWithSearch(db *sql.DB, orgID int64, search string) (int64, error) {
+	search = "%" + strings.ToLower(search) + "%"
+	var count int64
+	err := db.QueryRow(
+		`SELECT COUNT(*)
+		 FROM org_members m
+		 JOIN users u ON m.user_id = u.id
+		 WHERE m.org_id = ? AND LOWER(u.email) LIKE ?`,
+		orgID, search,
+	).Scan(&count)
+	return count, err
 }

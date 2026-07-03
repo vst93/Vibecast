@@ -77,6 +77,20 @@ var messageMap = map[string]map[string]string{
 	"updateVerifyFailed":      {"en": "Checksum verification failed", "zh": "校验和验证失败"},
 	"updateNoChecksum":        {"en": "No checksum available (skipped verification)", "zh": "无校验和（已跳过验证）"},
 	"updateDownloadProgress":  {"en": "Downloading", "zh": "下载中"},
+	// organizations
+	"already_in_org":          {"en": "You are already in an organization. Leave or delete it first.", "zh": "你已在组织中，请先退出或删除当前组织"},
+	"create_org_failed":       {"en": "Failed to create organization", "zh": "创建组织失败"},
+	"invite_code_required":    {"en": "Invite code is required", "zh": "请输入邀请码"},
+	"org_not_found":           {"en": "Organization not found", "zh": "组织不存在"},
+	"join_org_failed":         {"en": "Failed to join organization", "zh": "加入组织失败"},
+	"not_in_org":              {"en": "You are not in an organization", "zh": "你不在任何组织中"},
+	"owner_cannot_leave":      {"en": "Organization owner cannot leave. Delete the organization instead.", "zh": "组织创建者不能退出，请删除组织"},
+	"leave_org_failed":        {"en": "Failed to leave organization", "zh": "退出组织失败"},
+	"not_org_owner":           {"en": "Only the organization owner can do this", "zh": "只有组织创建者可以执行此操作"},
+	"org_has_members":         {"en": "Cannot delete: organization still has other members", "zh": "无法删除：组织中还有其他成员"},
+	"delete_org_failed":       {"en": "Failed to delete organization", "zh": "删除组织失败"},
+	"cannot_remove_self":      {"en": "Cannot remove yourself", "zh": "不能移除自己"},
+	"org_open_requires_org":   {"en": "You must be in an organization to enable org access", "zh": "需要先加入组织才能开启组织内访问"},
 }
 
 func tMsg(r *http.Request, key string) string {

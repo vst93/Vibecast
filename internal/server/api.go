@@ -377,6 +377,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	var body struct {
 		Name     string `json:"name"`
 		Password string `json:"password"`
+		OrgOpen  bool   `json:"orgOpen"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -386,6 +387,19 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	if body.Name == "" {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "name_required")})
 		return
+	}
+
+	// If orgOpen is requested, user must be in an org
+	if body.OrgOpen {
+		org, err := db.GetUserOrganization(s.database, user.ID)
+		if err != nil {
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
+			return
+		}
+		if org == nil {
+			writeJSON(w, 403, jsonResp{Error: tMsg(r, "org_open_requires_org")})
+			return
+		}
 	}
 
 	// Slug is always auto-generated — 12 random chars, no user input
@@ -427,7 +441,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		}
 	}
 
-	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password)
+	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password, body.OrgOpen)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_site_failed")})
 		return
@@ -443,6 +457,7 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	var body struct {
 		Name     string `json:"name"`
 		Password string `json:"password"`
+		OrgOpen  *bool  `json:"orgOpen"` // pointer to distinguish unset from false
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -473,7 +488,26 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 			return
 		}
 	}
-	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd, plainPwd); err != nil {
+
+	// Determine orgOpen value
+	orgOpen := site.OrgOpen
+	if body.OrgOpen != nil {
+		orgOpen = *body.OrgOpen
+		// If enabling orgOpen, user must be in an org
+		if orgOpen {
+			org, err := db.GetUserOrganization(s.database, user.ID)
+			if err != nil {
+				writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
+				return
+			}
+			if org == nil {
+				writeJSON(w, 403, jsonResp{Error: tMsg(r, "org_open_requires_org")})
+				return
+			}
+		}
+	}
+
+	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd, plainPwd, orgOpen); err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_site_failed")})
 		return
 	}
@@ -600,6 +634,7 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 		"updatedAt":            site.UpdatedAt,
 		"publicAccessDisabled": publicAccessDisabled,
 		"ownerEmail":           site.OwnerEmail,
+		"orgOpen":              site.OrgOpen,
 		"visits":               map[string]int64{"today": 0, "month": 0, "total": 0},
 	}
 }

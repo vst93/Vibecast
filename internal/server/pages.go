@@ -44,6 +44,7 @@ footer{text-align:center;padding:2rem 0;color:var(--dim);font-family:var(--mono)
 .lang-toggle a{font-family:var(--mono);font-size:.75rem;cursor:pointer;padding:4px 10px;border-radius:5px;color:var(--dim);transition:all .15s}
 .lang-toggle a.active{background:var(--surface-2);color:var(--accent)}
 @media(max-width:640px){.hero{padding:2rem 0}.hero .logo{font-size:2.2rem}.features{grid-template-columns:1fr}.wrap{padding:1.5rem 1rem}.lang-toggle{top:1rem;right:1rem}}
+.badge-org{background:rgba(57,211,83,.15);color:var(--accent);border:1px solid var(--accent);padding:1px 6px;border-radius:4px;font-size:.65rem;font-family:var(--mono);text-transform:uppercase}.org-toggle-field{margin-top:.5rem}.checkbox-label{display:flex;align-items:flex-start;gap:.4rem;cursor:pointer;font-size:.8rem;color:var(--text)}.checkbox-label input{margin-top:2px;flex-shrink:0}.checkbox-label .desc{margin-top:.2rem}.org-info{margin-bottom:.8rem}.org-info .org-name{font-family:var(--mono);font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.4rem}.org-invite{margin-top:.5rem}.org-invite label{font-size:.7rem;color:var(--dim);display:block;margin-bottom:.2rem}.invite-row{display:flex;align-items:center;gap:.4rem}.invite-code{font-family:var(--mono);font-size:.85rem;color:var(--accent);background:var(--surface-2);padding:4px 8px;border-radius:4px;border:1px solid var(--line);flex:1;word-break:break-all}.org-actions{margin-bottom:1rem}.org-members-section h3{font-size:.8rem;color:var(--dim);margin-bottom:.5rem;font-family:var(--mono)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <script>var _t="light";try{_t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",_t)</script>
@@ -221,7 +222,7 @@ var lang="en";
 var sitePage=1,sitePerPage=10,siteTotal=0,siteSearch="";
 var maxUploadMB=50;
 var maxSites=30;
-var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"Access Password",sitePwdPh:"Leave empty for public",create:"Create Site",yourSites:"Your Sites",noSites:"No sites yet. Create one above.",deployBtn:"Upload",delete:"Delete",deleteConfirm:"Delete this site? This removes all files.",protected:"Protected",public:"Public",login:"Login",register:"Register",email:"Email",emailPh:"you@example.com",password:"Password",pwdHint:"At least 6 characters",noAccount:"No account?",haveAccount:"Have an account?",logout:"Logout",adminPanel:"Admin",deployed:"Deployed!",siteCreated:"Site created",deleted:"Deleted",loginFailed:"Login failed",registerFailed:"Registration failed",slugDesc:"Auto-generated from name if blank. a-z, 0-9, hyphens only.",pwdDesc:"If set, visitors need this password.",sitesHint:"Click to expand",deployHint:"Upload ZIP or single file (PDF, Word, images, etc.)",storagePath:"Storage",accessPassword:"Password",none:"None",accessDisabled:"Disabled",pwdRequired:"Public access disabled — password required",pwdOptional:"Optional password protection",search:"Search",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",captcha:"Captcha",captchaPh:"Answer",captchaLabel:"Verification",confirmPassword:"Confirm Password",pwdMismatch:"Passwords do not match",changePassword:"Change Password",currentPassword:"Current Password",newPassword:"New Password",newPasswordPh:"New password (min 6)",passwordChanged:"Password changed",cancel:"Cancel",save:"Save",confirm:"Confirm",emailRequired:"Please enter your email",pwdRequired:"Please enter your password",confirmRequired:"Please confirm your password",captchaRequired:"Please solve the captcha",copyUrl:"Copy URL",copied:"Copied!",copy:"Copy",copyFailed:"Copy failed",visit:"Visit",files:"Files",noFiles:"No files",visitsToday:"Today",visitsMonth:"Month",visitsTotal:"Total",visits:"Visits",uploading:"Uploading...",dragDrop:"Drag file here or click to upload",dragDropHover:"Drop to upload",fileTooLarge:"File too large",fileTypeBlocked:"This file type is not allowed",uploadFailed:"Upload failed",networkError:"Network error",allowedTypes:"ZIP, PDF, Word, Excel, PPT, images, audio, video, text",share:"Share",shareCopied:"Share text copied!",shareTemplatePwd:"Site: {name}\nURL: {url}\nPassword: {password}",shareTemplatePublic:"Site: {name}\nURL: {url}"},zh:{siteName:"站点名称",siteNamePh:"例如：我的作品集",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"访问密码",sitePwdPh:"留空则公开访问",create:"创建站点",yourSites:"我的站点",noSites:"还没有站点，在左侧创建一个。",deployBtn:"上传",delete:"删除",deleteConfirm:"确定删除此站点？所有文件将被移除。",protected:"已保护",public:"公开",login:"登录",register:"注册",email:"邮箱",emailPh:"you@example.com",password:"密码",pwdHint:"至少 6 个字符",noAccount:"没有账号？",haveAccount:"已有账号？",logout:"退出",adminPanel:"管理",deployed:"部署成功！",siteCreated:"站点已创建",deleted:"已删除",loginFailed:"登录失败",registerFailed:"注册失败",slugDesc:"留空则自动生成。仅限 a-z、0-9、连字符。",pwdDesc:"设置后，访问者需要输入此密码。",sitesHint:"点击展开详情",deployHint:"上传 ZIP 压缩包或单个文件（PDF、Word、图片等）",storagePath:"存储路径",accessPassword:"访问密码",none:"无",accessDisabled:"已禁用",pwdRequired:"公开访问已关闭 — 必须设置密码",pwdOptional:"可选的密码保护",search:"搜索",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共",captcha:"验证码",captchaPh:"输入答案",captchaLabel:"验证",confirmPassword:"确认密码",pwdMismatch:"两次密码不一致",changePassword:"修改密码",currentPassword:"当前密码",newPassword:"新密码",newPasswordPh:"新密码（至少 6 位）",passwordChanged:"密码已修改",cancel:"取消",save:"保存",confirm:"确认",emailRequired:"请输入邮箱",pwdRequired:"请输入密码",confirmRequired:"请确认密码",captchaRequired:"请输入验证码",copyUrl:"复制链接",copied:"已复制！",copy:"复制",copyFailed:"复制失败",visit:"访问",files:"文件",noFiles:"暂无文件",visitsToday:"今日",visitsMonth:"本月",visitsTotal:"总计",visits:"访问",uploading:"上传中...",dragDrop:"拖拽文件到此处或点击上传",dragDropHover:"松开以上传",fileTooLarge:"文件过大",fileTypeBlocked:"不允许此文件类型",uploadFailed:"上传失败",networkError:"网络错误",allowedTypes:"ZIP、PDF、Word、Excel、PPT、图片、音频、视频、文本",share:"分享",shareCopied:"分享文本已复制！",shareTemplatePwd:"站点：{name}\n地址：{url}\n密码：{password}",shareTemplatePublic:"站点：{name}\n地址：{url}"}};
+var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"Access Password",sitePwdPh:"Leave empty for public",create:"Create Site",yourSites:"Your Sites",noSites:"No sites yet. Create one above.",deployBtn:"Upload",delete:"Delete",deleteConfirm:"Delete this site? This removes all files.",protected:"Protected",public:"Public",login:"Login",register:"Register",email:"Email",emailPh:"you@example.com",password:"Password",pwdHint:"At least 6 characters",noAccount:"No account?",haveAccount:"Have an account?",logout:"Logout",adminPanel:"Admin",deployed:"Deployed!",siteCreated:"Site created",deleted:"Deleted",loginFailed:"Login failed",registerFailed:"Registration failed",slugDesc:"Auto-generated from name if blank. a-z, 0-9, hyphens only.",pwdDesc:"If set, visitors need this password.",sitesHint:"Click to expand",deployHint:"Upload ZIP or single file (PDF, Word, images, etc.)",storagePath:"Storage",accessPassword:"Password",none:"None",accessDisabled:"Disabled",pwdRequired:"Public access disabled — password required",pwdOptional:"Optional password protection",search:"Search",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",captcha:"Captcha",captchaPh:"Answer",captchaLabel:"Verification",confirmPassword:"Confirm Password",pwdMismatch:"Passwords do not match",changePassword:"Change Password",currentPassword:"Current Password",newPassword:"New Password",newPasswordPh:"New password (min 6)",passwordChanged:"Password changed",cancel:"Cancel",save:"Save",confirm:"Confirm",emailRequired:"Please enter your email",pwdRequired:"Please enter your password",confirmRequired:"Please confirm your password",captchaRequired:"Please solve the captcha",copyUrl:"Copy URL",copied:"Copied!",copy:"Copy",copyFailed:"Copy failed",visit:"Visit",files:"Files",noFiles:"No files",visitsToday:"Today",visitsMonth:"Month",visitsTotal:"Total",visits:"Visits",uploading:"Uploading...",dragDrop:"Drag file here or click to upload",dragDropHover:"Drop to upload",fileTooLarge:"File too large",fileTypeBlocked:"This file type is not allowed",uploadFailed:"Upload failed",networkError:"Network error",allowedTypes:"ZIP, PDF, Word, Excel, PPT, images, audio, video, text",share:"Share",shareCopied:"Share text copied!",shareTemplatePwd:"Site: {name}\nURL: {url}\nPassword: {password}",shareTemplatePublic:"Site: {name}\nURL: {url}",organization:"Organization",orgManage:"Organization",orgCreate:"Create Organization",orgJoin:"Join Organization",orgName:"Organization Name",orgNamePh:"e.g. My Team",orgInviteCode:"Invite Code",orgInviteCodePh:"Enter 12-char code",orgCreateDesc:"Create a new organization. You will get an invite code to share with your team.",orgJoinDesc:"Enter an invite code to join an existing organization.",orgLeave:"Leave Organization",orgDelete:"Delete Organization",orgMembers:"Members",orgNoMembers:"No members",orgOwner:"Owner",orgMember:"Member",orgRemove:"Remove",orgLeaveConfirm:"Leave this organization?",orgDeleteConfirm:"Delete this organization? This cannot be undone.",orgCreated:"Organization created",orgJoined:"Joined organization",orgLeft:"Left organization",orgDeleted:"Organization deleted",orgMemberRemoved:"Member removed",orgInviteCodeCopied:"Invite code copied!",orgOpenLabel:"Open to org members",orgOpenDesc:"If enabled, logged-in users in the same organization can access this site without a password.",orgBadge:"Org",noOrg:"Not in an organization"},zh:{siteName:"站点名称",siteNamePh:"例如：我的作品集",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"访问密码",sitePwdPh:"留空则公开访问",create:"创建站点",yourSites:"我的站点",noSites:"还没有站点，在左侧创建一个。",deployBtn:"上传",delete:"删除",deleteConfirm:"确定删除此站点？所有文件将被移除。",protected:"已保护",public:"公开",login:"登录",register:"注册",email:"邮箱",emailPh:"you@example.com",password:"密码",pwdHint:"至少 6 个字符",noAccount:"没有账号？",haveAccount:"已有账号？",logout:"退出",adminPanel:"管理",deployed:"部署成功！",siteCreated:"站点已创建",deleted:"已删除",loginFailed:"登录失败",registerFailed:"注册失败",slugDesc:"留空则自动生成。仅限 a-z、0-9、连字符。",pwdDesc:"设置后，访问者需要输入此密码。",sitesHint:"点击展开详情",deployHint:"上传 ZIP 压缩包或单个文件（PDF、Word、图片等）",storagePath:"存储路径",accessPassword:"访问密码",none:"无",accessDisabled:"已禁用",pwdRequired:"公开访问已关闭 — 必须设置密码",pwdOptional:"可选的密码保护",search:"搜索",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共",captcha:"验证码",captchaPh:"输入答案",captchaLabel:"验证",confirmPassword:"确认密码",pwdMismatch:"两次密码不一致",changePassword:"修改密码",currentPassword:"当前密码",newPassword:"新密码",newPasswordPh:"新密码（至少 6 位）",passwordChanged:"密码已修改",cancel:"取消",save:"保存",confirm:"确认",emailRequired:"请输入邮箱",pwdRequired:"请输入密码",confirmRequired:"请确认密码",captchaRequired:"请输入验证码",copyUrl:"复制链接",copied:"已复制！",copy:"复制",copyFailed:"复制失败",visit:"访问",files:"文件",noFiles:"暂无文件",visitsToday:"今日",visitsMonth:"本月",visitsTotal:"总计",visits:"访问",uploading:"上传中...",dragDrop:"拖拽文件到此处或点击上传",dragDropHover:"松开以上传",fileTooLarge:"文件过大",fileTypeBlocked:"不允许此文件类型",uploadFailed:"上传失败",networkError:"网络错误",allowedTypes:"ZIP、PDF、Word、Excel、PPT、图片、音频、视频、文本",share:"分享",shareCopied:"分享文本已复制！",shareTemplatePwd:"站点：{name}\n地址：{url}\n密码：{password}",shareTemplatePublic:"站点：{name}\n地址：{url}",organization:"组织",orgManage:"组织管理",orgCreate:"创建组织",orgJoin:"加入组织",orgName:"组织名称",orgNamePh:"例如：我的团队",orgInviteCode:"邀请码",orgInviteCodePh:"输入 12 位邀请码",orgCreateDesc:"创建一个新组织，你将获得一个邀请码来分享给团队成员。",orgJoinDesc:"输入邀请码加入已有组织。",orgLeave:"退出组织",orgDelete:"删除组织",orgMembers:"成员",orgNoMembers:"暂无成员",orgOwner:"创建者",orgMember:"成员",orgRemove:"移除",orgLeaveConfirm:"确定退出此组织？",orgDeleteConfirm:"确定删除此组织？此操作不可撤销。",orgCreated:"组织已创建",orgJoined:"已加入组织",orgLeft:"已退出组织",orgDeleted:"组织已删除",orgMemberRemoved:"成员已移除",orgInviteCodeCopied:"邀请码已复制！",orgOpenLabel:"对组织成员开放",orgOpenDesc:"开启后，同一组织内已登录的用户可以直接访问此站点，无需密码。",orgBadge:"组织",noOrg:"未加入任何组织"}};
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();else renderAuth();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -289,8 +290,9 @@ function renderDashboard(){
 var al=currentUser.isAdmin?'<a class="admin-link" href="'+BASE+'admin">'+t("adminPanel")+'</a>':'';
 var th='<a id="theme-toggle" class="btn-icon" onclick="toggleTheme()">'+(getTheme()==="dark"?"☀":"🌙")+'</a>';
 var lh='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint"><span id="site-limit-badge" style="margin-right:.5rem"></span>'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `Vibe<span class="accent">cast</span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openChangePwdModal()">🔒<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">'+t("logout")+'</button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-open"> <span>'+t("orgOpenLabel")+'</span></label><div class="desc">'+t("orgOpenDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div><div class="card"><div class="card-header"><h2>'+t("orgManage")+'</h2></div><div class="card-body" id="org-section"></div></div></div></div><div class="main-content"><div class="card"><div class="card-header"><h2>'+t("yourSites")+'</h2><span class="hint"><span id="site-limit-badge" style="margin-right:.5rem"></span>'+t("sitesHint")+'</span></div><div class="card-body"><div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchSites()" value="'+esc(siteSearch)+'"></div><div id="site-list"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div>';
 loadSites();
+loadOrg();
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){if(d.data&&d.data.maxUploadSize)maxUploadMB=d.data.maxUploadSize;if(d.data&&d.data.maxSitesPerUser)maxSites=d.data.maxSitesPerUser}).catch(function(){});
 }
 function openChangePwdModal(){document.getElementById("pwd-modal").classList.add("show")}
@@ -312,6 +314,7 @@ for(var i=0;i<sites.length;i++){var s=sites[i],dot="",badge="";
 if(s.publicAccessDisabled&&!s.protected){dot="disabled";badge='<span class="badge badge-disabled">'+t("accessDisabled")+'</span>'}
 else if(s.protected){dot="protected";badge='<span class="badge badge-protected">'+t("protected")+'</span>'}
 else{dot="public";badge='<span class="badge badge-public">'+t("public")+'</span>'}
+if(s.orgOpen){badge+=' <span class="badge badge-org">'+t("orgBadge")+'</span>'}
 var pwd=s.protected?'<code style="font-family:var(--mono);font-size:.75rem;color:var(--text)">'+esc(s.password)+'</code> <span style="display:inline-flex;gap:2px;vertical-align:middle"><button class="copy-btn" data-pwd="'+esc(s.password)+'" onclick="event.stopPropagation();copyText(this.getAttribute(\'data-pwd\'))" title="'+t("copy")+'"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><button class="copy-btn" onclick="event.stopPropagation();shareSite(\''+esc(s.name)+'\',\''+siteUrl(s.url)+'\','+(s.protected?'\''+esc(s.password)+'\'':'null')+')" title="'+t("share")+'"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></span>':'<span style="color:var(--dim)">'+t("none")+'</span> <button class="copy-btn" onclick="event.stopPropagation();shareSite(\''+esc(s.name)+'\',\''+siteUrl(s.url)+'\',null)" title="'+t("share")+'"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
 var vs=s.visits||{today:0,month:0,total:0};
 var vis='<span style="font-family:var(--mono);font-size:.7rem;color:var(--dim)" title="'+t("visits")+'">👁 '+vs.today+' / '+vs.month+' / '+vs.total+'</span>';
@@ -354,7 +357,7 @@ copyText(txt);
 toast(t("shareCopied"));
 }
 function createSite(){
-api("/sites",{method:"POST",body:JSON.stringify({name:document.getElementById("site-name").value,password:document.getElementById("site-pwd").value})}).then(function(){document.getElementById("site-name").value="";document.getElementById("site-pwd").value="";toast(t("siteCreated"));loadSites()}).catch(function(e){toast(e.message,"error")})
+api("/sites",{method:"POST",body:JSON.stringify({name:document.getElementById("site-name").value,password:document.getElementById("site-pwd").value,orgOpen:document.getElementById("site-org-open").checked})}).then(function(){document.getElementById("site-name").value="";document.getElementById("site-pwd").value="";toast(t("siteCreated"));loadSites()}).catch(function(e){toast(e.message,"error")})
 }
 function deploy(id,file){
 if(!file)return;
@@ -389,6 +392,68 @@ if(!o||!n){toast(t("currentPassword")+" & "+t("newPassword"),"error");return}
 if(n.length<6){toast(t("pwdHint"),"error");return}
 if(n!==c){toast(t("pwdMismatch"),"error");return}
 api("/auth/change-password",{method:"PUT",body:JSON.stringify({oldPassword:o,newPassword:n})}).then(function(){toast(t("passwordChanged"));closeChangePwdModal()}).catch(function(e){toast(e.message,"error")})
+}
+
+var orgInfo=null,orgMembers=[],orgMemberPage=1,orgMemberPerPage=10,orgMemberTotal=0,orgMemberSearch="";
+function loadOrg(){
+api("/org").then(function(d){
+var r=d.data||{};orgInfo=r.hasOrg?r:null;
+renderOrgSection();
+}).catch(function(){})
+}
+function renderOrgSection(){
+var el=document.getElementById("org-section");if(!el)return;
+if(!orgInfo){
+el.innerHTML='<p class="desc" style="margin-bottom:.8rem">'+t("noOrg")+'</p><div class="form-field"><label>'+t("orgName")+'</label><input id="org-create-name" placeholder="'+t("orgNamePh")+'"></div><button class="btn btn-primary" style="width:100%;margin-bottom:.5rem" onclick="createOrg()">'+t("orgCreate")+'</button><div style="border-top:1px solid var(--line);margin:.8rem 0;padding-top:.8rem"><div class="form-field"><label>'+t("orgInviteCode")+'</label><input id="org-join-code" placeholder="'+t("orgInviteCodePh")+'"></div><button class="btn btn-outline" style="width:100%" onclick="joinOrg()">'+t("orgJoin")+'</button></div>';
+return
+}
+var inviteCode=orgInfo.inviteCode||"";
+var name=orgInfo.name||"";
+var isOwner=orgInfo.isOwner||false;
+var h='<div class="org-info"><div class="org-name">'+esc(name)+'</div>';
+if(isOwner){h+='<div class="org-invite"><label>'+t("orgInviteCode")+'</label><div class="invite-row"><code class="invite-code">'+esc(inviteCode)+'</code><button class="copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')" title="'+t("copy")+'"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div>'}
+h+='</div><div class="org-actions">';
+if(isOwner){h+='<button class="btn btn-danger btn-sm" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}
+else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'}
+h+='</div><div class="org-members-section"><h3>'+t("orgMembers")+'</h3><div class="list-toolbar"><input type="text" id="org-member-search" placeholder="'+t("search")+'..." onkeydown="if(event.key===\'Enter\')searchOrgMembers()" value="'+esc(orgMemberSearch)+'"></div><div id="org-member-list"></div></div>';
+el.innerHTML=h;
+loadOrgMembers()
+}
+function orgMemberPageGo(p){orgMemberPage=p;loadOrgMembers()}
+function searchOrgMembers(){orgMemberSearch=document.getElementById("org-member-search").value;orgMemberPage=1;loadOrgMembers()}
+function loadOrgMembers(){
+var q=orgMemberSearch?"&q="+encodeURIComponent(orgMemberSearch):"";
+api("/org/members?page="+orgMemberPage+"&perPage="+orgMemberPerPage+q).then(function(d){
+var r=d.data||{},members=r.items||[];orgMemberTotal=r.total||0;
+var el=document.getElementById("org-member-list");if(!el)return;
+var tp=Math.ceil(orgMemberTotal/orgMemberPerPage)||1,pg=paginationHtml(orgMemberPage,tp,"orgMemberPageGo");
+if(!members.length){el.innerHTML='<div class="empty">'+t("orgNoMembers")+'</div>'+pg;return}
+var h='<ul class="site-list">';
+for(var i=0;i<members.length;i++){var m=members[i];
+var role=m.isOwner?'<span class="badge badge-protected">'+t("orgOwner")+'</span>':'<span class="badge badge-public">'+t("orgMember")+'</span>';
+var rmv=m.isOwner?'':' <button class="btn btn-sm btn-danger" onclick="removeOrgMember('+m.userId+')">'+t("orgRemove")+'</button>';
+h+='<li class="site-item"><div class="site-head"><div class="info"><div class="name">'+esc(m.email)+' '+role+'</div></div><div class="actions">'+rmv+'</div></div></li>'}
+h+='</ul>'+pg;
+el.innerHTML=h
+}).catch(function(){})
+}
+function createOrg(){
+var name=document.getElementById("org-create-name").value.trim();
+api("/org",{method:"POST",body:JSON.stringify({name:name})}).then(function(){toast(t("orgCreated"));loadOrg()}).catch(function(e){toast(e.message,"error")})
+}
+function joinOrg(){
+var code=document.getElementById("org-join-code").value.trim();
+if(!code){toast(t("orgInviteCodePh"),"error");return}
+api("/org/join",{method:"POST",body:JSON.stringify({inviteCode:code})}).then(function(){toast(t("orgJoined"));loadOrg()}).catch(function(e){toast(e.message,"error")})
+}
+function leaveOrg(){
+customConfirm(t("orgLeaveConfirm"),function(){api("/org/leave",{method:"POST"}).then(function(){toast(t("orgLeft"));loadOrg()}).catch(function(e){toast(e.message,"error")})})
+}
+function deleteOrg(){
+customConfirm(t("orgDeleteConfirm"),function(){api("/org",{method:"DELETE"}).then(function(){toast(t("orgDeleted"));loadOrg()}).catch(function(e){toast(e.message,"error")})})
+}
+function removeOrgMember(uid){
+api("/org/members/"+uid,{method:"DELETE"}).then(function(){toast(t("orgMemberRemoved"));loadOrgMembers()}).catch(function(e){toast(e.message,"error")})
 }
 var sl="en";try{sl=localStorage.getItem("lang")||"en"}catch(e){}lang=sl;
 checkAuth().then(function(ok){if(ok)renderDashboard();else renderAuth()})
@@ -704,6 +769,68 @@ h+='<div style="max-height:300px;overflow-y:auto">';
 for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?"📁":"📄",sz=f.dir?"-":formatSize(f.size);
 h+='<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;font-family:var(--mono);font-size:.75rem"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+icon+' '+esc(f.name)+(f.dir?"/":"")+'</span><span style="color:var(--dim);flex-shrink:0;margin-left:1rem;text-align:right;min-width:70px">'+sz+'</span></div>'}
 h+='</div></div>';td.innerHTML=h}).catch(function(){})}
+
+var orgInfo=null,orgMembers=[],orgMemberPage=1,orgMemberPerPage=10,orgMemberTotal=0,orgMemberSearch="";
+function loadOrg(){
+api("/org").then(function(d){
+var r=d.data||{};orgInfo=r.hasOrg?r:null;
+renderOrgSection();
+}).catch(function(){})
+}
+function renderOrgSection(){
+var el=document.getElementById("org-section");if(!el)return;
+if(!orgInfo){
+el.innerHTML='<p class="desc" style="margin-bottom:.8rem">'+t("noOrg")+'</p><div class="form-field"><label>'+t("orgName")+'</label><input id="org-create-name" placeholder="'+t("orgNamePh")+'"></div><button class="btn btn-primary" style="width:100%;margin-bottom:.5rem" onclick="createOrg()">'+t("orgCreate")+'</button><div style="border-top:1px solid var(--line);margin:.8rem 0;padding-top:.8rem"><div class="form-field"><label>'+t("orgInviteCode")+'</label><input id="org-join-code" placeholder="'+t("orgInviteCodePh")+'"></div><button class="btn btn-outline" style="width:100%" onclick="joinOrg()">'+t("orgJoin")+'</button></div>';
+return
+}
+var inviteCode=orgInfo.inviteCode||"";
+var name=orgInfo.name||"";
+var isOwner=orgInfo.isOwner||false;
+var h='<div class="org-info"><div class="org-name">'+esc(name)+'</div>';
+if(isOwner){h+='<div class="org-invite"><label>'+t("orgInviteCode")+'</label><div class="invite-row"><code class="invite-code">'+esc(inviteCode)+'</code><button class="copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')" title="'+t("copy")+'"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div>'}
+h+='</div><div class="org-actions">';
+if(isOwner){h+='<button class="btn btn-danger btn-sm" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}
+else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'}
+h+='</div><div class="org-members-section"><h3>'+t("orgMembers")+'</h3><div class="list-toolbar"><input type="text" id="org-member-search" placeholder="'+t("search")+'..." onkeydown="if(event.key===\'Enter\')searchOrgMembers()" value="'+esc(orgMemberSearch)+'"></div><div id="org-member-list"></div></div>';
+el.innerHTML=h;
+loadOrgMembers()
+}
+function orgMemberPageGo(p){orgMemberPage=p;loadOrgMembers()}
+function searchOrgMembers(){orgMemberSearch=document.getElementById("org-member-search").value;orgMemberPage=1;loadOrgMembers()}
+function loadOrgMembers(){
+var q=orgMemberSearch?"&q="+encodeURIComponent(orgMemberSearch):"";
+api("/org/members?page="+orgMemberPage+"&perPage="+orgMemberPerPage+q).then(function(d){
+var r=d.data||{},members=r.items||[];orgMemberTotal=r.total||0;
+var el=document.getElementById("org-member-list");if(!el)return;
+var tp=Math.ceil(orgMemberTotal/orgMemberPerPage)||1,pg=paginationHtml(orgMemberPage,tp,"orgMemberPageGo");
+if(!members.length){el.innerHTML='<div class="empty">'+t("orgNoMembers")+'</div>'+pg;return}
+var h='<ul class="site-list">';
+for(var i=0;i<members.length;i++){var m=members[i];
+var role=m.isOwner?'<span class="badge badge-protected">'+t("orgOwner")+'</span>':'<span class="badge badge-public">'+t("orgMember")+'</span>';
+var rmv=m.isOwner?'':' <button class="btn btn-sm btn-danger" onclick="removeOrgMember('+m.userId+')">'+t("orgRemove")+'</button>';
+h+='<li class="site-item"><div class="site-head"><div class="info"><div class="name">'+esc(m.email)+' '+role+'</div></div><div class="actions">'+rmv+'</div></div></li>'}
+h+='</ul>'+pg;
+el.innerHTML=h
+}).catch(function(){})
+}
+function createOrg(){
+var name=document.getElementById("org-create-name").value.trim();
+api("/org",{method:"POST",body:JSON.stringify({name:name})}).then(function(){toast(t("orgCreated"));loadOrg()}).catch(function(e){toast(e.message,"error")})
+}
+function joinOrg(){
+var code=document.getElementById("org-join-code").value.trim();
+if(!code){toast(t("orgInviteCodePh"),"error");return}
+api("/org/join",{method:"POST",body:JSON.stringify({inviteCode:code})}).then(function(){toast(t("orgJoined"));loadOrg()}).catch(function(e){toast(e.message,"error")})
+}
+function leaveOrg(){
+customConfirm(t("orgLeaveConfirm"),function(){api("/org/leave",{method:"POST"}).then(function(){toast(t("orgLeft"));loadOrg()}).catch(function(e){toast(e.message,"error")})})
+}
+function deleteOrg(){
+customConfirm(t("orgDeleteConfirm"),function(){api("/org",{method:"DELETE"}).then(function(){toast(t("orgDeleted"));loadOrg()}).catch(function(e){toast(e.message,"error")})})
+}
+function removeOrgMember(uid){
+api("/org/members/"+uid,{method:"DELETE"}).then(function(){toast(t("orgMemberRemoved"));loadOrgMembers()}).catch(function(e){toast(e.message,"error")})
+}
 var sl="en";try{sl=localStorage.getItem("lang")||"en"}catch(e){}lang=sl;
 checkAuth().then(function(){renderAdmin()})
 </script>

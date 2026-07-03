@@ -105,16 +105,28 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Password protection check — token from Authorization header or ?token= query param
 	if site.Password != "" {
+		// Check if user is in the same org as site owner (org_open bypass)
+		if site.OrgOpen {
+			currentUser := auth.CurrentUser(r, s.database)
+			if currentUser != nil && s.sameOrgAsSiteOwner(site, currentUser.ID) {
+				// Same org member — skip password, grant access directly
+				// Create a site session for seamless access
+				goto serveSite
+			}
+		}
+
 		token := auth.GetSiteToken(r)
 		if token == "" || func() bool {
 			ss, err := db.GetSiteSession(s.database, token)
 			return err != nil || ss == nil || ss.ID != site.ID
 		}() {
 			w.Header().Set("Location", "../../p/"+slug)
-		w.WriteHeader(http.StatusSeeOther)
+			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 	}
+
+serveSite:
 
 	// Record visit (async, non-blocking — don't slow down the request)
 	go func() {

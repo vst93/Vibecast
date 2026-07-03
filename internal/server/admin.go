@@ -30,11 +30,16 @@ func paginationParams(r *http.Request) (page, perPage, offset int, search string
 func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := db.GetSettings(s.database)
 	if err != nil {
-		writeJSON(w, 200, jsonResp{Data: map[string]interface{}{"openRegistration": true}})
+		writeJSON(w, 200, jsonResp{Data: map[string]interface{}{"openRegistration": true, "maxUploadSize": 50}})
 		return
+	}
+	maxMB := db.GetSettingInt(s.database, "max_upload_size", 50)
+	if maxMB < 1 {
+		maxMB = 50
 	}
 	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
 		"openRegistration": settings.OpenRegistration,
+		"maxUploadSize":    maxMB,
 	}})
 }
 

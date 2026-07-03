@@ -413,7 +413,7 @@ var h=el.getAttribute('data-orig');
 var ft='<div class="detail-row"><span class="label">'+t("files")+'</span><span class="value">';
 if(!files.length){ft+=t("noFiles")+'</span></div>';el.innerHTML=h+ft;return}
 ft+='<div style="margin-top:.3rem">';
-for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?"` + iconFolder + `":"` + iconFile + `",sz=f.dir?"-":formatSize(f.size);
+for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"-":formatSize(f.size);
 ft+='<div style="display:flex;justify-content:space-between;align-items:baseline;padding:1px 0;font-family:var(--mono);font-size:.75rem"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+icon+' '+esc(f.name)+(f.dir?"/":"")+'</span><span style="color:var(--dim);flex-shrink:0;margin-left:1rem;text-align:right;min-width:70px">'+sz+'</span></div>'}
 ft+='</div></div>';
 el.innerHTML=h+ft}).catch(function(){})
@@ -756,14 +756,14 @@ el.innerHTML='<span style="color:var(--dim);font-size:.8rem">'+t("checkingUpdate
 api("/admin/update/check").then(function(d){
 var r=d.data||{};
 if(btn){btn.disabled=false;btn.textContent=t("updateCheck")}
-if(r.error){el.innerHTML='<span style="color:var(--danger);font-size:.8rem">'+iconCheck+' '+esc(r.error)+'</span>';return}
+if(r.error){el.innerHTML='<span style="color:var(--danger);font-size:.8rem">` + iconCheck + ` '+esc(r.error)+'</span>';return}
 if(r.updateAvailable){
-var h='<div style="margin-bottom:.6rem"><span style="color:var(--accent);font-size:.8rem;font-family:var(--mono)">'+iconCheck+' '+t("updateAvailable")+'</span></div>';
+var h='<div style="margin-bottom:.6rem"><span style="color:var(--accent);font-size:.8rem;font-family:var(--mono)">` + iconCheck + ` '+t("updateAvailable")+'</span></div>';
 h+='<div style="font-size:.8rem;color:var(--dim);margin-bottom:.4rem">'+t("currentVersion")+': <span style="font-family:var(--mono);color:var(--text)">v'+esc(r.currentVersion)+'</span> → '+t("latestVersion")+': <span style="font-family:var(--mono);color:var(--accent)">v'+esc(r.latestVersion)+'</span></div>';
 if(r.releaseNotes){h+='<details style="margin-bottom:.6rem"><summary style="font-size:.75rem;cursor:pointer;color:var(--dim)">'+t("releaseNotes")+'</summary><div style="font-size:.75rem;color:var(--dim);margin-top:.4rem;white-space:pre-wrap;max-height:200px;overflow-y:auto">'+esc(r.releaseNotes)+'</div></details>'}
 h+='<button class="btn btn-promote" id="update-apply-btn" onclick="applyUpdate()">'+t("updateNow")+'</button>';
 el.innerHTML=h}else{
-var h2='<span style="color:var(--dim);font-size:.8rem">'+iconCheck+' '+t("noUpdate")+'</span>';
+var h2='<span style="color:var(--dim);font-size:.8rem">` + iconCheck + ` '+t("noUpdate")+'</span>';
 if(r.latestVersion){h2+=' <span style="color:var(--dim);font-size:.75rem;font-family:var(--mono)">v'+esc(r.latestVersion)+'</span>'}
 el.innerHTML=h2}
 }).catch(function(e){if(btn){btn.disabled=false;btn.textContent=t("updateCheck")}el.innerHTML='<span style="color:var(--danger);font-size:.8rem">'+esc(e.message)+'</span>'})
@@ -784,31 +784,31 @@ if(bar&&st.status==="downloading"){bar.style.width=st.progress+"%";txt.textConte
 else if(bar&&st.status==="verifying"){bar.style.width="100%";txt.textContent=t("updateVerifying")}
 else if(bar&&st.status==="installing"){bar.style.width="100%";txt.textContent=t("updateInstalling")}
 else if(st.status==="done"){clearInterval(pollTimer);
-var h='<div style="color:var(--accent);font-size:.8rem;font-family:var(--mono)">'+iconCheck+' '+t("updateSuccess")+'</div>';
+var h='<div style="color:var(--accent);font-size:.8rem;font-family:var(--mono)">` + iconCheck + ` '+t("updateSuccess")+'</div>';
 if(st.prevVersion&&st.newVersion){h+='<div style="font-size:.75rem;color:var(--dim);margin-top:.3rem">v'+esc(st.prevVersion)+' → v'+esc(st.newVersion)+'</div>'}
 h+='<button class="btn btn-promote" style="margin-top:.6rem" onclick="restartServer()">'+t("updateRestart")+'</button>';
 el.innerHTML=h;toast(t("updateSuccess"),"success")}
 else if(st.status==="error"){clearInterval(pollTimer);
-var h='<div style="color:var(--danger);font-size:.8rem">'+iconCheck+' '+t("updateFailed")+': '+esc(st.error)+'</div><button class="btn btn-outline" style="margin-top:.4rem" onclick="checkUpdate()">'+t("updateCheck")+'</button>';
+var h='<div style="color:var(--danger);font-size:.8rem">` + iconCheck + ` '+t("updateFailed")+': '+esc(st.error)+'</div><button class="btn btn-outline" style="margin-top:.4rem" onclick="checkUpdate()">'+t("updateCheck")+'</button>';
 el.innerHTML=h;toast(st.error,"error")}
 }).catch(function(){})
 },1000)
 }).catch(function(e){
 clearInterval(pollTimer);
-var h='<div style="color:var(--danger);font-size:.8rem">'+iconCheck+' '+t("updateFailed")+': '+esc(e.message)+'</div><button class="btn btn-outline" style="margin-top:.4rem" onclick="checkUpdate()">'+t("updateCheck")+'</button>';
+var h='<div style="color:var(--danger);font-size:.8rem">` + iconCheck + ` '+t("updateFailed")+': '+esc(e.message)+'</div><button class="btn btn-outline" style="margin-top:.4rem" onclick="checkUpdate()">'+t("updateCheck")+'</button>';
 el.innerHTML=h;toast(e.message,"error")
 })
 })
 }
 function restartServer(){
 var el=document.getElementById("update-result");
-el.innerHTML+='<div style="margin-top:.6rem"><span style="color:var(--accent);font-size:.8rem;font-family:var(--mono)">'+iconCheck+' '+t("updateRestarting")+'</span></div>';
+el.innerHTML+='<div style="margin-top:.6rem"><span style="color:var(--accent);font-size:.8rem;font-family:var(--mono)">` + iconCheck + ` '+t("updateRestarting")+'</span></div>';
 api("/admin/update/restart",{method:"POST"}).then(function(){
 toast(t("updateRestartSuccess"),"success");
 function tryReload(attempt){
 var max=15;
 if(attempt>max){
-el.innerHTML+='<div style="color:var(--danger);font-size:.8rem;margin-top:.4rem">'+iconCheck+' '+t("updateRestartFailed")+'</div>';
+el.innerHTML+='<div style="color:var(--danger);font-size:.8rem;margin-top:.4rem">` + iconCheck + ` '+t("updateRestartFailed")+'</div>';
 return
 }
 fetch(BASE+"api/version",{cache:"no-store"}).then(function(r){
@@ -879,7 +879,7 @@ function adminLoadFileTree(id){api("/admin/sites/"+id+"/files").then(function(d)
 var h='<div style="padding:.5rem .8rem"><div style="font-weight:600;margin-bottom:.3rem;font-size:.75rem;color:var(--dim)">'+t("files")+'</div>';
 if(!files.length){h+='<div style="font-size:.75rem;color:var(--dim)">'+t("noFiles")+'</div></div>';td.innerHTML=h;return}
 h+='<div style="max-height:300px;overflow-y:auto">';
-for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?"` + iconFolder + `":"` + iconFile + `",sz=f.dir?"-":formatSize(f.size);
+for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"-":formatSize(f.size);
 h+='<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;font-family:var(--mono);font-size:.75rem"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+icon+' '+esc(f.name)+(f.dir?"/":"")+'</span><span style="color:var(--dim);flex-shrink:0;margin-left:1rem;text-align:right;min-width:70px">'+sz+'</span></div>'}
 h+='</div></div>';td.innerHTML=h}).catch(function(){})}
 

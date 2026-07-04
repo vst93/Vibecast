@@ -207,6 +207,22 @@ func DeleteSession(db *sql.DB, token string) error {
 	return err
 }
 
+// CleanupExpiredSessions deletes all expired user sessions and site sessions.
+// Returns the total number of rows deleted.
+func CleanupExpiredSessions(db *sql.DB) (int64, error) {
+	res1, err := db.Exec(`DELETE FROM sessions WHERE expires_at <= datetime('now')`)
+	if err != nil {
+		return 0, err
+	}
+	n1, _ := res1.RowsAffected()
+	res2, err := db.Exec(`DELETE FROM site_sessions WHERE expires_at <= datetime('now')`)
+	if err != nil {
+		return n1, nil
+	}
+	n2, _ := res2.RowsAffected()
+	return n1 + n2, nil
+}
+
 // --- Sites ---
 
 func CreateSite(db *sql.DB, userID int64, slug, name, hashedPassword, plainPassword string, orgOpen bool) (*Site, error) {

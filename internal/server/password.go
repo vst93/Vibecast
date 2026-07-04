@@ -56,6 +56,19 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPost {
+		// Rate limit password attempts to prevent brute force
+		if !authRateLimiter.allow(clientIP(r)) {
+			contentType := r.Header.Get("Content-Type")
+			if strings.Contains(contentType, "application/json") {
+				writeJSON(w, 429, jsonResp{Error: "Too many attempts. Please try again later."})
+			} else {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(http.StatusTooManyRequests)
+				fmt.Fprint(w, passwordPageHTMLWithErr(slug, site.Name, "Too many attempts. Please try again later."))
+			}
+			return
+		}
+
 		var body struct {
 			Password string `json:"password"`
 		}
@@ -103,12 +116,14 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 			})
 		} else {
 			// Form submission: set cookie and redirect (no token in URL)
+			secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 			http.SetCookie(w, &http.Cookie{
 				Name:     "site_token",
 				Value:    token,
 				Path:     "/",
 				MaxAge:   7 * 24 * 3600,
 				HttpOnly: true,
+				Secure:   secure,
 				SameSite: http.SameSiteLaxMode,
 			})
 			w.Header().Set("Location", "../s/"+slug+"/")

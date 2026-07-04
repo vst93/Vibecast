@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	crand "crypto/rand"
 
@@ -38,7 +39,24 @@ func New(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	return &Server{config: cfg, database: database, version: cfg.Version}, nil
+	s := &Server{config: cfg, database: database, version: cfg.Version}
+
+	// Start a background goroutine to clean up expired sessions every hour.
+	go s.sessionCleanupLoop()
+
+	return s, nil
+}
+
+// sessionCleanupLoop periodically deletes expired session rows.
+func (s *Server) sessionCleanupLoop() {
+	// Run once at startup
+	_, _ = db.CleanupExpiredSessions(s.database)
+
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		_, _ = db.CleanupExpiredSessions(s.database)
+	}
 }
 
 // Close closes the database connection.
@@ -63,8 +81,8 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/p/", s.passwordPageHandler)
 
 	// API routes
-	mux.HandleFunc("/api/auth/register", s.handleRegister)
-	mux.HandleFunc("/api/auth/login", s.handleLogin)
+	mux.HandleFunc("/api/auth/register", rateLimitMiddleware(s.handleRegister))
+	mux.HandleFunc("/api/auth/login", rateLimitMiddleware(s.handleLogin))
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.HandleFunc("/api/auth/me", s.handleMe)
 	mux.HandleFunc("/api/auth/captcha", s.handleCaptcha)
@@ -105,7 +123,25 @@ func (s *Server) Router() http.Handler {
 	// Landing page
 	mux.HandleFunc("/", s.handleIndex)
 
-	return s.recoverMiddleware(s.logMiddleware(mux))
+	return s.recoverMiddleware(s.logMiddleware(s.bodyLimitMiddleware(mux)))
+}
+
+// maxJSONBodySize limits JSON API request bodies to prevent memory exhaustion.
+// Deploy endpoints already use their own MaxBytesReader for large uploads.
+const maxJSONBodySize = 1 << 20 // 1 MB
+
+// bodyLimitMiddleware wraps the handler with a request body size limit.
+// Only applies to POST/PUT/PATCH with JSON content type — multipart uploads
+// (deploy) are exempt since they use their own MaxBytesReader.
+func (s *Server) bodyLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ct := r.Header.Get("Content-Type")
+		// Only limit JSON/text requests, not multipart form uploads
+		if strings.Contains(ct, "application/json") || strings.Contains(ct, "text/") {
+			r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodySize)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {

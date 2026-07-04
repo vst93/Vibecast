@@ -65,8 +65,8 @@ func GetSessionToken(r *http.Request) string {
 	return ""
 }
 
-// GetSiteToken extracts the site access token from the Authorization header,
-// the site_token cookie, or the ?token= query parameter (fallback for old links).
+// GetSiteToken extracts the site access token from the Authorization header
+// or the site_token cookie (set by the password gate).
 // NOTE: does NOT use vibecast_session cookie — that's a user login token, not a site token.
 func GetSiteToken(r *http.Request) string {
 	// Try Authorization header first (API clients)
@@ -77,8 +77,7 @@ func GetSiteToken(r *http.Request) string {
 	if cookie, err := r.Cookie("site_token"); err == nil && cookie.Value != "" {
 		return cookie.Value
 	}
-	// Fall back to query parameter (legacy links)
-	return r.URL.Query().Get("token")
+	return ""
 }
 
 // CurrentUser resolves the user from the Authorization header token. Returns nil if not authenticated.
@@ -108,27 +107,43 @@ func RequireAuth(database *sql.DB, next func(http.ResponseWriter, *http.Request,
 	}
 }
 
+// isTLSRequest returns true if the request was made over HTTPS (directly or
+// behind a reverse proxy with X-Forwarded-Proto).
+func isTLSRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	// Check X-Forwarded-Proto for reverse proxy setups
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto == "https" {
+		return true
+	}
+	return false
+}
+
 // SetSessionCookie sets the vibecast_session cookie so browser navigation to /s/
 // pages carries auth (for org_open bypass). Path "/" covers the entire site.
-func SetSessionCookie(w http.ResponseWriter, token string) {
+// When the request is over TLS, the Secure flag is set automatically.
+func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "vibecast_session",
 		Value:    token,
 		Path:     "/",
 		MaxAge:   int(SessionDuration.Seconds()),
 		HttpOnly: true,
+		Secure:   isTLSRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
 // ClearSessionCookie expires the vibecast_session cookie.
-func ClearSessionCookie(w http.ResponseWriter) {
+func ClearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "vibecast_session",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   isTLSRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 }

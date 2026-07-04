@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"html"
 	"mime"
 	"net/http"
 	"os"
@@ -264,7 +265,7 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 		if i > 0 || subPath != "" {
 			sep = "/"
 		}
-		crumbs = append(crumbs, `<a href="`+rel+`">`+p+`</a>`+sep)
+		crumbs = append(crumbs, `<a href="`+html.EscapeString(rel)+`">`+html.EscapeString(p)+`</a>`+sep)
 	}
 
 	var b strings.Builder
@@ -304,7 +305,7 @@ th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
 			href += "/"
 			cls = ` class="dir"`
 		}
-		b.WriteString(`<tr><td` + cls + `><a href="` + href + `">` + displayName + `</a></td><td class="size">` + size + `</td></tr>`)
+		b.WriteString(`<tr><td` + cls + `><a href="` + html.EscapeString(href) + `">` + html.EscapeString(displayName) + `</a></td><td class="size">` + size + `</td></tr>`)
 	}
 	b.WriteString(`</tbody></table></body></html>`)
 

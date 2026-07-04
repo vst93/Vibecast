@@ -209,6 +209,16 @@ func (s *Server) adminSiteAction(w http.ResponseWriter, r *http.Request, user *d
 		return
 	}
 
+	// Check for /password sub-action (admin can view any site's password)
+	if len(pathParts) > 1 && pathParts[1] == "password" {
+		if r.Method != http.MethodGet {
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+			return
+		}
+		s.sitePassword(w, r, site)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodDelete:
 		if err := db.DeleteSite(s.database, site.ID); err != nil {

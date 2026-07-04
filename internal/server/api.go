@@ -317,6 +317,16 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		return
 	}
 
+	// Check for /password sub-action (return plaintext password for owner)
+	if len(pathParts) > 1 && pathParts[1] == "password" {
+		if r.Method != http.MethodGet {
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+			return
+		}
+		s.sitePassword(w, r, site)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		writeJSON(w, 200, jsonResp{Data: s.siteToJSON(site)})
@@ -630,7 +640,6 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 		"slug":                 site.Slug,
 		"name":                 site.Name,
 		"protected":            protected,
-		"password":             site.PasswordPlain,
 		"storagePath":          site.Slug,
 		"url":                  fmt.Sprintf("s/%s/", site.Slug),
 		"createdAt":            site.CreatedAt,
@@ -653,6 +662,14 @@ func (s *Server) siteToJSONWithVisits(site *db.Site, visits *db.VisitStats) map[
 		}
 	}
 	return m
+}
+
+// sitePassword returns the plaintext password for a site owner.
+// Only the site owner can access this — authorization is already enforced in handleSite.
+func (s *Server) sitePassword(w http.ResponseWriter, r *http.Request, site *db.Site) {
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"password": site.PasswordPlain,
+	}})
 }
 
 // bytesReader is a helper to avoid importing bytes in the import block above.

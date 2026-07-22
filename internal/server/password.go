@@ -15,6 +15,13 @@ import (
 // GET /p/{slug}  → show password form
 // POST /p/{slug} → validate password, return token (JSON) or redirect with ?token=
 func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
+	// Domain isolation: if site_access_domains is configured, only allow
+	// password gate to be accessed from those domains.
+	if !s.isHostAllowedForSites(r) {
+		http.Error(w, "Forbidden: site content is not accessible from this domain", http.StatusForbidden)
+		return
+	}
+
 	slug := strings.TrimPrefix(r.URL.Path, "/p/")
 	slug = strings.SplitN(slug, "/", 2)[0]
 	if slug == "" {

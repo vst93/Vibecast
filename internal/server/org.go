@@ -124,8 +124,8 @@ func (s *Server) handleOrgAction(w http.ResponseWriter, r *http.Request, user *d
 		}
 		s.leaveOrg(w, r, user)
 	case "members":
-		// GET /api/org/members — list members
-		// DELETE /api/org/members/{userId} — remove member
+		// GET /api/org/members - list members
+		// DELETE /api/org/members/{userId} - remove member
 		if len(pathParts) > 1 && pathParts[1] != "" {
 			if r.Method != http.MethodDelete {
 				writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
@@ -139,6 +139,12 @@ func (s *Server) handleOrgAction(w http.ResponseWriter, r *http.Request, user *d
 			return
 		}
 		s.listOrgMembers(w, r, user)
+	case "sites":
+		if r.Method != http.MethodGet {
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+			return
+		}
+		s.listOrgPinnedSites(w, r, user)
 	default:
 		writeJSON(w, 404, jsonResp{Error: "not found"})
 	}
@@ -341,6 +347,52 @@ func (s *Server) removeOrgMember(w http.ResponseWriter, r *http.Request, user *d
 	}
 
 	writeJSON(w, 200, jsonResp{Message: "member removed"})
+}
+
+// listOrgPinnedSites returns pinned sites from org members.
+// Only returns name and slug - no config/password info.
+func (s *Server) listOrgPinnedSites(w http.ResponseWriter, r *http.Request, user *db.User) {
+	org, err := db.GetUserOrganization(s.database, user.ID)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
+		return
+	}
+	if org == nil {
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "not_in_org")})
+		return
+	}
+
+	page, perPage, offset, search := paginationParams(r)
+
+	sites, err := db.ListPinnedOrgSitesPaged(s.database, org.ID, search, perPage, offset)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
+		return
+	}
+	total, err := db.CountPinnedOrgSites(s.database, org.ID, search)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
+		return
+	}
+
+	var list []map[string]interface{}
+	for _, site := range sites {
+		list = append(list, map[string]interface{}{
+			"id":   site.ID,
+			"name": site.Name,
+			"slug": site.Slug,
+			"url":  fmt.Sprintf("s/%s/", site.Slug),
+		})
+	}
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"items":   list,
+		"total":   total,
+		"page":    page,
+		"perPage": perPage,
+	}})
 }
 
 // sameOrgAsSiteOwner checks if the current user is in the same org as the site owner.

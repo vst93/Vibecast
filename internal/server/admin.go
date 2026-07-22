@@ -251,6 +251,7 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 			AllowedDomains    string `json:"allowedDomains"`
 			MaxUploadSize     int    `json:"maxUploadSize"`
 			MaxSitesPerUser   int    `json:"maxSitesPerUser"`
+			SiteAccessDomains string `json:"siteAccessDomains"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -284,6 +285,10 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 				return
 			}
 		}
+		if err := db.SetSetting(s.database, "site_access_domains", body.SiteAccessDomains); err != nil {
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
+			return
+		}
 		writeJSON(w, 200, jsonResp{Message: "settings updated"})
 	default:
 		writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
@@ -292,6 +297,11 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 
 // handleAdminPage serves the admin dashboard SPA.
 func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
+	// Domain isolation: block admin panel from site content domains
+	if s.isHostBlockedForAdmin(r) {
+		http.Error(w, "Forbidden: admin panel is not accessible from this domain", http.StatusForbidden)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(adminPageHTML))
 }

@@ -77,9 +77,81 @@ func getContentType(ext string) string {
 	return "application/octet-stream"
 }
 
+// getRequestHost extracts the effective host from the request, checking
+// X-Forwarded-Host first (for reverse proxy setups like Nginx), then r.Host.
+// Port is stripped.
+func getRequestHost(r *http.Request) string {
+	host := r.Host
+	if xfh := r.Header.Get("X-Forwarded-Host"); xfh != "" {
+		// X-Forwarded-Host can contain multiple hosts, take the first
+		if idx := strings.Index(xfh, ","); idx >= 0 {
+			xfh = xfh[:idx]
+		}
+		host = strings.TrimSpace(xfh)
+	}
+	// Strip port (handle IPv6)
+	if idx := strings.LastIndex(host, ":"); idx >= 0 {
+		if !strings.Contains(host[idx:], "]") {
+			host = host[:idx]
+		}
+	}
+	return strings.ToLower(strings.TrimSpace(host))
+}
+
+// isHostAllowedForSites checks whether the current request's host matches
+// one of the configured site_access_domains. If site_access_domains is empty,
+// all hosts are allowed (backward compatible). When set, only requests from
+// the listed domains can access uploaded site content (/s/ and /p/ routes).
+func (s *Server) isHostAllowedForSites(r *http.Request) bool {
+	allowedDomains, _ := db.GetSetting(s.database, "site_access_domains")
+	if allowedDomains == "" {
+		return true // not configured - allow all (backward compatible)
+	}
+	host := getRequestHost(r)
+	for _, d := range strings.Split(allowedDomains, "\n") {
+		d = strings.TrimSpace(strings.ToLower(d))
+		if d == "" {
+			continue
+		}
+		if d == host {
+			return true
+		}
+	}
+	return false
+}
+
+// isHostBlockedForAdmin checks whether the current request's host is a
+// configured site_access_domain. When site_access_domains is set, admin/dashboard
+// routes are blocked from those domains to prevent cookie/session leakage
+// from user-uploaded HTML running on the same domain.
+func (s *Server) isHostBlockedForAdmin(r *http.Request) bool {
+	allowedDomains, _ := db.GetSetting(s.database, "site_access_domains")
+	if allowedDomains == "" {
+		return false // not configured - no blocking
+	}
+	host := getRequestHost(r)
+	for _, d := range strings.Split(allowedDomains, "\n") {
+		d = strings.TrimSpace(strings.ToLower(d))
+		if d == "" {
+			continue
+		}
+		if d == host {
+			return true
+		}
+	}
+	return false
+}
+
 // staticHandler serves files from the site's storage directory.
 // Handles path safety, MIME detection, index.html fallback, SPA fallback, and password protection.
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
+	// Domain isolation: if site_access_domains is configured, only allow
+	// site content to be served from those domains.
+	if !s.isHostAllowedForSites(r) {
+		http.Error(w, "Forbidden: site content is not accessible from this domain", http.StatusForbidden)
+		return
+	}
+
 	// Check if public access is allowed (password-protected sites are still accessible)
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/s/"), "/", 2)
 	slug := pathParts[0]

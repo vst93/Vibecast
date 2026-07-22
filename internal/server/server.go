@@ -123,7 +123,23 @@ func (s *Server) Router() http.Handler {
 	// Landing page
 	mux.HandleFunc("/", s.handleIndex)
 
-	return s.recoverMiddleware(s.logMiddleware(s.bodyLimitMiddleware(mux)))
+	return s.recoverMiddleware(s.logMiddleware(s.bodyLimitMiddleware(s.adminDomainMiddleware(mux))))
+}
+
+// adminDomainMiddleware blocks API and admin/dashboard routes from site content
+// domains when site_access_domains is configured. This prevents cookie/session
+// leakage from user-uploaded HTML running on site domains.
+func (s *Server) adminDomainMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only check non-site routes: /api/, /dashboard, /admin
+		path := r.URL.Path
+		isSiteRoute := strings.HasPrefix(path, "/s/") || strings.HasPrefix(path, "/p/")
+		if !isSiteRoute && s.isHostBlockedForAdmin(r) {
+			http.Error(w, "Forbidden: this domain is for site content only", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // maxJSONBodySize limits JSON API request bodies to prevent memory exhaustion.
@@ -173,6 +189,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // handleDashboard serves the admin dashboard SPA.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	// Domain isolation: block dashboard from site content domains
+	if s.isHostBlockedForAdmin(r) {
+		http.Error(w, "Forbidden: dashboard is not accessible from this domain", http.StatusForbidden)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, dashboardHTML)
 }

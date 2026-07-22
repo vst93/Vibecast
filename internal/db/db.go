@@ -49,6 +49,7 @@ func migrate(db *sql.DB) error {
 		password      TEXT NOT NULL DEFAULT '',
 		password_plain TEXT NOT NULL DEFAULT '',
 		org_open      INTEGER NOT NULL DEFAULT 0,
+		org_pinned    INTEGER NOT NULL DEFAULT 0,
 		created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
@@ -107,6 +108,7 @@ func migrate(db *sql.DB) error {
 	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`)
 	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN password_plain TEXT NOT NULL DEFAULT ''`)
 	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN org_open INTEGER NOT NULL DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN org_pinned INTEGER NOT NULL DEFAULT 0`)
 
 	// Step 3: seed default settings
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('open_registration', '1')`)
@@ -114,6 +116,7 @@ func migrate(db *sql.DB) error {
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('domain_restriction', '0')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allowed_domains', '')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_sites_per_user', '30')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('site_access_domains', '')`)
 
 	return nil
 }

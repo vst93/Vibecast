@@ -26,6 +26,18 @@ func paginationParams(r *http.Request) (page, perPage, offset int, search string
 	return
 }
 
+// normalizeSiteURL ensures the URL has a scheme (defaults to https).
+func normalizeSiteURL(u string) string {
+	u = strings.TrimSpace(u)
+	if u == "" {
+		return ""
+	}
+	if !strings.Contains(u, "://") {
+		u = "https://" + u
+	}
+	return strings.TrimRight(u, "/")
+}
+
 // publicSettings returns non-sensitive settings for unauthenticated clients.
 func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := db.GetSettings(s.database)
@@ -286,7 +298,7 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 				return
 			}
 		}
-		if err := db.SetSetting(s.database, "site_base_url", body.SiteBaseURL); err != nil {
+		if err := db.SetSetting(s.database, "site_base_url", normalizeSiteURL(body.SiteBaseURL)); err != nil {
 			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}

@@ -173,6 +173,17 @@ input,button,select{font-family:inherit}
 .switch-label input{margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
 .switch-label span{font-size:.72rem;color:var(--dim);line-height:1.4}
 .detail-actions{padding:.6rem .6rem 0;margin-top:.6rem;border-top:1px solid var(--line);display:flex;gap:.4rem;flex-wrap:wrap}
+.file-tree-section{grid-column:1/-1}
+.file-list{margin-top:.4rem;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.file-row{display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;font-family:var(--mono);font-size:.72rem;border-bottom:1px solid var(--line);transition:background .12s}
+.file-row:last-child{border-bottom:none}
+.file-row:hover{background:var(--surface-2)}
+.file-dir{font-weight:600;color:var(--text)}
+.file-icon{flex-shrink:0;display:flex;align-items:center}
+.file-icon svg{width:14px;height:14px}
+.file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-size{flex-shrink:0;color:var(--dim);text-align:right;min-width:60px}
+.file-empty{font-size:.75rem;color:var(--dim);padding:.4rem 0;font-style:italic}
 @media(max-width:768px){.detail-grid{grid-template-columns:1fr}}
 .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .status-dot.public{background:var(--accent)}
@@ -465,11 +476,11 @@ function loadFileTree(id){
 api("/sites/"+id+"/files").then(function(d){var files=d.data||[];var el=document.getElementById("detail-"+id);if(!el)return;
 if(!el.hasAttribute('data-orig'))el.setAttribute('data-orig',el.innerHTML);
 var h=el.getAttribute('data-orig');
-var ft='<div class="detail-section"><div class="detail-label">'+t("files")+'</div><div class="detail-value">';
-if(!files.length){ft+=t("noFiles")+'</div></div>';el.innerHTML=h+ft;return}
-ft+='<div style="margin-top:.3rem">';
-for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"-":formatSize(f.size);
-ft+='<div style="display:flex;justify-content:space-between;align-items:baseline;padding:1px 0;font-family:var(--mono);font-size:.75rem"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+icon+' '+esc(f.name)+(f.dir?"/":"")+'</span><span style="color:var(--dim);flex-shrink:0;margin-left:1rem;text-align:right;min-width:70px">'+sz+'</span></div>'}
+var ft='<div class="detail-section file-tree-section"><div class="detail-label">'+t("files")+'</div>';
+if(!files.length){ft+='<div class="file-empty">'+t("noFiles")+'</div></div>';el.innerHTML=h+ft;return}
+ft+='<div class="file-list">';
+for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"—":formatSize(f.size);
+ft+='<div class="file-row'+(f.dir?' file-dir':'')+'"><span class="file-icon">'+icon+'</span><span class="file-name">'+esc(f.name)+(f.dir?"/":"")+'</span><span class="file-size">'+sz+'</span></div>'}
 ft+='</div></div>';
 el.innerHTML=h+ft}).catch(function(){})
 }

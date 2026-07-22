@@ -475,15 +475,15 @@ return h
 function toggleDetail(id){var e=document.getElementById("detail-"+id);if(e){var wasShown=e.classList.contains("show");e.classList.toggle("show");if(!wasShown){loadFileTree(id);loadSitePwd(id)}}}
 function loadFileTree(id){
 api("/sites/"+id+"/files").then(function(d){var files=d.data||[];var el=document.getElementById("detail-"+id);if(!el)return;
-if(!el.hasAttribute('data-orig'))el.setAttribute('data-orig',el.innerHTML);
-var h=el.getAttribute('data-orig');
+var grid=el.querySelector('.detail-grid');if(!grid)return;
+if(!grid.hasAttribute('data-orig'))grid.setAttribute('data-orig',grid.innerHTML);
 var ft='<div class="detail-section file-tree-section"><div class="detail-label">'+t("files")+'</div>';
-if(!files.length){ft+='<div class="file-empty">'+t("noFiles")+'</div></div>';el.innerHTML=h+ft;return}
+if(!files.length){ft+='<div class="file-empty">'+t("noFiles")+'</div></div>';grid.innerHTML=grid.getAttribute('data-orig')+ft;return}
 ft+='<div class="file-list">';
 for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"—":formatSize(f.size);
 ft+='<div class="file-row'+(f.dir?' file-dir':'')+'"><span class="file-icon">'+icon+'</span><span class="file-name">'+esc(f.name)+(f.dir?"/":"")+'</span><span class="file-size">'+sz+'</span></div>'}
 ft+='</div></div>';
-el.innerHTML=h+ft}).catch(function(){})
+grid.innerHTML=grid.getAttribute('data-orig')+ft}).catch(function(){})
 }
 function formatSize(n){if(n<1024)return n+" B";if(n<1048576)return(n/1024).toFixed(1)+" KB";if(n<1073741824)return(n/1048576).toFixed(1)+" MB";return(n/1073741824).toFixed(1)+" GB"}
 function copyText(text){if(navigator.clipboard){navigator.clipboard.writeText(text).then(function(){toast(t("copied"))}).catch(function(){fallbackCopy(text)})}else{fallbackCopy(text)}}

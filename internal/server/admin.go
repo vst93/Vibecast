@@ -184,7 +184,7 @@ func (s *Server) adminListAllSites(w http.ResponseWriter, r *http.Request, user 
 	visitStats, _ := db.GetBatchVisitStats(s.database, siteIDs)
 	for _, site := range sites {
 		vs := visitStats[site.ID]
-		list = append(list, s.siteToJSONWithVisits(site, vs))
+		list = append(list, s.siteToJSONWithVisits(site, vs, r))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -310,11 +310,6 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 
 // handleAdminPage serves the admin dashboard SPA.
 func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
-	// Domain isolation: block admin panel from site content domains
-	if s.isHostBlockedForAdmin(r) {
-		http.Error(w, "Forbidden: admin panel is not accessible from this domain", http.StatusForbidden)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(adminPageHTML))
 }

@@ -381,6 +381,24 @@ func (s *Server) listOrgPinnedSites(w http.ResponseWriter, r *http.Request, user
 		siteURL := fmt.Sprintf("s/%s/", site.Slug)
 		if baseURL != "" {
 			siteURL = baseURL + "/s/" + site.Slug + "/"
+		} else {
+			scheme := "https"
+			if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") == "" {
+				scheme = "http"
+			}
+			if xfProto := r.Header.Get("X-Forwarded-Proto"); xfProto != "" {
+				scheme = xfProto
+			}
+			host := r.Host
+			if xfh := r.Header.Get("X-Forwarded-Host"); xfh != "" {
+				host = xfh
+			}
+			pathPrefix := r.URL.Path
+			if idx := strings.Index(pathPrefix, "/api/"); idx >= 0 {
+				pathPrefix = pathPrefix[:idx]
+			}
+			pathPrefix = strings.TrimRight(pathPrefix, "/")
+			siteURL = fmt.Sprintf("%s://%s%s/s/%s/", scheme, host, pathPrefix, site.Slug)
 		}
 		list = append(list, map[string]interface{}{
 			"id":          site.ID,

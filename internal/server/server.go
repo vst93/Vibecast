@@ -127,17 +127,10 @@ func (s *Server) Router() http.Handler {
 }
 
 // adminDomainMiddleware blocks API and admin/dashboard routes from site content
-// domains when site_access_domains is configured. This prevents cookie/session
-// leakage from user-uploaded HTML running on site domains.
+// adminDomainMiddleware is a no-op placeholder kept for backward compatibility.
+// Domain isolation is now handled only at /s/ and /p/ routes via isHostAllowedForSites.
 func (s *Server) adminDomainMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Only check non-site routes: /api/, /dashboard, /admin
-		path := r.URL.Path
-		isSiteRoute := strings.HasPrefix(path, "/s/") || strings.HasPrefix(path, "/p/")
-		if !isSiteRoute && s.isHostBlockedForAdmin(r) {
-			http.Error(w, "Forbidden: this domain is for site content only", http.StatusForbidden)
-			return
-		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -189,11 +182,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // handleDashboard serves the admin dashboard SPA.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
-	// Domain isolation: block dashboard from site content domains
-	if s.isHostBlockedForAdmin(r) {
-		http.Error(w, "Forbidden: dashboard is not accessible from this domain", http.StatusForbidden)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, dashboardHTML)
 }

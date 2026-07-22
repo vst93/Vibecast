@@ -329,7 +329,7 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	switch r.Method {
 	case http.MethodGet:
-		writeJSON(w, 200, jsonResp{Data: s.siteToJSON(site)})
+		writeJSON(w, 200, jsonResp{Data: s.siteToJSON(site, r)})
 	case http.MethodPut:
 		s.updateSite(w, r, user, site)
 	case http.MethodDelete:
@@ -373,7 +373,7 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 	var list []map[string]interface{}
 	for _, site := range sites {
 		vs := visitStats[site.ID]
-		list = append(list, s.siteToJSONWithVisits(site, vs))
+		list = append(list, s.siteToJSONWithVisits(site, vs, r))
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -464,7 +464,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	writeJSON(w, 201, jsonResp{
 		Message: "site created",
-		Data:    s.siteToJSON(site),
+		Data:    s.siteToJSON(site, r),
 	})
 }
 
@@ -657,14 +657,35 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 	})
 }
 
-func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
+func (s *Server) siteToJSON(site *db.Site, r *http.Request) map[string]interface{} {
 	protected := site.Password != ""
 	publicAccessDisabled := !db.GetSettingBool(s.database, "allow_public_access", true)
-	// Build site URL: if site_base_url is configured, use it; otherwise use relative path
+	// Build site URL: if site_base_url is configured, use it;
+	// otherwise use current request's scheme+host+path prefix (supports Nginx sub-path)
 	siteURL := fmt.Sprintf("s/%s/", site.Slug)
 	baseURL := s.getSiteBaseURL()
 	if baseURL != "" {
 		siteURL = baseURL + "/s/" + site.Slug + "/"
+	} else {
+		// Use request host and path prefix for reverse proxy sub-path support
+		scheme := "https"
+		if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") == "" {
+			scheme = "http"
+		}
+		if xfProto := r.Header.Get("X-Forwarded-Proto"); xfProto != "" {
+			scheme = xfProto
+		}
+		host := r.Host
+		if xfh := r.Header.Get("X-Forwarded-Host"); xfh != "" {
+			host = xfh
+		}
+		// Extract path prefix by stripping /api/* suffix
+		pathPrefix := r.URL.Path
+		if idx := strings.Index(pathPrefix, "/api/"); idx >= 0 {
+			pathPrefix = pathPrefix[:idx]
+		}
+		pathPrefix = strings.TrimRight(pathPrefix, "/")
+		siteURL = fmt.Sprintf("%s://%s%s/s/%s/", scheme, host, pathPrefix, site.Slug)
 	}
 	return map[string]interface{}{
 		"id":                   site.ID,
@@ -685,8 +706,8 @@ func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 }
 
 // siteToJSONWithVisits builds the site JSON with visit stats included.
-func (s *Server) siteToJSONWithVisits(site *db.Site, visits *db.VisitStats) map[string]interface{} {
-	m := s.siteToJSON(site)
+func (s *Server) siteToJSONWithVisits(site *db.Site, visits *db.VisitStats, r *http.Request) map[string]interface{} {
+	m := s.siteToJSON(site, r)
 	if visits != nil {
 		m["visits"] = map[string]int64{
 			"today": visits.Today,

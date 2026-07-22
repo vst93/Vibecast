@@ -136,17 +136,6 @@ func (s *Server) isHostAllowedForSites(r *http.Request) bool {
 	return getRequestHost(r) == siteHost
 }
 
-// isHostBlockedForAdmin checks whether the current request's host is the
-// configured site_base_url. When site_base_url is set, admin/dashboard routes
-// are blocked from that domain to prevent cookie/session leakage.
-func (s *Server) isHostBlockedForAdmin(r *http.Request) bool {
-	siteHost := s.getSiteBaseHost()
-	if siteHost == "" {
-		return false // not configured - no blocking
-	}
-	return getRequestHost(r) == siteHost
-}
-
 // staticHandler serves files from the site's storage directory.
 // Handles path safety, MIME detection, index.html fallback, SPA fallback, and password protection.
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {

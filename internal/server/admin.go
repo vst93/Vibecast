@@ -41,6 +41,7 @@ func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) {
 		"openRegistration": settings.OpenRegistration,
 		"maxUploadSize":    maxMB,
 		"maxSitesPerUser":  db.GetSettingInt(s.database, "max_sites_per_user", 30),
+		"siteBaseUrl":      s.getSiteBaseURL(),
 	}})
 }
 
@@ -251,8 +252,8 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 			AllowedDomains    string `json:"allowedDomains"`
 			MaxUploadSize     int    `json:"maxUploadSize"`
 			MaxSitesPerUser   int    `json:"maxSitesPerUser"`
-			SiteAccessDomains string `json:"siteAccessDomains"`
-		}
+			SiteBaseURL       string `json:"siteBaseUrl"`
+			}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 			return
@@ -285,7 +286,7 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 				return
 			}
 		}
-		if err := db.SetSetting(s.database, "site_access_domains", body.SiteAccessDomains); err != nil {
+		if err := db.SetSetting(s.database, "site_base_url", body.SiteBaseURL); err != nil {
 			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}

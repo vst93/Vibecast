@@ -376,12 +376,18 @@ func (s *Server) listOrgPinnedSites(w http.ResponseWriter, r *http.Request, user
 	}
 
 	var list []map[string]interface{}
+	baseURL := s.getSiteBaseURL()
 	for _, site := range sites {
+		siteURL := fmt.Sprintf("s/%s/", site.Slug)
+		if baseURL != "" {
+			siteURL = baseURL + "/s/" + site.Slug + "/"
+		}
 		list = append(list, map[string]interface{}{
-			"id":   site.ID,
-			"name": site.Name,
-			"slug": site.Slug,
-			"url":  fmt.Sprintf("s/%s/", site.Slug),
+			"id":          site.ID,
+			"name":        site.Name,
+			"description": site.Description,
+			"slug":        site.Slug,
+			"url":         siteURL,
 		})
 	}
 	if list == nil {

@@ -5,6 +5,7 @@ import (
 	"html"
 	"mime"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,6 +78,31 @@ func getContentType(ext string) string {
 	return "application/octet-stream"
 }
 
+// getSiteBaseURL returns the configured site base URL (e.g. "https://sites.example.com").
+// Returns empty string if not configured.
+func (s *Server) getSiteBaseURL() string {
+	val, _ := db.GetSetting(s.database, "site_base_url")
+	return strings.TrimRight(strings.TrimSpace(val), "/")
+}
+
+// getSiteBaseHost returns just the host portion of the configured site base URL.
+// Returns empty string if not configured or unparseable.
+func (s *Server) getSiteBaseHost() string {
+	baseURL := s.getSiteBaseURL()
+	if baseURL == "" {
+		return ""
+	}
+	// Add scheme if missing (default https)
+	if !strings.Contains(baseURL, "://") {
+		baseURL = "https://" + baseURL
+	}
+	parsed, err := neturl.Parse(baseURL)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(parsed.Host)
+}
+
 // getRequestHost extracts the effective host from the request, checking
 // X-Forwarded-Host first (for reverse proxy setups like Nginx), then r.Host.
 // Port is stripped.
@@ -99,47 +125,26 @@ func getRequestHost(r *http.Request) string {
 }
 
 // isHostAllowedForSites checks whether the current request's host matches
-// one of the configured site_access_domains. If site_access_domains is empty,
-// all hosts are allowed (backward compatible). When set, only requests from
-// the listed domains can access uploaded site content (/s/ and /p/ routes).
+// the configured site_base_url. If site_base_url is empty, all hosts are
+// allowed (backward compatible). When set, only requests from the configured
+// domain can access uploaded site content (/s/ and /p/ routes).
 func (s *Server) isHostAllowedForSites(r *http.Request) bool {
-	allowedDomains, _ := db.GetSetting(s.database, "site_access_domains")
-	if allowedDomains == "" {
+	siteHost := s.getSiteBaseHost()
+	if siteHost == "" {
 		return true // not configured - allow all (backward compatible)
 	}
-	host := getRequestHost(r)
-	for _, d := range strings.Split(allowedDomains, "\n") {
-		d = strings.TrimSpace(strings.ToLower(d))
-		if d == "" {
-			continue
-		}
-		if d == host {
-			return true
-		}
-	}
-	return false
+	return getRequestHost(r) == siteHost
 }
 
-// isHostBlockedForAdmin checks whether the current request's host is a
-// configured site_access_domain. When site_access_domains is set, admin/dashboard
-// routes are blocked from those domains to prevent cookie/session leakage
-// from user-uploaded HTML running on the same domain.
+// isHostBlockedForAdmin checks whether the current request's host is the
+// configured site_base_url. When site_base_url is set, admin/dashboard routes
+// are blocked from that domain to prevent cookie/session leakage.
 func (s *Server) isHostBlockedForAdmin(r *http.Request) bool {
-	allowedDomains, _ := db.GetSetting(s.database, "site_access_domains")
-	if allowedDomains == "" {
+	siteHost := s.getSiteBaseHost()
+	if siteHost == "" {
 		return false // not configured - no blocking
 	}
-	host := getRequestHost(r)
-	for _, d := range strings.Split(allowedDomains, "\n") {
-		d = strings.TrimSpace(strings.ToLower(d))
-		if d == "" {
-			continue
-		}
-		if d == host {
-			return true
-		}
-	}
-	return false
+	return getRequestHost(r) == siteHost
 }
 
 // staticHandler serves files from the site's storage directory.

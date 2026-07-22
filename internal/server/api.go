@@ -388,10 +388,11 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 
 func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.User) {
 	var body struct {
-		Name     string `json:"name"`
-		Password string `json:"password"`
-		OrgOpen  bool   `json:"orgOpen"`
-		OrgPinned bool  `json:"orgPinned"`
+		Name      string `json:"name"`
+		Description string `json:"description"`
+		Password  string `json:"password"`
+		OrgOpen   bool   `json:"orgOpen"`
+		OrgPinned bool   `json:"orgPinned"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -455,7 +456,7 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		}
 	}
 
-	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, hashedPwd, body.Password, body.OrgOpen, body.OrgPinned)
+	site, err := db.CreateSite(s.database, user.ID, slug, body.Name, body.Description, hashedPwd, body.Password, body.OrgOpen, body.OrgPinned)
 	if err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_site_failed")})
 		return
@@ -469,10 +470,11 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.User, site *db.Site) {
 	var body struct {
-		Name      string `json:"name"`
-		Password  string `json:"password"`
-		OrgOpen   *bool  `json:"orgOpen"`   // pointer to distinguish unset from false
-		OrgPinned *bool  `json:"orgPinned"` // pointer to distinguish unset from false
+		Name        string `json:"name"`
+		Description *string `json:"description"` // pointer - nil means don't change
+		Password    string `json:"password"`
+		OrgOpen     *bool  `json:"orgOpen"`   // pointer to distinguish unset from false
+		OrgPinned   *bool  `json:"orgPinned"` // pointer to distinguish unset from false
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -481,6 +483,10 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	name := strings.TrimSpace(body.Name)
 	if name == "" {
 		name = site.Name
+	}
+	description := site.Description
+	if body.Description != nil {
+		description = strings.TrimSpace(*body.Description)
 	}
 	hashedPwd := site.Password // keep existing by default
 	plainPwd := site.PasswordPlain
@@ -539,7 +545,7 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		}
 	}
 
-	if err := db.UpdateSite(s.database, site.ID, name, hashedPwd, plainPwd, orgOpen, orgPinned); err != nil {
+	if err := db.UpdateSite(s.database, site.ID, name, description, hashedPwd, plainPwd, orgOpen, orgPinned); err != nil {
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_site_failed")})
 		return
 	}
@@ -654,13 +660,20 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 func (s *Server) siteToJSON(site *db.Site) map[string]interface{} {
 	protected := site.Password != ""
 	publicAccessDisabled := !db.GetSettingBool(s.database, "allow_public_access", true)
+	// Build site URL: if site_base_url is configured, use it; otherwise use relative path
+	siteURL := fmt.Sprintf("s/%s/", site.Slug)
+	baseURL := s.getSiteBaseURL()
+	if baseURL != "" {
+		siteURL = baseURL + "/s/" + site.Slug + "/"
+	}
 	return map[string]interface{}{
 		"id":                   site.ID,
 		"slug":                 site.Slug,
 		"name":                 site.Name,
+		"description":          site.Description,
 		"protected":            protected,
 		"storagePath":          site.Slug,
-		"url":                  fmt.Sprintf("s/%s/", site.Slug),
+		"url":                  siteURL,
 		"createdAt":            site.CreatedAt,
 		"updatedAt":            site.UpdatedAt,
 		"publicAccessDisabled": publicAccessDisabled,

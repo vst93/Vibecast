@@ -46,6 +46,7 @@ func migrate(db *sql.DB) error {
 		user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		slug          TEXT NOT NULL UNIQUE,
 		name          TEXT NOT NULL DEFAULT '',
+		description   TEXT NOT NULL DEFAULT '',
 		password      TEXT NOT NULL DEFAULT '',
 		password_plain TEXT NOT NULL DEFAULT '',
 		org_open      INTEGER NOT NULL DEFAULT 0,
@@ -109,6 +110,7 @@ func migrate(db *sql.DB) error {
 	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN password_plain TEXT NOT NULL DEFAULT ''`)
 	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN org_open INTEGER NOT NULL DEFAULT 0`)
 	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN org_pinned INTEGER NOT NULL DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE sites ADD COLUMN description TEXT NOT NULL DEFAULT ''`)
 
 	// Step 3: seed default settings
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('open_registration', '1')`)
@@ -116,7 +118,14 @@ func migrate(db *sql.DB) error {
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('domain_restriction', '0')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('allowed_domains', '')`)
 	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_sites_per_user', '30')`)
-	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('site_access_domains', '')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('site_base_url', '')`)
+	// Migrate old setting name if present
+	var oldVal string
+	_ = db.QueryRow(`SELECT value FROM settings WHERE key = 'site_access_domains'`).Scan(&oldVal)
+	if oldVal != "" {
+		_, _ = db.Exec(`INSERT OR REPLACE INTO settings (key, value) VALUES ('site_base_url', ?)`, oldVal)
+		_, _ = db.Exec(`DELETE FROM settings WHERE key = 'site_access_domains'`)
+	}
 
 	return nil
 }

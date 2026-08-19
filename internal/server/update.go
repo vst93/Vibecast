@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -37,12 +38,12 @@ var updateInProgress int32
 
 // updateState tracks the current async update progress for status polling.
 type updateState struct {
-	Status        string `json:"status"`        // "idle", "downloading", "verifying", "installing", "done", "error"
-	Progress      int    `json:"progress"`      // 0-100 (download percentage)
-	Message       string `json:"message"`       // human-readable detail
-	PrevVersion   string `json:"prevVersion"`   // set when done
-	NewVersion    string `json:"newVersion"`    // set when done
-	Error         string `json:"error"`         // set when status == "error"
+	Status      string `json:"status"`      // "idle", "downloading", "verifying", "installing", "done", "error"
+	Progress    int    `json:"progress"`    // 0-100 (download percentage)
+	Message     string `json:"message"`     // human-readable detail
+	PrevVersion string `json:"prevVersion"` // set when done
+	NewVersion  string `json:"newVersion"`  // set when done
+	Error       string `json:"error"`       // set when status == "error"
 }
 
 var updateTracker = updateState{Status: "idle"}
@@ -309,11 +310,11 @@ func extractSHA256FromSums(sums, assetName string) string {
 
 // progressReader wraps an io.Reader and reports progress via callback.
 type progressReader struct {
-	r        io.Reader
-	total    int64
-	read     int64
-	fn       func(downloaded, total int64)
-	lastRep  time.Time
+	r       io.Reader
+	total   int64
+	read    int64
+	fn      func(downloaded, total int64)
+	lastRep time.Time
 }
 
 func (pr *progressReader) Read(p []byte) (int, error) {
@@ -693,6 +694,12 @@ func (s *Server) adminRestartUpdate(w http.ResponseWriter, r *http.Request, user
 		})
 		return
 	}
+	exe, err := restartExecutablePath(os.Args[0])
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: "restart: " + err.Error()})
+		return
+	}
+	s.beginRestart()
 
 	// Respond to client BEFORE shutting down, so the HTTP response is sent.
 	writeJSON(w, 200, jsonResp{Message: "restarting"})
@@ -701,26 +708,63 @@ func (s *Server) adminRestartUpdate(w http.ResponseWriter, r *http.Request, user
 	go func() {
 		time.Sleep(500 * time.Millisecond) // let response flush
 
-		// Gracefully close the database.
-		s.database.Close()
-
-		// Close the HTTP server listener so the port is released.
+		// Stop accepting requests and let active handlers finish before closing
+		// SQLite. This avoids in-flight requests seeing a closed database.
 		if s.httpServer != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
 			_ = s.httpServer.Shutdown(ctx)
+			cancel()
 		}
+		_ = s.database.Close()
 
 		// Replace the current process with the new binary.
-		exe, err := os.Executable()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "restart: cannot find executable: %v\n", err)
-			return
-		}
-		if err := syscall.Exec(exe, os.Args, os.Environ()); err != nil {
+		args := restartArgs(exe, s.config)
+		if err := syscall.Exec(exe, args, os.Environ()); err != nil {
 			fmt.Fprintf(os.Stderr, "restart: exec failed: %v\n", err)
+			os.Exit(1)
 		}
 	}()
+}
+
+// restartExecutablePath resolves the stable invocation path rather than
+// /proc/self/exe. During a Unix self-update the old executable is renamed and
+// deleted, so os.Executable may point at the removed backup file.
+func restartExecutablePath(arg0 string) (string, error) {
+	if arg0 == "" {
+		return "", fmt.Errorf("empty executable path")
+	}
+	candidate := arg0
+	if !strings.ContainsRune(candidate, filepath.Separator) {
+		resolved, err := exec.LookPath(candidate)
+		if err != nil {
+			return "", fmt.Errorf("find executable %q: %w", candidate, err)
+		}
+		candidate = resolved
+	}
+	abs, err := filepath.Abs(candidate)
+	if err != nil {
+		return "", fmt.Errorf("resolve executable path: %w", err)
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return "", fmt.Errorf("stat executable %q: %w", abs, err)
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("executable path %q is a directory", abs)
+	}
+	return abs, nil
+}
+
+func restartArgs(exe string, cfg *Config) []string {
+	return []string{
+		exe,
+		"--addr", cfg.Addr,
+		"--storage", cfg.StorageDir,
+		"--db", cfg.DBPath,
+	}
 }
 
 // getLocalIPs returns all non-loopback IPv4 addresses of the server.

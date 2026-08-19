@@ -23,8 +23,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s\n\n", server.TCLIMsg("cli_usage"))
 		fmt.Fprintf(os.Stderr, "%s\n", server.TCLIMsg("cli_options"))
 		fmt.Fprintf(os.Stderr, "  --addr <addr>\n    	%s (default \":8080\", env VIBECAST_ADDR)\n", server.TCLIMsg("cli_addr"))
-		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    	%s (default \"./data/sites\", env VIBECAST_STORAGE)\n", server.TCLIMsg("cli_storage"))
-		fmt.Fprintf(os.Stderr, "  --db <path>\n    	%s (default \"./data/vibecast.db\", env VIBECAST_DB)\n", server.TCLIMsg("cli_db"))
+		fmt.Fprintf(os.Stderr, "  --storage <dir>\n    	%s (default \"~/data/sites\", env VIBECAST_STORAGE)\n", server.TCLIMsg("cli_storage"))
+		fmt.Fprintf(os.Stderr, "  --db <path>\n    	%s (default \"~/data/vibecast.db\", env VIBECAST_DB)\n", server.TCLIMsg("cli_db"))
 		fmt.Fprintf(os.Stderr, "\n%s\n", server.TCLIMsg("cli_commands"))
 		fmt.Fprintf(os.Stderr, "  version, v   %s\n", server.TCLIMsg("cli_version_cmd"))
 		fmt.Fprintf(os.Stderr, "  update       %s\n", server.TCLIMsg("cli_update_cmd"))
@@ -34,8 +34,8 @@ func main() {
 	}
 
 	addr := flag.String("addr", getEnv("VIBECAST_ADDR", ":8080"), "listen address")
-	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "./data/sites"), "site files storage directory")
-	dbPath := flag.String("db", getEnv("VIBECAST_DB", "./data/vibecast.db"), "SQLite database path")
+	storageDir := flag.String("storage", getEnv("VIBECAST_STORAGE", "~/data/sites"), "site files storage directory")
+	dbPath := flag.String("db", getEnv("VIBECAST_DB", "~/data/vibecast.db"), "SQLite database path")
 	flag.Parse()
 
 	// Subcommands (bare words, no dash prefix)
@@ -76,7 +76,6 @@ func main() {
 		DBPath:     *dbPath,
 		Version:    version,
 	}
-
 	srv, err := server.New(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
@@ -97,8 +96,8 @@ func main() {
 	fmt.Printf("Build with vibe. Cast instantly.\n")
 	fmt.Printf("────────────────────────────\n")
 	fmt.Printf("%s  http://localhost%s\n", server.TCLIMsg("cli_listening"), *addr)
-	fmt.Printf("%s   %s\n", server.TCLIMsg("cli_storage_label"), *storageDir)
-	fmt.Printf("%s  %s\n", server.TCLIMsg("cli_database"), *dbPath)
+	fmt.Printf("%s   %s\n", server.TCLIMsg("cli_storage_label"), cfg.StorageDir)
+	fmt.Printf("%s  %s\n", server.TCLIMsg("cli_database"), cfg.DBPath)
 	fmt.Printf("────────────────────────────\n")
 	fmt.Printf("%s http://localhost%s/dashboard\n", server.TCLIMsg("cli_dashboard"), *addr)
 
@@ -118,6 +117,11 @@ func main() {
 	srv.SetHTTPServer(hs)
 	if err := hs.Serve(ln); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
+	}
+	if srv.IsRestarting() {
+		// Shutdown makes Serve return before the restart goroutine reaches exec.
+		// Keep main alive so its deferred cleanup cannot terminate that goroutine.
+		select {}
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -35,18 +36,37 @@ type Server struct {
 	httpServer  *http.Server  // set by main.go for graceful shutdown / restart
 	deployLocks sync.Map      // site ID -> *sync.Mutex; serializes deployments per site
 	downloadSem chan struct{} // bounds temporary ZIP generation across sites
+	restartOnce sync.Once
+	restartCh   chan struct{}
 }
 
 // New creates a new Server instance.
 func New(cfg *Config) (*Server, error) {
+	storageDir, dbPath, err := ResolveUserPaths(cfg.StorageDir, cfg.DBPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve data paths: %w", err)
+	}
+	cfg.StorageDir = storageDir
+	cfg.DBPath = dbPath
 	if err := os.MkdirAll(cfg.StorageDir, 0755); err != nil {
 		return nil, fmt.Errorf("create storage dir: %w", err)
+	}
+	if parent := filepath.Dir(cfg.DBPath); parent != "." {
+		if err := os.MkdirAll(parent, 0755); err != nil {
+			return nil, fmt.Errorf("create database directory: %w", err)
+		}
 	}
 	database, err := db.Open(cfg.DBPath)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	s := &Server{config: cfg, database: database, version: cfg.Version, downloadSem: make(chan struct{}, 2)}
+	s := &Server{
+		config:      cfg,
+		database:    database,
+		version:     cfg.Version,
+		downloadSem: make(chan struct{}, 2),
+		restartCh:   make(chan struct{}),
+	}
 
 	// Start a background goroutine to clean up expired sessions every hour.
 	go s.sessionCleanupLoop()
@@ -92,6 +112,26 @@ func (s *Server) acquireDownloadSlot() func() {
 // graceful shutdown during restart.
 func (s *Server) SetHTTPServer(hs *http.Server) {
 	s.httpServer = hs
+}
+
+func (s *Server) beginRestart() {
+	s.restartOnce.Do(func() {
+		if s.restartCh == nil {
+			s.restartCh = make(chan struct{})
+		}
+		close(s.restartCh)
+	})
+}
+
+// IsRestarting tells main to remain alive after http.Server.Shutdown makes
+// Serve return. The restart goroutine will either exec the new binary or exit.
+func (s *Server) IsRestarting() bool {
+	select {
+	case <-s.restartCh:
+		return true
+	default:
+		return false
+	}
 }
 
 // Router returns the main HTTP handler with all routes registered.

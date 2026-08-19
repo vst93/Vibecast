@@ -106,7 +106,7 @@ Grab the binary for your platform from the [Releases](../../releases) page, make
 vibecast
 
 # or with custom config
-vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
+vibecast --addr :3000 --storage ~/data/sites --db ~/data/vibecast.db
 ```
 
 Open `http://localhost:8080/dashboard` — the first registered user becomes admin.
@@ -118,6 +118,13 @@ Register vibecast as a system service so it starts automatically on boot and sur
 ```bash
 vibecast setup
 ```
+
+Data paths are anchored to the current user's home directory. Relative paths
+such as `./data/sites` are treated as `~/data/sites`, while explicit absolute
+paths remain unchanged. `setup` writes absolute paths into the service file, so
+updates and service restarts cannot switch to a database beside the executable.
+Existing service installations should run `vibecast setup` once after upgrading
+to refresh their service definition.
 
 After registration, manage the service with standard system commands:
 
@@ -132,9 +139,9 @@ systemctl --user restart vibecast
 **macOS (launchd):**
 
 ```bash
-launchctl list | grep vibecast
-launchctl stop com.vibecast
-launchctl start com.vibecast
+sudo launchctl list | grep vibecast
+sudo launchctl stop com.vibecast
+sudo launchctl start com.vibecast
 ```
 
 To remove the service:
@@ -152,8 +159,8 @@ Usage: vibecast [options] [command]
 
 Options:
   --addr <addr>      listen address (default ":8080", env VIBECAST_ADDR)
-  --storage <dir>    site files storage directory (default "./data/sites", env VIBECAST_STORAGE)
-  --db <path>        SQLite database path (default "./data/vibecast.db", env VIBECAST_DB)
+  --storage <dir>    site files storage directory (default "~/data/sites", env VIBECAST_STORAGE)
+  --db <path>        SQLite database path (default "~/data/vibecast.db", env VIBECAST_DB)
 
 Commands:
   version, v         print version and exit
@@ -193,8 +200,8 @@ The update system fetches the latest release from GitHub, verifies the asset mat
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
 | `--addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
-| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | Site files storage directory |
-| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite database path |
+| `--storage` | `VIBECAST_STORAGE` | `~/data/sites` | Site files storage directory |
+| `--db` | `VIBECAST_DB` | `~/data/vibecast.db` | SQLite database path |
 
 Additional settings (upload size limit, site limit per user, registration, public access, email domain restriction) are configurable at runtime from the admin panel.
 
@@ -322,7 +329,7 @@ make build
 vibecast
 
 # 或指定配置
-vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
+vibecast --addr :3000 --storage ~/data/sites --db ~/data/vibecast.db
 ```
 
 打开 `http://localhost:8080/dashboard`，首个注册用户自动成为管理员。
@@ -334,6 +341,11 @@ vibecast --addr :3000 --storage ./data/sites --db ./data/vibecast.db
 ```bash
 vibecast setup
 ```
+
+数据路径统一以当前用户的 home 目录为基准。`./data/sites` 这类相对路径会按
+`~/data/sites` 处理，明确指定的绝对路径则保持不变。`setup` 会把绝对路径写入
+服务配置，因此更新或服务重启不会切换到可执行文件旁边的另一份数据库。已有服务
+安装在升级后应重新运行一次 `vibecast setup`，以刷新服务配置。
 
 注册完成后，使用标准系统命令管理服务：
 
@@ -348,9 +360,9 @@ systemctl --user restart vibecast
 **macOS（launchd）：**
 
 ```bash
-launchctl list | grep vibecast
-launchctl stop com.vibecast
-launchctl start com.vibecast
+sudo launchctl list | grep vibecast
+sudo launchctl stop com.vibecast
+sudo launchctl start com.vibecast
 ```
 
 卸载服务：
@@ -368,8 +380,8 @@ vibecast uninstall
 
 选项:
   --addr <addr>      监听地址（默认 ":8080"，环境变量 VIBECAST_ADDR）
-  --storage <dir>    站点文件存储目录（默认 "./data/sites"，环境变量 VIBECAST_STORAGE）
-  --db <path>        SQLite 数据库路径（默认 "./data/vibecast.db"，环境变量 VIBECAST_DB）
+  --storage <dir>    站点文件存储目录（默认 "~/data/sites"，环境变量 VIBECAST_STORAGE）
+  --db <path>        SQLite 数据库路径（默认 "~/data/vibecast.db"，环境变量 VIBECAST_DB）
 
 命令:
   version, v         打印版本号
@@ -409,8 +421,8 @@ vibecast update
 | 参数 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
 | `--addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
-| `--storage` | `VIBECAST_STORAGE` | `./data/sites` | 站点文件存储目录 |
-| `--db` | `VIBECAST_DB` | `./data/vibecast.db` | SQLite 数据库路径 |
+| `--storage` | `VIBECAST_STORAGE` | `~/data/sites` | 站点文件存储目录 |
+| `--db` | `VIBECAST_DB` | `~/data/vibecast.db` | SQLite 数据库路径 |
 
 其余设置（上传大小限制、每用户站点限额、注册开关、公开访问、邮箱域名限制）可在管理后台运行时配置。
 

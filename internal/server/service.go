@@ -1,11 +1,15 @@
 package server
 
 import (
+	"bytes"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -15,7 +19,7 @@ import (
 // the user manages the service with standard system commands:
 //
 //   Linux:   systemctl --user status/stop/restart vibecast
-//   macOS:   launchctl list/stop/start com.vibecast
+//   macOS:   sudo launchctl list/stop/start com.vibecast
 //
 // Only `setup` (install) and `uninstall` are handled here — no wrapper
 // commands for status/stop/restart. The user already knows systemctl.
@@ -28,6 +32,52 @@ type serviceConfig struct {
 	addr       string
 	storageDir string
 	dbPath     string
+	homeDir    string
+	userName   string
+}
+
+// ResolveUserPaths makes relative data paths independent of the process
+// working directory. Relative paths are rooted at the current user's home so
+// a service restart from /usr/local/bin cannot silently open a new database.
+// Explicit absolute paths remain unchanged for backwards compatibility.
+func ResolveUserPaths(storageDir, dbPath string) (string, string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", fmt.Errorf("cannot determine user home: %w", err)
+	}
+	storageDir, err = resolveUserPath(home, storageDir)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve storage path: %w", err)
+	}
+	dbPath, err = resolveUserPath(home, dbPath)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve database path: %w", err)
+	}
+	return storageDir, dbPath, nil
+}
+
+func resolveUserPath(home, path string) (string, error) {
+	if path == "" {
+		return path, nil
+	}
+	if path == "~" {
+		return filepath.Clean(home), nil
+	}
+	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, `~\`) {
+		path = path[2:]
+	}
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path), nil
+	}
+	resolved := filepath.Clean(filepath.Join(home, path))
+	rel, err := filepath.Rel(home, resolved)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("relative path %q escapes user home", path)
+	}
+	return resolved, nil
 }
 
 func resolveServiceConfig(addr, storageDir, dbPath string) (*serviceConfig, error) {
@@ -39,11 +89,25 @@ func resolveServiceConfig(addr, storageDir, dbPath string) (*serviceConfig, erro
 	if err != nil {
 		return nil, fmt.Errorf("cannot resolve executable path: %w", err)
 	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("cannot determine user home: %w", err)
+	}
+	currentUser, err := user.Current()
+	if err != nil {
+		return nil, fmt.Errorf("cannot determine current user: %w", err)
+	}
+	storageDir, dbPath, err = ResolveUserPaths(storageDir, dbPath)
+	if err != nil {
+		return nil, err
+	}
 	return &serviceConfig{
 		exePath:    exe,
 		addr:       addr,
 		storageDir: storageDir,
 		dbPath:     dbPath,
+		homeDir:    home,
+		userName:   currentUser.Username,
 	}, nil
 }
 
@@ -69,6 +133,18 @@ WantedBy=default.target
 
 const systemdUnitName = "vibecast.service"
 
+func systemdQuote(value string) string {
+	// Percent has specifier semantics in systemd, including inside quotes.
+	return strconv.Quote(strings.ReplaceAll(value, "%", "%%"))
+}
+
+func renderSystemdUnit(cfg *serviceConfig) string {
+	return fmt.Sprintf(systemdUnitTemplate,
+		systemdQuote(cfg.exePath), systemdQuote(cfg.addr),
+		systemdQuote(cfg.storageDir), systemdQuote(cfg.dbPath),
+		systemdQuote(cfg.homeDir))
+}
+
 func systemdUserDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "systemd", "user")
@@ -84,9 +160,7 @@ func systemdSetup(cfg *serviceConfig) error {
 		return fmt.Errorf("create systemd user dir: %w", err)
 	}
 
-	workDir := filepath.Dir(cfg.exePath)
-	unit := fmt.Sprintf(systemdUnitTemplate,
-		cfg.exePath, cfg.addr, cfg.storageDir, cfg.dbPath, workDir)
+	unit := renderSystemdUnit(cfg)
 
 	unitPath := systemdUnitPath()
 	if err := os.WriteFile(unitPath, []byte(unit), 0644); err != nil {
@@ -96,10 +170,12 @@ func systemdSetup(cfg *serviceConfig) error {
 	// Enable linger so the user service survives logout.
 	enableLinger()
 
-	// daemon-reload + enable --now
+	// Reload and restart even when setup is rerun, so an existing service picks
+	// up newly resolved absolute paths immediately.
 	for _, args := range [][]string{
 		{"--user", "daemon-reload"},
-		{"--user", "enable", "--now", "vibecast"},
+		{"--user", "enable", "vibecast"},
+		{"--user", "restart", "vibecast"},
 	} {
 		if out, err := exec.Command("systemctl", args...).CombinedOutput(); err != nil {
 			return fmt.Errorf("systemctl %s: %w (%s)",
@@ -152,6 +228,8 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <dict>
     <key>Label</key>
     <string>com.vibecast</string>
+    <key>UserName</key>
+    <string>%s</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -168,10 +246,15 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <true/>
     <key>WorkingDirectory</key>
     <string>%s</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>%s</string>
+    </dict>
     <key>StandardOutPath</key>
-    <string>/tmp/vibecast.log</string>
+    <string>%s</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/vibecast-error.log</string>
+    <string>%s</string>
 </dict>
 </plist>
 `
@@ -179,26 +262,54 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 const launchdLabel = "com.vibecast"
 const launchdPlistPath = "/Library/LaunchDaemons/com.vibecast.plist"
 
+func xmlEscape(value string) string {
+	var buf bytes.Buffer
+	_ = xml.EscapeText(&buf, []byte(value))
+	return buf.String()
+}
+
+func renderLaunchdPlist(cfg *serviceConfig) string {
+	logDir := filepath.Join(cfg.homeDir, "Library", "Logs")
+	return fmt.Sprintf(launchdPlistTemplate,
+		xmlEscape(cfg.userName), xmlEscape(cfg.exePath), xmlEscape(cfg.addr), xmlEscape(cfg.storageDir),
+		xmlEscape(cfg.dbPath), xmlEscape(cfg.homeDir), xmlEscape(cfg.homeDir),
+		xmlEscape(filepath.Join(logDir, "vibecast.log")),
+		xmlEscape(filepath.Join(logDir, "vibecast-error.log")))
+}
+
 func launchdSetup(cfg *serviceConfig) error {
-	workDir := filepath.Dir(cfg.exePath)
-	plist := fmt.Sprintf(launchdPlistTemplate,
-		cfg.exePath, cfg.addr, cfg.storageDir, cfg.dbPath, workDir)
+	if err := os.MkdirAll(filepath.Join(cfg.homeDir, "Library", "Logs"), 0755); err != nil {
+		return fmt.Errorf("create launchd log directory: %w", err)
+	}
+	// setup is intentionally idempotent: unload the old definition before
+	// replacing it so rerunning setup applies changed paths and user identity.
+	_, _ = runAsRoot("launchctl", "unload", launchdPlistPath)
+
+	plist := renderLaunchdPlist(cfg)
 
 	if err := writeFileAsRoot(launchdPlistPath, plist); err != nil {
 		return fmt.Errorf("write plist: %w", err)
 	}
-	if out, err := exec.Command("launchctl", "load", launchdPlistPath).CombinedOutput(); err != nil {
+	if out, err := runAsRoot("launchctl", "load", launchdPlistPath); err != nil {
 		return fmt.Errorf("launchctl load: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
 func launchdTeardown() error {
-	_ = exec.Command("launchctl", "unload", launchdPlistPath).Run()
+	_, _ = runAsRoot("launchctl", "unload", launchdPlistPath)
 	if err := removeFileAsRoot(launchdPlistPath); err != nil {
 		return fmt.Errorf("remove plist: %w", err)
 	}
 	return nil
+}
+
+func runAsRoot(name string, args ...string) ([]byte, error) {
+	if os.Geteuid() == 0 {
+		return exec.Command(name, args...).CombinedOutput()
+	}
+	sudoArgs := append([]string{name}, args...)
+	return exec.Command("sudo", sudoArgs...).CombinedOutput()
 }
 
 // --- root-owned file helpers (macOS only; Linux uses user-level dir) ---

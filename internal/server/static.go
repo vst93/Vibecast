@@ -18,9 +18,9 @@ import (
 // extraMimeTypes extends Go's built-in mime map with modern frontend file types.
 var extraMimeTypes = map[string]string{
 	// JavaScript
-	".mjs":   "text/javascript; charset=utf-8",
-	".js":    "text/javascript; charset=utf-8",
-	".map":   "application/json; charset=utf-8", // source maps
+	".mjs": "text/javascript; charset=utf-8",
+	".js":  "text/javascript; charset=utf-8",
+	".map": "application/json; charset=utf-8", // source maps
 	// Fonts
 	".woff2": "font/woff2",
 	".woff":  "font/woff",
@@ -28,40 +28,40 @@ var extraMimeTypes = map[string]string{
 	".otf":   "font/otf",
 	".eot":   "application/vnd.ms-fontobject",
 	// Images
-	".webp":  "image/webp",
-	".avif":  "image/avif",
-	".svg":   "image/svg+xml",
-	".ico":   "image/x-icon",
+	".webp": "image/webp",
+	".avif": "image/avif",
+	".svg":  "image/svg+xml",
+	".ico":  "image/x-icon",
 	// Documents
 	".webmanifest": "application/manifest+json",
-	".json":  "application/json; charset=utf-8",
-	".xml":   "application/xml; charset=utf-8",
-	".csv":   "text/csv; charset=utf-8",
-	".txt":   "text/plain; charset=utf-8",
-	".html":  "text/html; charset=utf-8",
-	".htm":   "text/html; charset=utf-8",
-	".css":   "text/css; charset=utf-8",
+	".json":        "application/json; charset=utf-8",
+	".xml":         "application/xml; charset=utf-8",
+	".csv":         "text/csv; charset=utf-8",
+	".txt":         "text/plain; charset=utf-8",
+	".html":        "text/html; charset=utf-8",
+	".htm":         "text/html; charset=utf-8",
+	".css":         "text/css; charset=utf-8",
 	// Video / Audio
-	".mp4":   "video/mp4",
-	".webm":  "video/webm",
-	".mp3":   "audio/mpeg",
-	".ogg":   "audio/ogg",
-	".wav":   "audio/wav",
-	".flac":  "audio/flac",
+	".mp4":  "video/mp4",
+	".webm": "video/webm",
+	".mp3":  "audio/mpeg",
+	".ogg":  "audio/ogg",
+	".wav":  "audio/wav",
+	".flac": "audio/flac",
 	// Other
-	".wasm":  "application/wasm",
-	".pdf":   "application/pdf",
+	".wasm": "application/wasm",
+	".pdf":  "application/pdf",
 	// Office documents
-	".doc":   "application/msword",
-	".docx":  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-	".xls":   "application/vnd.ms-excel",
-	".xlsx":  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-	".ppt":   "application/vnd.ms-powerpoint",
-	".pptx":  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-	".odt":   "application/vnd.oasis.opendocument.text",
-	".ods":   "application/vnd.oasis.opendocument.spreadsheet",
-	".odp":   "application/vnd.oasis.opendocument.presentation",
-	".rtf":   "application/rtf",
+	".doc":  "application/msword",
+	".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	".xls":  "application/vnd.ms-excel",
+	".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	".ppt":  "application/vnd.ms-powerpoint",
+	".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	".odt":  "application/vnd.oasis.opendocument.text",
+	".ods":  "application/vnd.oasis.opendocument.spreadsheet",
+	".odp":  "application/vnd.oasis.opendocument.presentation",
+	".rtf":  "application/rtf",
 }
 
 // getContentType returns the MIME type for a file extension.
@@ -172,14 +172,11 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Password protection check — token from Authorization header or ?token= query param
 	if site.Password != "" {
-		// Check if user is in the same org as site owner (org_open bypass)
-		if site.OrgOpen {
-			currentUser := auth.CurrentUser(r, s.database)
-			if currentUser != nil && s.sameOrgAsSiteOwner(site, currentUser.ID) {
-				// Same org member — skip password, grant access directly
-				// Create a site session for seamless access
-				goto serveSite
-			}
+		// Owners and authorized organization members do not need to enter the
+		// public site password when they are already logged in.
+		currentUser := auth.CurrentUser(r, s.database)
+		if currentUser != nil && (currentUser.ID == site.UserID || s.sameOrgAsSiteOwner(site, currentUser.ID)) {
+			goto serveSite
 		}
 
 		token := auth.GetSiteToken(r)
@@ -281,6 +278,12 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request, path string, 
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	w.Header().Set("Content-Type", ct)
+	// Without a dedicated site domain, uploaded active documents share the
+	// management origin. Sandboxing removes their origin (and localStorage)
+	// while retaining basic static-site script/form functionality.
+	if s.getSiteBaseURL() == "" && (ext == ".html" || ext == ".htm" || ext == ".svg" || ext == ".xml") {
+		w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-forms allow-popups allow-modals")
+	}
 
 	// Cache-Control: static assets can be cached aggressively, HTML should not
 	if ext == ".html" || ext == ".htm" {

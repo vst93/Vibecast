@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,7 +22,7 @@ const defaultMaxUploadSize = 50 << 20 // 50 MB default, overridable via admin se
 // getMaxUploadSize reads the configured max upload size from DB settings.
 func (s *Server) getMaxUploadSize() int64 {
 	mb := db.GetSettingInt(s.database, "max_upload_size", 50)
-	if mb < 1 {
+	if mb < 1 || mb > 1024 {
 		mb = 50
 	}
 	return int64(mb) << 20
@@ -47,10 +48,10 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Email      string `json:"email"`
-		Password   string `json:"password"`
-		Confirm    string `json:"confirm"`
-		CaptchaID  string `json:"captchaId"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		Confirm     string `json:"confirm"`
+		CaptchaID   string `json:"captchaId"`
 		CaptchaCode string `json:"captchaCode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -259,7 +260,21 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, us
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_password_failed")})
 		return
 	}
-	writeJSON(w, 200, jsonResp{Message: "password changed"})
+
+	// Password changes invalidate every previously issued credential. Create a
+	// fresh session for the request that performed the change so the browser is
+	// not unexpectedly logged out while stolen tokens stop working immediately.
+	if err := db.DeleteUserSessions(s.database, user.ID); err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_password_failed")})
+		return
+	}
+	token := auth.GenerateToken()
+	if err := db.CreateSession(s.database, user.ID, token, time.Now().Add(auth.SessionDuration)); err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "create_session_failed")})
+		return
+	}
+	auth.SetSessionCookie(w, r, token)
+	writeJSON(w, 200, jsonResp{Message: "password changed", Data: map[string]string{"token": token}})
 }
 
 // --- Sites API ---
@@ -309,11 +324,24 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	// Check for /files sub-action (file tree listing)
 	if len(pathParts) > 1 && pathParts[1] == "files" {
+		switch r.Method {
+		case http.MethodGet:
+			s.siteFileTree(w, r, site)
+		case http.MethodDelete:
+			s.clearSiteFiles(w, r, site)
+		default:
+			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
+		}
+		return
+	}
+
+	// Check for /download sub-action (download all files as a ZIP archive)
+	if len(pathParts) > 1 && pathParts[1] == "download" {
 		if r.Method != http.MethodGet {
 			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 			return
 		}
-		s.siteFileTree(w, r, site)
+		s.downloadSiteFiles(w, r, site)
 		return
 	}
 
@@ -388,11 +416,11 @@ func (s *Server) listSites(w http.ResponseWriter, r *http.Request, user *db.User
 
 func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.User) {
 	var body struct {
-		Name      string `json:"name"`
+		Name        string `json:"name"`
 		Description string `json:"description"`
-		Password  string `json:"password"`
-		OrgOpen   bool   `json:"orgOpen"`
-		OrgPinned bool   `json:"orgPinned"`
+		Password    string `json:"password"`
+		OrgOpen     bool   `json:"orgOpen"`
+		OrgPinned   bool   `json:"orgPinned"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -470,11 +498,11 @@ func (s *Server) createSite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.User, site *db.Site) {
 	var body struct {
-		Name        string `json:"name"`
+		Name        string  `json:"name"`
 		Description *string `json:"description"` // pointer - nil means don't change
-		Password    string `json:"password"`
-		OrgOpen     *bool  `json:"orgOpen"`   // pointer to distinguish unset from false
-		OrgPinned   *bool  `json:"orgPinned"` // pointer to distinguish unset from false
+		Password    *string `json:"password"`    // nil keeps current; empty removes protection
+		OrgOpen     *bool   `json:"orgOpen"`     // pointer to distinguish unset from false
+		OrgPinned   *bool   `json:"orgPinned"`   // pointer to distinguish unset from false
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
@@ -490,24 +518,30 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 	}
 	hashedPwd := site.Password // keep existing by default
 	plainPwd := site.PasswordPlain
-	if body.Password != "" {
-		if len(body.Password) < 4 {
+	passwordChanged := body.Password != nil
+	if body.Password != nil && *body.Password != "" {
+		if len(*body.Password) < 4 {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "site_password_too_short")})
 			return
 		}
-		h, err := auth.HashPassword(body.Password)
+		h, err := auth.HashPassword(*body.Password)
 		if err != nil {
 			writeJSON(w, 500, jsonResp{Error: tMsg(r, "hash_failed")})
 			return
 		}
 		hashedPwd = h
-		plainPwd = body.Password
-	} else if site.Password == "" {
-		// Trying to keep a site public when public access is disabled
+		plainPwd = *body.Password
+	} else if body.Password != nil {
+		// Explicitly removing protection is allowed only while public access is enabled.
 		if !db.GetSettingBool(s.database, "allow_public_access", true) {
 			writeJSON(w, 403, jsonResp{Error: tMsg(r, "public_access_disabled")})
 			return
 		}
+		hashedPwd = ""
+		plainPwd = ""
+	} else if site.Password == "" && !db.GetSettingBool(s.database, "allow_public_access", true) {
+		writeJSON(w, 403, jsonResp{Error: tMsg(r, "public_access_disabled")})
+		return
 	}
 
 	// Determine orgOpen value
@@ -549,6 +583,12 @@ func (s *Server) updateSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_site_failed")})
 		return
 	}
+	if passwordChanged {
+		if err := db.DeleteSiteSessions(s.database, site.ID); err != nil {
+			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_site_failed")})
+			return
+		}
+	}
 	writeJSON(w, 200, jsonResp{Message: "updated"})
 }
 
@@ -562,9 +602,12 @@ func (s *Server) deleteSite(w http.ResponseWriter, r *http.Request, user *db.Use
 }
 
 func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.User, site *db.Site) {
+	unlock := s.lockSiteDeploy(site.ID)
+	defer unlock()
+
 	// Limit upload size (configurable via admin settings)
 	maxSize := s.getMaxUploadSize()
-	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxSize+(1<<20))
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -588,20 +631,20 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 	}
 
 	if isZip {
-		// ZIP deploy — extract and replace entire site
-		data, err := io.ReadAll(file)
-		if err != nil {
-			if err.Error() == "http: request body too large" || strings.Contains(err.Error(), "too large") {
-				writeJSON(w, 413, jsonResp{Error: tMsg(r, "file_too_large")})
-				return
-			}
+		// ZIP deploy — merge by relative path and preserve unrelated files.
+		// multipart.File implements io.ReaderAt/io.Seeker, so pass it directly
+		// to archive/zip instead of buffering the complete upload in RAM.
+		if _, err := file.Seek(0, io.SeekStart); err != nil {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "read_upload_failed")})
 			return
 		}
-
-		result, err := storage.ExtractZip(bytesReader(data), int64(len(data)), siteDir, maxSize)
+		result, err := storage.ExtractZip(file, header.Size, siteDir, maxSize)
 		if err != nil {
 			errMsg := err.Error()
+			if errors.Is(err, storage.ErrSiteSizeLimit) {
+				writeJSON(w, 413, jsonResp{Error: tMsg(r, "site_size_limit")})
+				return
+			}
 			if strings.Contains(errMsg, "file too large") && strings.Contains(errMsg, "limit") {
 				// Extract the filename from the error message
 				writeJSON(w, 413, jsonResp{Error: tMsg(r, "zip_file_too_large") + ": " + errMsg})
@@ -616,11 +659,12 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 		}
 
 		respData := map[string]interface{}{
-			"slug":     site.Slug,
-			"url":      fmt.Sprintf("s/%s/", site.Slug),
-			"files":    header.Filename,
+			"slug":      site.Slug,
+			"url":       fmt.Sprintf("s/%s/", site.Slug),
+			"files":     header.Filename,
 			"fileCount": result.TotalFiles,
 			"totalSize": result.TotalSize,
+			"siteSize":  result.SiteSize,
 		}
 		if len(result.Skipped) > 0 {
 			respData["skipped"] = result.Skipped
@@ -633,7 +677,7 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 		return
 	}
 
-	// Single file deploy — save file, replace entire site content
+	// Single file deploy — overwrite the matching basename only.
 	if storage.IsBlockedExtension(filename) {
 		writeJSON(w, 400, jsonResp{Error: tMsg(r, "file_type_blocked")})
 		return
@@ -641,6 +685,14 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 
 	fileSize, err := storage.SaveSingleFile(file, header.Filename, siteDir, maxSize)
 	if err != nil {
+		if errors.Is(err, storage.ErrSiteSizeLimit) {
+			writeJSON(w, 413, jsonResp{Error: tMsg(r, "site_size_limit")})
+			return
+		}
+		if strings.Contains(err.Error(), "file too large") {
+			writeJSON(w, 413, jsonResp{Error: tMsg(r, "file_too_large")})
+			return
+		}
 		writeJSON(w, 500, jsonResp{Error: tMsg(r, "save_file_failed") + ": " + err.Error()})
 		return
 	}
@@ -649,10 +701,10 @@ func (s *Server) deploySite(w http.ResponseWriter, r *http.Request, user *db.Use
 		Message: "deployed",
 		Data: map[string]interface{}{
 			"slug":      site.Slug,
-			"url":        fmt.Sprintf("s/%s/", site.Slug),
-			"files":      header.Filename,
-			"fileCount":  1,
-			"totalSize":  fileSize,
+			"url":       fmt.Sprintf("s/%s/", site.Slug),
+			"files":     header.Filename,
+			"fileCount": 1,
+			"totalSize": fileSize,
 		},
 	})
 }
@@ -726,49 +778,94 @@ func (s *Server) sitePassword(w http.ResponseWriter, r *http.Request, site *db.S
 	}})
 }
 
-// bytesReader is a helper to avoid importing bytes in the import block above.
-func bytesReader(data []byte) io.ReaderAt {
-	return bytesReaderType{data}
-}
-
-// siteFileTree returns a flat list of files in the site's storage directory.
+// siteFileTree returns a recursive list plus aggregate file statistics.
 func (s *Server) siteFileTree(w http.ResponseWriter, r *http.Request, site *db.Site) {
 	siteDir := filepath.Join(s.config.StorageDir, site.Slug)
-	type fileEntry struct {
-		Name string `json:"name"`
-		Size int64  `json:"size"`
-		Dir  bool   `json:"dir"`
-	}
-	var files []fileEntry
-	entries, err := os.ReadDir(siteDir)
+	files, totalSize, err := storage.ListFiles(siteDir)
 	if err != nil {
-		writeJSON(w, 200, jsonResp{Data: []fileEntry{}})
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
 		return
 	}
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".") {
-			continue
+	fileCount := 0
+	for _, file := range files {
+		if !file.Dir {
+			fileCount++
 		}
-		info, _ := e.Info()
-		size := int64(0)
-		if info != nil {
-			size = info.Size()
-		}
-		files = append(files, fileEntry{Name: e.Name(), Size: size, Dir: e.IsDir()})
 	}
-	writeJSON(w, 200, jsonResp{Data: files})
+	writeJSON(w, 200, jsonResp{Data: map[string]interface{}{
+		"items":     files,
+		"fileCount": fileCount,
+		"totalSize": totalSize,
+	}})
 }
 
-type bytesReaderType struct {
-	data []byte
+func (s *Server) clearSiteFiles(w http.ResponseWriter, r *http.Request, site *db.Site) {
+	unlock := s.lockSiteDeploy(site.ID)
+	defer unlock()
+
+	siteDir := filepath.Join(s.config.StorageDir, site.Slug)
+	files, totalSize, err := storage.ListFiles(siteDir)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "clear_files_failed")})
+		return
+	}
+	fileCount := 0
+	for _, file := range files {
+		if !file.Dir {
+			fileCount++
+		}
+	}
+	if err := storage.ClearDirectory(siteDir); err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "clear_files_failed")})
+		return
+	}
+	writeJSON(w, 200, jsonResp{Message: "files cleared", Data: map[string]interface{}{
+		"fileCount": fileCount,
+		"totalSize": totalSize,
+	}})
 }
 
-func (b bytesReaderType) ReadAt(p []byte, off int64) (int, error) {
-	if off >= int64(len(b.data)) {
-		return 0, io.EOF
+func (s *Server) downloadSiteFiles(w http.ResponseWriter, r *http.Request, site *db.Site) {
+	releaseSlot := s.acquireDownloadSlot()
+	defer releaseSlot()
+	unlock := s.lockSiteDeploy(site.ID)
+	defer unlock()
+
+	tmp, err := os.CreateTemp(s.config.StorageDir, ".download-*.zip")
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "download_files_failed")})
+		return
 	}
-	n := copy(p, b.data[off:])
-	return n, nil
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+
+	_, _, err = storage.ZipDirectory(tmp, filepath.Join(s.config.StorageDir, site.Slug))
+	if err != nil {
+		_ = tmp.Close()
+		if errors.Is(err, storage.ErrSiteEmpty) {
+			writeJSON(w, 409, jsonResp{Error: tMsg(r, "site_files_empty")})
+			return
+		}
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "download_files_failed")})
+		return
+	}
+	info, err := tmp.Stat()
+	if err != nil {
+		_ = tmp.Close()
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "download_files_failed")})
+		return
+	}
+	if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+		_ = tmp.Close()
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "download_files_failed")})
+		return
+	}
+	defer tmp.Close()
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.zip\"", site.Slug))
+	w.Header().Set("Cache-Control", "no-store")
+	http.ServeContent(w, r, site.Slug+".zip", info.ModTime(), tmp)
 }
 
 // isEmailDomainAllowed checks if the email's domain is in the allowed list.

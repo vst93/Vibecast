@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"vibecast/internal/server"
 )
@@ -106,7 +107,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
-	hs := &http.Server{Handler: srv.Router()}
+	hs := &http.Server{
+		Handler:           srv.Router(),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       5 * time.Minute,
+		WriteTimeout:      5 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    1 << 20,
+	}
 	srv.SetHTTPServer(hs)
 	if err := hs.Serve(ln); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)

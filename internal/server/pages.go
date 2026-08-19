@@ -175,6 +175,15 @@ input,button,select{font-family:inherit}
 .switch-label span{font-size:.68rem;color:var(--dim);line-height:1.3}
 .detail-actions{padding:.5rem 0 0;margin-top:.5rem;border-top:1px solid var(--line);display:flex;gap:.4rem;flex-wrap:wrap}
 .file-tree-section{grid-column:1/-1;margin-top:.2rem}
+.file-tree-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.35rem}
+.file-tree-title{display:flex;align-items:center;gap:.5rem;min-width:0}
+.file-tree-title .detail-label{white-space:nowrap}
+.file-tree-summary{font-family:var(--mono);font-size:.62rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-tree-actions{display:flex;align-items:center;gap:.35rem;flex-shrink:0}
+.file-tree-actions .btn{display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap}
+.file-tree-actions svg{width:13px;height:13px;flex-shrink:0}
+.file-clear-btn{color:var(--danger);border-color:var(--danger)}
+.file-clear-btn:hover{background:var(--danger);color:#fff}
 .file-list{margin-top:.25rem;border-radius:5px;overflow:hidden;background:var(--ink)}
 .file-row{display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;font-family:var(--mono);font-size:.68rem;border-bottom:1px solid var(--line)}
 .file-row:last-child{border-bottom:none}
@@ -185,7 +194,22 @@ input,button,select{font-family:inherit}
 .file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-size{flex-shrink:0;color:var(--dim);text-align:right;min-width:55px;font-size:.65rem}
 .file-empty{font-size:.72rem;color:var(--dim);padding:.2rem 0;font-style:italic}
+.deploy-hint{font-size:.7rem;color:var(--dim);margin-top:.6rem;font-family:var(--mono);line-height:1.55}
+.transfer-status{max-height:0;overflow:hidden;padding:0 .9rem;background:var(--surface-2);border-top:0 solid var(--line);transition:max-height .2s,padding .2s,border-width .2s}
+.transfer-status.show{max-height:54px;padding:.5rem .9rem .55rem;border-top-width:1px}
+.transfer-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;font-family:var(--mono);font-size:.65rem;color:var(--dim);margin-bottom:.3rem}
+.transfer-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.transfer-percent{flex-shrink:0;color:var(--text)}
+.transfer-track{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.transfer-fill{display:block;width:0;height:100%;background:var(--accent);border-radius:2px;transition:width .15s linear}
+.transfer-status.indeterminate .transfer-fill{width:35%;animation:transfer-slide 1.1s ease-in-out infinite}
+.transfer-status.success .transfer-fill{background:var(--accent)}
+.transfer-status.error .transfer-fill{background:var(--danger)}
+.transfer-status.error .transfer-label,.transfer-status.error .transfer-percent{color:var(--danger)}
+@keyframes transfer-slide{0%{transform:translateX(-110%)}100%{transform:translateX(300%)}}
+@media(prefers-reduced-motion:reduce){.transfer-status.indeterminate .transfer-fill{animation:none;width:100%}}
 @media(max-width:768px){.detail-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.file-tree-head{align-items:flex-start;flex-direction:column}.file-tree-actions{width:100%}.file-tree-actions .btn{flex:1;justify-content:center}}
 .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .status-dot.public{background:var(--accent)}
 .status-dot.protected{background:var(--warn)}
@@ -252,65 +276,83 @@ input,button,select{font-family:inherit}
 .checkbox-label{display:flex;align-items:flex-start;gap:.4rem;cursor:pointer;font-size:.8rem;color:var(--text)}
 .checkbox-label input{margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
 .checkbox-label .desc{margin-top:.2rem}
-.modal-lg{max-width:900px}
-.modal-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.modal-header-row h3{margin:0}
-.modal-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dim);padding:4px 8px;border-radius:6px;transition:all .15s}
-.modal-close:hover{color:var(--text);background:var(--surface-2)}
-.org-feature-desc{font-size:.78rem;color:var(--dim);line-height:1.6;margin-bottom:1.2rem;padding:0 0 .8rem;border-bottom:1px solid var(--line)}
-#org-modal .modal{max-height:85vh;overflow-y:auto}
-.org-empty{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.org-empty-panel{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
+/* Hallmark · component: organization modal · genre: modern-minimal · theme: Vibecast
+ * pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass · responsive: pass
+ */
+#org-modal{padding:16px}
+.modal-lg{max-width:860px}
+#org-modal .modal{padding:0;max-height:min(720px,calc(100vh - 32px));overflow:hidden;display:flex;flex-direction:column}
+.org-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;padding:1.15rem 1.35rem;border-bottom:1px solid var(--line);flex-shrink:0}
+.org-modal-heading{min-width:0}
+.org-modal-header h3{margin:0;font-size:.95rem}
+.modal-close{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:none;border:1px solid transparent;cursor:pointer;color:var(--dim);padding:0;border-radius:6px;transition:color .15s,background .15s,border-color .15s}
+.modal-close svg{width:17px;height:17px}
+.modal-close:hover{color:var(--text);background:var(--surface-2);border-color:var(--line)}
+.modal-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.org-feature-desc{font-size:.75rem!important;color:var(--dim);line-height:1.55;margin:.3rem 0 0!important;max-width:700px}
+#org-section{min-height:0;overflow:auto}
+.org-empty{display:grid;grid-template-columns:1fr 1fr;min-height:330px}
+.org-empty-panel{padding:1.75rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:.8rem}
 .org-empty-panel:first-child{border-right:1px solid var(--line)}
-.org-panel-title{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem}
-.org-panel-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.org-panel-title{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.65rem}
+.org-panel-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .org-panel-icon.create{background:rgba(26,127,55,.1);color:var(--accent)}
 .org-panel-icon.join{background:rgba(59,130,246,.1);color:#3b82f6}
 [data-theme="dark"] .org-panel-icon.create{background:rgba(57,211,83,.1);color:var(--accent)}
 [data-theme="dark"] .org-panel-icon.join{background:rgba(96,165,250,.1);color:#60a5fa}
-.org-panel-desc{font-size:.75rem;color:var(--dim);line-height:1.5}
+.org-panel-desc{font-size:.75rem!important;color:var(--dim);line-height:1.55;margin:0!important;min-height:3.5em}
+.org-panel-form{width:100%;display:flex;flex-direction:column;gap:.65rem;margin-top:auto}
 .org-panel-input{padding:9px 12px;border:1px solid var(--line);border-radius:6px;font-size:.85rem;outline:none;transition:border-color .15s,box-shadow .15s;background:var(--ink);color:var(--text);width:100%}
 .org-panel-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,127,55,.08)}
 [data-theme="dark"] .org-panel-input:focus{box-shadow:0 0 0 3px rgba(57,211,83,.08)}
-.org-bound{display:grid;grid-template-columns:1fr 1.5fr;gap:0}
-.org-bound-left{padding:1.5rem;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:1rem}
-.org-bound-right{padding:1.5rem;display:flex;flex-direction:column;gap:.8rem}
-.org-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem}
-.org-header-actions{flex-shrink:0}
-.org-delete-btn{white-space:nowrap}
-.org-invite-section{display:flex;flex-direction:column;gap:.4rem}
-.org-invite-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:.2rem 0}
-.org-invite-toggle label{font-size:.7rem;color:var(--dim);font-weight:600;cursor:pointer}
+.org-panel-form .btn{width:100%;font-family:var(--mono)}
+.org-bound{display:flex;flex-direction:column;height:min(520px,calc(100vh - 150px));min-height:400px}
+.org-summary{padding:1rem 1.25rem;border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,320px) auto;align-items:center;gap:1rem;background:color-mix(in srgb,var(--surface-2) 36%,var(--surface));flex-shrink:0}
+.org-bound-right{padding:1.15rem 1.25rem;display:flex;flex:1;flex-direction:column;min-width:0;min-height:0}
+.org-summary-action{min-width:0}
+.org-summary-action .btn{width:auto;white-space:nowrap}
+.org-summary-action .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.org-summary-action .btn-danger:hover{background:var(--danger);color:#fff;opacity:1}
+.org-invite-section{display:flex;flex-direction:column;gap:.4rem;min-width:0}
+.org-invite-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;padding:0;background:none;border:none;color:var(--dim)}
+.org-invite-toggle span{font-size:.68rem;color:var(--dim);font-weight:700;font-family:var(--mono);text-transform:uppercase}
+.org-invite-toggle:hover span,.org-invite-toggle:hover .org-invite-chevron{color:var(--text)}
+.org-invite-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:2px}
 .org-invite-chevron{transition:transform .2s;flex-shrink:0;color:var(--dim)}
 .org-invite-collapsed .org-invite-chevron{transform:rotate(-90deg)}
 .org-invite-detail{display:block;overflow:hidden}
 .org-invite-collapsed .org-invite-detail{display:none}
-.org-invite-box{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.8rem}
-.org-invite-box label{font-size:.7rem;color:var(--dim);display:block;margin-bottom:.4rem;font-weight:600}
-.org-invite-row{display:flex;align-items:center;gap:.4rem}
-.org-invite-code{font-family:var(--mono);font-size:.9rem;color:var(--accent);letter-spacing:1px;flex:1;word-break:break-all}
-.org-copy-btn{padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--dim);cursor:pointer;font-size:.7rem;font-weight:600;display:flex;align-items:center;gap:.3rem;transition:all .15s;white-space:nowrap}
+.org-invite-row{display:flex;align-items:center;gap:.25rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:3px 3px 3px .65rem}
+.org-invite-code{font-family:var(--mono);font-size:.82rem;color:var(--accent);letter-spacing:1px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.org-copy-btn{width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,background .15s,border-color .15s;flex-shrink:0}
+.org-copy-btn svg{width:14px;height:14px}
 .org-copy-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface-2)}
-@media(max-width:768px){.org-bound{grid-template-columns:1fr!important}.org-bound-left{border-right:none;border-bottom:1px solid var(--line)}.org-empty{grid-template-columns:1fr!important}.org-empty-panel:first-child{border-right:none;border-bottom:1px solid var(--line)}.modal-lg{max-width:calc(100vw - 2rem)!important}}
-@media(max-width:640px){.org-bound-left{padding:1rem}.org-bound-right{padding:1rem}.org-empty-panel{padding:1rem}.modal-lg{max-width:calc(100vw - 1rem)!important;padding:1rem!important}#org-modal .modal{max-height:90vh}}
 .org-header{display:flex;align-items:center;gap:.6rem}
 .org-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dim));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1rem;font-weight:700;color:#fff;flex-shrink:0}
-.org-title{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--text);word-break:break-word}
+.org-title{font-family:var(--mono);font-size:.95rem;font-weight:700;color:var(--text);word-break:break-word;line-height:1.35;margin-bottom:.3rem}
 .org-role-badge{font-size:.65rem;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px}
 .org-role-badge.owner{background:rgba(210,153,34,.12);color:var(--warn);border:1px solid rgba(210,153,34,.25)}
 .org-role-badge.member{background:rgba(57,211,83,.12);color:var(--accent);border:1px solid rgba(57,211,83,.25)}
-.org-members-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-.org-members-header h3{font-family:var(--mono);font-size:.8rem;font-weight:600;color:var(--text)}
-.org-members-count{font-family:var(--mono);font-size:.7rem;color:var(--dim);background:var(--surface-2);padding:2px 8px;border-radius:10px}
-.org-member-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;border:1px solid var(--line);border-radius:6px;margin-bottom:.4rem;transition:border-color .15s}
-.org-member-item:hover{border-color:var(--accent)}
-.org-member-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--dim);flex-shrink:0;font-family:var(--mono)}
+.org-members-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;min-height:24px}
+.org-members-header h3{font-family:var(--mono);font-size:.8rem;font-weight:700;color:var(--text);margin:0}
+.org-members-count{font-family:var(--mono);font-size:.68rem;color:var(--dim);background:var(--surface-2);padding:2px 7px;border-radius:10px}
+.org-member-search{position:relative;margin-bottom:.8rem}
+.org-member-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--dim);pointer-events:none}
+.org-member-search input{width:100%;height:36px;padding:7px 11px 7px 32px;border:1px solid var(--line);border-radius:6px;font-size:.8rem;outline:none;background:var(--ink);color:var(--text)}
+.org-member-search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,127,55,.08)}
+#org-member-list{min-height:0;overflow-y:auto;padding-right:3px;scrollbar-gutter:stable}
+.org-member-item{display:flex;align-items:center;gap:.65rem;min-height:48px;padding:.5rem .65rem;border-bottom:1px solid var(--line);transition:background .15s}
+.org-member-item:first-child{border-top:1px solid var(--line)}
+.org-member-item:hover{background:var(--surface-2)}
+.org-member-avatar{width:30px;height:30px;border-radius:7px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--dim);flex-shrink:0;font-family:var(--mono)}
 .org-member-avatar.owner{background:rgba(210,153,34,.12);color:var(--warn)}
 .org-member-info{flex:1;min-width:0}
-.org-member-email{font-size:.8rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.org-member-role{font-size:.65rem;color:var(--dim);font-family:var(--mono)}
-.org-member-remove{padding:4px 8px;border:1px solid var(--danger);border-radius:5px;background:transparent;color:var(--danger);cursor:pointer;font-size:.7rem;font-weight:600;transition:all .15s;white-space:nowrap}
+.org-member-email{font-size:.79rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.org-member-role{font-size:.63rem;color:var(--dim);font-family:var(--mono);margin-top:1px}
+.org-member-remove{padding:4px 7px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--danger);cursor:pointer;font-size:.68rem;font-weight:600;transition:background .15s,border-color .15s;white-space:nowrap;flex-shrink:0}
 .org-member-remove:hover{background:var(--danger);color:#fff}
+@media(max-width:768px){#org-modal{padding:12px}.modal-lg{max-width:100%!important}.org-modal-header{padding:1rem}.org-bound{height:min(560px,calc(100vh - 150px));min-height:400px}.org-summary{grid-template-columns:minmax(0,1fr) auto;background:var(--surface)}.org-invite-section{grid-column:1/-1;grid-row:2}.org-summary-action{grid-column:2;grid-row:1}.org-bound-right{min-height:0}.org-empty{grid-template-columns:1fr}.org-empty-panel:first-child{border-right:none;border-bottom:1px solid var(--line)}}
+@media(max-width:480px){#org-modal{padding:0;align-items:stretch}.modal-lg{max-width:none!important}.org-modal-header{padding:.9rem 1rem}.org-feature-desc{font-size:.7rem!important}.org-empty-panel{padding:1.25rem 1rem}.org-panel-desc{min-height:0}.org-summary,.org-bound-right{padding:1rem}.org-summary{grid-template-columns:minmax(0,1fr);gap:.85rem}.org-header,.org-invite-section,.org-summary-action{grid-column:1;grid-row:auto}.org-summary-action .btn{width:100%}#org-modal .modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0;border-left:none;border-right:none}.org-bound{height:auto;min-height:0;flex:1}.org-bound-right{flex:1}.org-member-item{padding-left:.35rem;padding-right:.35rem}.org-member-remove{padding:4px 5px}}
 .site-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--line)}
 .site-tab{padding:.6rem 1.1rem;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:.3rem}
 .site-tab:hover{color:var(--text)}
@@ -342,6 +384,8 @@ var maxSites=30;
 var siteTab="my"; // "my" or "org"
 var orgPinnedPage=1,orgPinnedTotal=0,orgPinnedSearch="";
 var i18n={en:{siteName:"Site Name",siteNamePh:"e.g. My Portfolio",siteDesc:"Description",siteDescPh:"Brief description (optional)",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"Access Password",sitePwdPh:"Leave empty for public",create:"Create Site",yourSites:"Your Sites",noSites:"No sites yet. Create one above.",deployBtn:"Upload",delete:"Delete",deleteConfirm:"Delete this site? This removes all files.",protected:"Protected",public:"Public",login:"Login",register:"Register",email:"Email",emailPh:"you@example.com",password:"Password",pwdHint:"At least 6 characters",noAccount:"No account?",haveAccount:"Have an account?",logout:"Logout",adminPanel:"Admin",deployed:"Deployed!",siteCreated:"Site created",deleted:"Deleted",loginFailed:"Login failed",registerFailed:"Registration failed",slugDesc:"Auto-generated from name if blank. a-z, 0-9, hyphens only.",pwdDesc:"If set, visitors need this password.",sitesHint:"Click to expand",deployHint:"Upload ZIP or single file (PDF, Word, images, etc.)",storagePath:"Storage",accessPassword:"Password",none:"None",accessDisabled:"Disabled",pwdRequired:"Public access disabled — password required",pwdOptional:"Optional password protection",search:"Search",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",captcha:"Captcha",captchaPh:"Answer",captchaLabel:"Verification",confirmPassword:"Confirm Password",pwdMismatch:"Passwords do not match",changePassword:"Change Password",currentPassword:"Current Password",newPassword:"New Password",newPasswordPh:"New password (min 6)",passwordChanged:"Password changed",cancel:"Cancel",save:"Save",confirm:"Confirm",emailRequired:"Please enter your email",pwdRequired:"Please enter your password",confirmRequired:"Please confirm your password",captchaRequired:"Please solve the captcha",copyUrl:"Copy URL",copied:"Copied!",copy:"Copy",copyFailed:"Copy failed",visit:"Visit",files:"Files",noFiles:"No files",visitsToday:"Today",visitsMonth:"Month",visitsTotal:"Total",visits:"Visits",uploading:"Uploading...",dragDrop:"Drag file here or click to upload",dragDropHover:"Drop to upload",fileTooLarge:"File too large",fileTypeBlocked:"This file type is not allowed",uploadFailed:"Upload failed",networkError:"Network error",allowedTypes:"ZIP, PDF, Word, Excel, PPT, images, audio, video, text",share:"Share",shareCopied:"Share text copied!",shareTemplatePwd:"Site: {name}\nURL: {url}\nPassword: {password}",shareTemplatePublic:"Site: {name}\nURL: {url}",organization:"Organization",orgManage:"Organization",orgCreate:"Create Organization",orgJoin:"Join Organization",orgName:"Organization Name",orgNamePh:"e.g. My Team",orgInviteCode:"Invite Code",orgInviteCodePh:"Enter 12-char code",orgCreateDesc:"Create a new organization. You will get an invite code to share with your team.",orgJoinDesc:"Enter an invite code to join an existing organization.",orgLeave:"Leave Organization",orgDelete:"Delete Organization",orgMembers:"Members",orgNoMembers:"No members",orgOwner:"Owner",orgMember:"Member",orgRemove:"Remove",orgLeaveConfirm:"Leave this organization?",orgDeleteConfirm:"Delete this organization? This cannot be undone.",orgCreated:"Organization created",orgJoined:"Joined organization",orgLeft:"Left organization",orgDeleted:"Organization deleted",orgMemberRemoved:"Member removed",orgInviteCodeCopied:"Invite code copied!",orgOpenLabel:"Open to org members",orgOpenDesc:"If enabled, logged-in users in the same organization can access this site without a password.",orgBadge:"Org",orgFeatureDesc:"Organizations let you group users together. When a site is set to open to org members, anyone in the same org can access it without a password. Each user can only belong to one organization.",noOrg:"Not in an organization",orgPinnedLabel:"Pin to org list",orgPinnedDesc:"If enabled, this site appears in the org pinned sites tab. Org members can see its name and visit it, but cannot view its config or password.",tabMySites:"My Sites",tabOrgPinned:"Org Pinned",noOrgPinned:"No pinned sites in your organization.",orgPinnedBadge:"Pinned",noOrgForPinned:"Join an organization to see pinned sites.",editSite:"Edit Site",editName:"Site Name",editDesc:"Description",editSiteDesc:"Edit site name and description"},zh:{siteName:"站点名称",siteNamePh:"例如：我的作品集",siteDesc:"描述",siteDescPh:"简短描述（可选）",slug:"URL Slug",slugPh:"my-portfolio",sitePwd:"访问密码",sitePwdPh:"留空则公开访问",create:"创建站点",yourSites:"我的站点",noSites:"还没有站点，在左侧创建一个。",deployBtn:"上传",delete:"删除",deleteConfirm:"确定删除此站点？所有文件将被移除。",protected:"已保护",public:"公开",login:"登录",register:"注册",email:"邮箱",emailPh:"you@example.com",password:"密码",pwdHint:"至少 6 个字符",noAccount:"没有账号？",haveAccount:"已有账号？",logout:"退出",adminPanel:"管理",deployed:"部署成功！",siteCreated:"站点已创建",deleted:"已删除",loginFailed:"登录失败",registerFailed:"注册失败",slugDesc:"留空则自动生成。仅限 a-z、0-9、连字符。",pwdDesc:"设置后，访问者需要输入此密码。",sitesHint:"点击展开详情",deployHint:"上传 ZIP 压缩包或单个文件（PDF、Word、图片等）",storagePath:"存储路径",accessPassword:"访问密码",none:"无",accessDisabled:"已禁用",pwdRequired:"公开访问已关闭 — 必须设置密码",pwdOptional:"可选的密码保护",search:"搜索",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"/ 共",captcha:"验证码",captchaPh:"输入答案",captchaLabel:"验证",confirmPassword:"确认密码",pwdMismatch:"两次密码不一致",changePassword:"修改密码",currentPassword:"当前密码",newPassword:"新密码",newPasswordPh:"新密码（至少 6 位）",passwordChanged:"密码已修改",cancel:"取消",save:"保存",confirm:"确认",emailRequired:"请输入邮箱",pwdRequired:"请输入密码",confirmRequired:"请确认密码",captchaRequired:"请输入验证码",copyUrl:"复制链接",copied:"已复制！",copy:"复制",copyFailed:"复制失败",visit:"访问",files:"文件",noFiles:"暂无文件",visitsToday:"今日",visitsMonth:"本月",visitsTotal:"总计",visits:"访问",uploading:"上传中...",dragDrop:"拖拽文件到此处或点击上传",dragDropHover:"松开以上传",fileTooLarge:"文件过大",fileTypeBlocked:"不允许此文件类型",uploadFailed:"上传失败",networkError:"网络错误",allowedTypes:"ZIP、PDF、Word、Excel、PPT、图片、音频、视频、文本",share:"分享",shareCopied:"分享文本已复制！",shareTemplatePwd:"站点：{name}\n地址：{url}\n密码：{password}",shareTemplatePublic:"站点：{name}\n地址：{url}",organization:"组织",orgManage:"组织管理",orgCreate:"创建组织",orgJoin:"加入组织",orgName:"组织名称",orgNamePh:"例如：我的团队",orgInviteCode:"邀请码",orgInviteCodePh:"输入 12 位邀请码",orgCreateDesc:"创建一个新组织，你将获得一个邀请码来分享给团队成员。",orgJoinDesc:"输入邀请码加入已有组织。",orgLeave:"退出组织",orgDelete:"删除组织",orgMembers:"成员",orgNoMembers:"暂无成员",orgOwner:"创建者",orgMember:"成员",orgRemove:"移除",orgLeaveConfirm:"确定退出此组织？",orgDeleteConfirm:"确定删除此组织？此操作不可撤销。",orgCreated:"组织已创建",orgJoined:"已加入组织",orgLeft:"已退出组织",orgDeleted:"组织已删除",orgMemberRemoved:"成员已移除",orgInviteCodeCopied:"邀请码已复制！",orgOpenLabel:"对组织成员开放",orgOpenDesc:"开启后，同一组织内已登录的用户可以直接访问此站点，无需密码。",orgBadge:"组织",orgFeatureDesc:"组织用于将用户分组。当站点设置为对组织成员开放时，同一组织内的已登录用户无需密码即可访问。每个用户只能加入一个组织。",noOrg:"未加入任何组织",orgPinnedLabel:"钉到组织列表",orgPinnedDesc:"开启后，此站点会出现在组织钉选列表中。组织成员可以看到名称并访问，但无法查看配置和密码。",tabMySites:"我的站点",tabOrgPinned:"组织钉选",noOrgPinned:"组织中暂无钉选站点。",orgPinnedBadge:"已钉选",noOrgForPinned:"加入组织后可查看钉选站点。",editSite:"编辑站点",editName:"站点名称",editDesc:"描述",editSiteDesc:"编辑站点名称和描述"}};
+Object.assign(i18n.en,{close:"Close",downloadZip:"Download ZIP",clearFiles:"Clear files",clearFilesConfirm:"Clear all {count} files ({size}) from this site? This cannot be undone.",filesCleared:"Site files cleared",noFilesToClear:"No files to clear",preparingDownload:"Preparing ZIP...",downloadingFile:"Downloading {size}",downloadReady:"ZIP download ready",downloadFailed:"Download failed",uploadPreparing:"Preparing upload...",uploadProcessing:"Processing files and checking site size...",uploadComplete:"Upload complete",fileSummary:"{count} files · {size}",deployHintDetailed:"Single files and ZIP archives must be no larger than {size} MB. Uploads overwrite matching file paths and keep all other files. ZIP contents are merged after extraction. The final total site size must also stay within {size} MB."});
+Object.assign(i18n.zh,{close:"关闭",downloadZip:"下载 ZIP",clearFiles:"清空文件",clearFilesConfirm:"确定清空该站点的全部 {count} 个文件（{size}）吗？此操作不可撤销。",filesCleared:"站点文件已清空",noFilesToClear:"没有可清空的文件",preparingDownload:"正在打包 ZIP...",downloadingFile:"正在下载 {size}",downloadReady:"ZIP 下载已就绪",downloadFailed:"下载失败",uploadPreparing:"正在准备上传...",uploadProcessing:"正在处理文件并检查站点总大小...",uploadComplete:"上传完成",fileSummary:"{count} 个文件 · {size}",deployHintDetailed:"单个文件和 ZIP 压缩包均不得超过 {size} MB。上传只覆盖路径相同的文件，其他文件保持不变；ZIP 解压后按路径合并。合并后的站点文件总大小也不得超过 {size} MB。"});
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();else renderAuth();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -350,8 +394,10 @@ function toast(msg,type){type=type||"success";var el=document.createElement("div
 function togglePwd(btn){var inp=btn.parentElement.querySelector("input");if(!inp)return;var show=inp.type=="password";inp.type=show?"text":"password";btn.innerHTML=show?PWD_SHOW_ICON:PWD_HIDE_ICON}
 var PWD_SHOW_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 var PWD_HIDE_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
-function setToken(tk){try{localStorage.setItem("vibecast_token",tk)}catch(e){}}
+// Authentication is carried by the HttpOnly vibecast_session cookie.
+// Keep these helpers only to remove tokens left by older frontend versions.
+function getToken(){return"cookie"}
+function setToken(tk){try{localStorage.removeItem("vibecast_token")}catch(e){}}
 function clearToken(){try{localStorage.removeItem("vibecast_token")}catch(e){}}
 function customConfirm(msg,onConfirm){
 var o=document.createElement("div");o.className="modal-overlay";o.style.zIndex="300";
@@ -364,16 +410,14 @@ o.querySelector("#cf-yes").addEventListener("click",function(){cl();onConfirm()}
 }
 function api(path,opts){
 opts=opts||{};
-var token=localStorage.getItem("vibecast_token")||"";
-var headers={"Content-Type":"application/json","Accept-Language":lang||"en"};
-if(token)headers["Authorization"]="Bearer "+token;
-if(opts.headers)Object.assign(headers,opts.headers);
-return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
-if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}var onAuth=/\/(dashboard|admin)\/?$/.test(location.pathname);if(!onAuth||getToken()){location.reload()}}
+	var headers={"Content-Type":"application/json","Accept-Language":lang||"en"};
+	if(opts.headers)Object.assign(headers,opts.headers);
+	return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
+	if(r.status===401){clearToken()}
 return r.json().catch(function(){return{error:"network error"}}).then(function(data){if(!r.ok)throw new Error(data.error||"request failed");return data})
 })
 }
-function checkAuth(){if(!getToken())return Promise.resolve(false);return api("/auth/me").then(function(d){currentUser=d.data;return true}).catch(function(){clearToken();return false})}
+function checkAuth(){return api("/auth/me").then(function(d){currentUser=d.data;return true}).catch(function(){clearToken();return false})}
 var loginCaptchaId="",registerCaptchaId="";var regOpen=true;
 function loadCaptcha(v){
 return fetch(BASE+"api/auth/captcha").then(function(r){return r.json()}).then(function(d){
@@ -397,19 +441,20 @@ loadCaptcha("register");
 function doLogin(){
 var em=document.getElementById("email").value.trim(),pw=document.getElementById("password").value,ca=document.getElementById("login-captcha").value;
 if(!em){toast(t("emailRequired"),"error");return}if(!pw){toast(t("pwdRequired"),"error");return}if(!ca){toast(t("captchaRequired"),"error");return}
-api("/auth/login",{method:"POST",body:JSON.stringify({email:em,password:pw,captchaId:loginCaptchaId,captchaCode:ca})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast(t("loginFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("login")})
+api("/auth/login",{method:"POST",body:JSON.stringify({email:em,password:pw,captchaId:loginCaptchaId,captchaCode:ca})}).then(function(d){if(d.data){setToken("");location.reload()}else{toast(t("loginFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("login")})
 }
 function doRegister(){
 var em=document.getElementById("email").value.trim(),pw=document.getElementById("password").value,cf=document.getElementById("confirm-pwd").value,ca=document.getElementById("register-captcha").value;
 if(!em){toast(t("emailRequired"),"error");return}if(!pw){toast(t("pwdRequired"),"error");return}if(!cf){toast(t("confirmRequired"),"error");return}if(!ca){toast(t("captchaRequired"),"error");return}if(pw!==cf){toast(t("pwdMismatch"),"error");return}
-api("/auth/register",{method:"POST",body:JSON.stringify({email:em,password:pw,confirm:cf,captchaId:registerCaptchaId,captchaCode:ca})}).then(function(d){if(d.data&&d.data.token){setToken(d.data.token);location.reload()}else{toast(t("registerFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("register")})
+api("/auth/register",{method:"POST",body:JSON.stringify({email:em,password:pw,confirm:cf,captchaId:registerCaptchaId,captchaCode:ca})}).then(function(d){if(d.data){setToken("");location.reload()}else{toast(t("registerFailed"),"error")}}).catch(function(e){toast(e.message,"error");loadCaptcha("register")})
 }
 function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href=BASE}).catch(function(){clearToken();location.href=BASE})}
 function renderDashboard(){
 var al=currentUser.isAdmin?'<a class="admin-link" href="'+BASE+'admin">'+t("adminPanel")+'</a>':'';
 var th='<a id="theme-toggle" class="btn-icon" onclick="toggleTheme()">'+(getTheme()==="dark"?'` + iconSun + `':'` + iconMoon + `')+'</a>';
 var lh='<div class="lang-toggle"><a class="'+(lang==="en"?"active":"")+'" onclick="setLang(\'en\')">EN</a><a class="'+(lang==="zh"?"active":"")+'" onclick="setLang(\'zh\')">中文</a></div>';
-document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `<span class="logo-text">Vibe<span class="accent">cast</span></span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openOrgModal()" id="nav-org-btn">` + iconBuilding + `<span> '+t("orgManage")+'</span></button><button class="btn-icon" onclick="openChangePwdModal()">` + iconLock + `<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">` + iconLogout + `<span> '+t("logout")+'</span></button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("siteDesc")+'</label><input id="site-desc" placeholder="'+t("siteDescPh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-open"> <span>'+t("orgOpenLabel")+'</span></label><div class="desc">'+t("orgOpenDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-pinned"> <span>'+t("orgPinnedLabel")+'</span></label><div class="desc">'+t("orgPinnedDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="site-tabs"><div class="site-tab '+(siteTab==="my"?"active":"")+'" onclick="switchSiteTab(\'my\')">'+t("tabMySites")+'</div><div class="site-tab '+(siteTab==="org"?"active":"")+'" onclick="switchSiteTab(\'org\')">'+t("tabOrgPinned")+'</div></div><div class="card-body"><div id="site-tab-content"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div><div class="modal-overlay" id="org-modal" onclick="if(event.target===this)closeOrgModal()"><div class="modal modal-lg"><div class="modal-header-row"><h3>'+t("orgManage")+'</h3><button class="modal-close" onclick="closeOrgModal()">✕</button></div><p class="org-feature-desc">'+t("orgFeatureDesc")+'</p><div id="org-section"></div></div></div><div class="modal-overlay" id="edit-site-modal" onclick="if(event.target===this)closeEditSiteModal()"><div class="modal"><h3>'+t("editSite")+'</h3><div class="modal-field"><label>'+t("editName")+'</label><input id="edit-site-name" type="text"></div><div class="modal-field"><label>'+t("editDesc")+'</label><input id="edit-site-desc" type="text"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeEditSiteModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="saveEditSite()">'+t("save")+'</button></div></div></div>';
+document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">` + logoIcon + `<span class="logo-text">Vibe<span class="accent">cast</span></span></div><div class="nav-right">'+al+'<button class="btn-icon" onclick="openOrgModal()" id="nav-org-btn">` + iconBuilding + `<span> '+t("orgManage")+'</span></button><button class="btn-icon" onclick="openChangePwdModal()">` + iconLock + `<span> '+t("changePassword")+'</span></button>'+th+lh+'<span class="email">'+esc(currentUser.email)+'</span><button class="btn-link" onclick="doLogout()">` + iconLogout + `<span> '+t("logout")+'</span></button></div></nav><div class="container"><div class="dashboard-grid"><div class="sidebar"><div class="card"><div class="card-header"><h2>'+t("create")+'</h2></div><div class="card-body"><div class="form-field"><label>'+t("siteName")+'</label><input id="site-name" placeholder="'+t("siteNamePh")+'"></div><div class="form-field"><label>'+t("siteDesc")+'</label><input id="site-desc" placeholder="'+t("siteDescPh")+'"></div><div class="form-field"><label>'+t("sitePwd")+'</label><div class="pwd-wrap"><input id="site-pwd" type="password" placeholder="'+t("sitePwdPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div><div class="desc" id="pwd-desc">'+t("pwdDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-open"> <span>'+t("orgOpenLabel")+'</span></label><div class="desc">'+t("orgOpenDesc")+'</div></div><div class="form-field org-toggle-field"><label class="checkbox-label"><input type="checkbox" id="site-org-pinned"> <span>'+t("orgPinnedLabel")+'</span></label><div class="desc">'+t("orgPinnedDesc")+'</div></div><div class="form-actions"><button class="btn btn-primary" style="width:100%" onclick="createSite()">'+t("create")+'</button></div></div></div></div><div class="main-content"><div class="card"><div class="site-tabs"><div class="site-tab '+(siteTab==="my"?"active":"")+'" onclick="switchSiteTab(\'my\')">'+t("tabMySites")+'</div><div class="site-tab '+(siteTab==="org"?"active":"")+'" onclick="switchSiteTab(\'org\')">'+t("tabOrgPinned")+'</div></div><div class="card-body"><div id="site-tab-content"></div></div></div></div></div></div><div class="modal-overlay" id="pwd-modal" onclick="if(event.target===this)closeChangePwdModal()"><div class="modal"><h3>'+t("changePassword")+'</h3><div class="modal-field"><label>'+t("currentPassword")+'</label><div class="pwd-wrap"><input id="old-pwd" type="password" placeholder="'+t("currentPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div></div><div class="modal-field"><label>'+t("newPassword")+'</label><div class="pwd-wrap"><input id="new-pwd" type="password" placeholder="'+t("newPasswordPh")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div></div><div class="modal-field"><label>'+t("confirmPassword")+'</label><div class="pwd-wrap"><input id="confirm-new-pwd" type="password" placeholder="'+t("confirmPassword")+'"><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeChangePwdModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="changePassword()">'+t("save")+'</button></div></div></div><div class="modal-overlay" id="org-modal" onclick="if(event.target===this)closeOrgModal()"><div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="org-modal-title"><div class="org-modal-header"><div class="org-modal-heading"><h3 id="org-modal-title">'+t("orgManage")+'</h3><p class="org-feature-desc">'+t("orgFeatureDesc")+'</p></div><button type="button" class="modal-close" onclick="closeOrgModal()" title="'+t("cancel")+'" aria-label="'+t("cancel")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div id="org-section"></div></div></div><div class="modal-overlay" id="edit-site-modal" onclick="if(event.target===this)closeEditSiteModal()"><div class="modal"><h3>'+t("editSite")+'</h3><div class="modal-field"><label>'+t("editName")+'</label><input id="edit-site-name" type="text"></div><div class="modal-field"><label>'+t("editDesc")+'</label><input id="edit-site-desc" type="text"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeEditSiteModal()">'+t("cancel")+'</button><button class="btn btn-primary" onclick="saveEditSite()">'+t("save")+'</button></div></div></div>';
+var orgClose=document.querySelector("#org-modal .modal-close");orgClose.title=t("close");orgClose.setAttribute("aria-label",t("close"));
 loadSites();
 loadOrg();
 fetch(BASE+"api/settings").then(function(r){return r.json()}).then(function(d){if(d.data&&d.data.maxUploadSize)maxUploadMB=d.data.maxUploadSize;if(d.data&&d.data.maxSitesPerUser)maxSites=d.data.maxSitesPerUser}).catch(function(){});
@@ -459,7 +504,7 @@ var pwd=s.protected?'<code id="pwd-'+s.id+'" style="font-family:var(--mono);font
 var vs=s.visits||{today:0,month:0,total:0};
 var vis='<span style="font-family:var(--mono);font-size:.7rem;color:var(--dim)" title="'+t("visits")+'">` + iconEye + ` '+vs.today+' / '+vs.month+' / '+vs.total+'</span>';
 h+='<li class="site-item"><div class="site-head" onclick="toggleDetail('+s.id+')"><div class="info"><div class="name"><span class="status-dot '+dot+'"></span>'+esc(s.name)+' '+badge+' '+vis+'</div><div class="url">'+esc(s.url)+'</div></div><div class="actions"><a class="btn btn-sm btn-outline" href="'+esc(s.url)+'" target="_blank" onclick="event.stopPropagation()">'+t("visit")+'</a><label class="upload-btn" id="upload-btn-'+s.id+'" onclick="event.stopPropagation()">'+t("deployBtn")+'<input type="file" accept=".zip,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf,.txt,.csv,.json,.xml,.html,.htm,.css,.js,.mjs,.svg,.png,.jpg,.jpeg,.gif,.webp,.avif,.ico,.mp4,.webm,.mp3,.ogg,.wav,.flac,.wasm,.woff,.woff2,.ttf,.otf,.eot,.webmanifest" onchange="deploy('+s.id+',this.files[0])"></label><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();delSite('+s.id+')">'+t("delete")+'</button></div></div><div class="site-detail" id="detail-'+s.id+'"><div class="detail-inner"><div class="detail-grid"><div class="detail-section"><div class="detail-label">'+t("siteDesc")+'</div><div class="detail-value">'+(s.description?esc(s.description):'<span style="color:var(--dim)">'+t("none")+'</span>')+'</div></div><div class="detail-section"><div class="detail-label">'+t("accessPassword")+'</div><div class="detail-value">'+pwd+'</div></div><div class="detail-section"><div class="detail-label">'+t("orgOpenLabel")+'</div><div class="detail-value"><label class="switch-label"><input type="checkbox" id="org-open-'+s.id+'" '+(s.orgOpen?'checked':'')+' onchange="toggleOrgOpen('+s.id+')"> <span>'+t("orgOpenDesc")+'</span></label></div></div><div class="detail-section"><div class="detail-label">'+t("orgPinnedLabel")+'</div><div class="detail-value"><label class="switch-label"><input type="checkbox" id="org-pinned-'+s.id+'" '+(s.orgPinned?'checked':'')+' onchange="toggleOrgPinned('+s.id+')"> <span>'+t("orgPinnedDesc")+'</span></label></div></div><div class="detail-section"><div class="detail-label">'+t("visits")+'</div><div class="detail-value visits-grid"><span>'+t("visitsToday")+': <b style="color:var(--accent)">'+vs.today+'</b></span><span>'+t("visitsMonth")+': <b style="color:var(--accent)">'+vs.month+'</b></span><span>'+t("visitsTotal")+': <b style="color:var(--accent)">'+vs.total+'</b></span></div></div></div><div class="detail-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();openEditSiteModal('+s.id+')">'+t("editSite")+'</button></div></div></li>'}
-h+='</ul><div style="font-size:.7rem;color:var(--dim);margin-top:.5rem;font-family:var(--mono)">'+t("deployHint")+'</div>'+pg;
+h+='</ul><div class="deploy-hint">'+t("deployHintDetailed").replaceAll("{size}",maxUploadMB)+'</div>'+pg;
 el.innerHTML=h}).catch(function(e){toast(e.message,"error")})
 }
 function paginationHtml(p,tp,gf){
@@ -474,11 +519,12 @@ return h
 }
 function toggleDetail(id){var e=document.getElementById("detail-"+id);if(e){var wasShown=e.classList.contains("show");e.classList.toggle("show");if(!wasShown){loadFileTree(id);loadSitePwd(id)}}}
 function loadFileTree(id){
-api("/sites/"+id+"/files").then(function(d){var files=d.data||[];var el=document.getElementById("detail-"+id);if(!el)return;
+api("/sites/"+id+"/files").then(function(d){var data=d.data||{},files=Array.isArray(data)?data:(data.items||[]);var fileCount=typeof data.fileCount==="number"?data.fileCount:files.filter(function(f){return!f.dir}).length;var totalSize=typeof data.totalSize==="number"?data.totalSize:files.reduce(function(n,f){return n+(f.dir?0:(f.size||0))},0);var el=document.getElementById("detail-"+id);if(!el)return;
 var grid=el.querySelector('.detail-grid');if(!grid)return;
 if(!grid.hasAttribute('data-orig'))grid.setAttribute('data-orig',grid.innerHTML);
-var ft='<div class="detail-section file-tree-section"><div class="detail-label">'+t("files")+'</div>';
-if(!files.length){ft+='<div class="file-empty">'+t("noFiles")+'</div></div>';grid.innerHTML=grid.getAttribute('data-orig')+ft;return}
+var summary=t("fileSummary").replace("{count}",fileCount).replace("{size}",formatSize(totalSize));
+var ft='<div class="detail-section file-tree-section"><div class="file-tree-head"><div class="file-tree-title"><div class="detail-label">'+t("files")+'</div>';
+if(fileCount>0){ft+='<span class="file-tree-summary">'+esc(summary)+'</span></div><div class="file-tree-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();downloadSite('+id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 21h14"/></svg>'+t("downloadZip")+'</button><button class="btn btn-sm btn-outline file-clear-btn" onclick="event.stopPropagation();clearSiteFiles('+id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7"/></svg>'+t("clearFiles")+'</button></div></div>'}else{ft+='</div></div><div class="file-empty">'+t("noFiles")+'</div></div>';grid.innerHTML=grid.getAttribute('data-orig')+ft;return}
 ft+='<div class="file-list">';
 for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"—":formatSize(f.size);
 ft+='<div class="file-row'+(f.dir?' file-dir':'')+'"><span class="file-icon">'+icon+'</span><span class="file-name">'+esc(f.name)+(f.dir?"/":"")+'</span><span class="file-size">'+sz+'</span></div>'}
@@ -486,6 +532,18 @@ ft+='</div></div>';
 grid.innerHTML=grid.getAttribute('data-orig')+ft}).catch(function(){})
 }
 function formatSize(n){if(n<1024)return n+" B";if(n<1048576)return(n/1024).toFixed(1)+" KB";if(n<1073741824)return(n/1048576).toFixed(1)+" MB";return(n/1073741824).toFixed(1)+" GB"}
+function clearSiteFiles(id){
+api("/sites/"+id+"/files").then(function(d){var data=d.data||{},count=data.fileCount||0,total=data.totalSize||0;if(!count){toast(t("noFilesToClear"),"error");return}var msg=t("clearFilesConfirm").replace("{count}",count).replace("{size}",formatSize(total));customConfirm(msg,function(){api("/sites/"+id+"/files",{method:"DELETE"}).then(function(){toast(t("filesCleared"));loadFileTree(id)}).catch(function(e){toast(e.message,"error")})})}).catch(function(e){toast(e.message,"error")})
+}
+function ensureTransferStatus(id){var el=document.getElementById("transfer-"+id);if(el)return el;var detail=document.getElementById("detail-"+id);if(!detail)return null;el=document.createElement("div");el.id="transfer-"+id;el.className="transfer-status";el.innerHTML='<div class="transfer-head"><span class="transfer-label"></span><span class="transfer-percent"></span></div><div class="transfer-track"><span class="transfer-fill"></span></div>';detail.parentElement.insertBefore(el,detail);return el}
+function setTransferStatus(id,label,pct,state){var el=ensureTransferStatus(id);if(!el)return;delete el.dataset.hideToken;state=state||"active";el.className="transfer-status show "+state;el.querySelector(".transfer-label").textContent=label;var percent=el.querySelector(".transfer-percent"),fill=el.querySelector(".transfer-fill");if(typeof pct==="number"){pct=Math.max(0,Math.min(100,pct));percent.textContent=pct+"%";fill.style.width=pct+"%"}else{percent.textContent="";fill.style.width=""}}
+function hideTransferStatus(id,delay){var el=document.getElementById("transfer-"+id);if(!el)return;var token=String(Date.now());el.dataset.hideToken=token;setTimeout(function(){if(el.dataset.hideToken!==token)return;el.classList.remove("show");setTimeout(function(){if(el.parentElement)el.remove()},220)},delay||1500)}
+function downloadSite(id){
+var xhr=new XMLHttpRequest();xhr.open("GET",API+"/sites/"+id+"/download");xhr.responseType="blob";xhr.setRequestHeader("Accept-Language",lang||"en");setTransferStatus(id,t("preparingDownload"),null,"indeterminate");
+xhr.onprogress=function(e){if(e.lengthComputable){var pct=Math.round(e.loaded/e.total*100);setTransferStatus(id,t("downloadingFile").replace("{size}",formatSize(e.loaded)+" / "+formatSize(e.total)),pct,"active")}else{setTransferStatus(id,t("downloadingFile").replace("{size}",formatSize(e.loaded)),null,"indeterminate")}};
+xhr.onload=function(){if(xhr.status>=200&&xhr.status<300){var disposition=xhr.getResponseHeader("Content-Disposition")||"",match=/filename="([^"]+)"/.exec(disposition),name=match?match[1]:"site.zip";var url=URL.createObjectURL(xhr.response),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000);setTransferStatus(id,t("downloadReady"),100,"success");toast(t("downloadReady"));hideTransferStatus(id,1800);return}xhr.response.text().then(function(text){var message=t("downloadFailed");try{message=JSON.parse(text).error||message}catch(e){}setTransferStatus(id,message,100,"error");toast(message,"error");hideTransferStatus(id,3500)}).catch(function(){setTransferStatus(id,t("downloadFailed"),100,"error");toast(t("downloadFailed"),"error");hideTransferStatus(id,3500)})};
+xhr.onerror=function(){setTransferStatus(id,t("downloadFailed"),100,"error");toast(t("downloadFailed"),"error");hideTransferStatus(id,3500)};xhr.send()
+}
 function copyText(text){if(navigator.clipboard){navigator.clipboard.writeText(text).then(function(){toast(t("copied"))}).catch(function(){fallbackCopy(text)})}else{fallbackCopy(text)}}
 function fallbackCopy(text){var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast(t("copied"))}catch(e){toast(t("copyFailed"),"error")}document.body.removeChild(ta)}
 function loadSitePwd(id){api("/sites/"+id+"/password").then(function(d){var p=(d.data||{}).password||"";var el=document.getElementById("pwd-"+id);if(el)el.textContent=p;el=document.querySelector('[data-pwd-btn="'+id+'"]');if(el)el.dataset.pwd=p}).catch(function(){})}
@@ -501,25 +559,26 @@ api("/sites",{method:"POST",body:JSON.stringify({name:document.getElementById("s
 function deploy(id,file){
 if(!file)return;
 var btn=document.getElementById("upload-btn-"+id);
+var input=btn?btn.querySelector("input[type=file]"):null;
 var origText=btn?btn.firstChild.textContent:"";
 var allowedExts=[".zip",".pdf",".doc",".docx",".xls",".xlsx",".ppt",".pptx",".odt",".ods",".odp",".rtf",".txt",".csv",".json",".xml",".html",".htm",".css",".js",".mjs",".svg",".png",".jpg",".jpeg",".gif",".webp",".avif",".ico",".mp4",".webm",".mp3",".ogg",".wav",".flac",".wasm",".woff",".woff2",".ttf",".otf",".eot",".webmanifest"];
 var fName=file.name.toLowerCase();
 var ext="."+fName.split(".").pop();
-if(allowedExts.indexOf(ext)<0){toast(t("fileTypeBlocked")+" ("+ext+")","error");return}
-if(file.size>maxUploadMB*1024*1024){toast(t("fileTooLarge")+" ("+maxUploadMB+"MB)","error");return}
-if(btn){btn.firstChild.textContent=t("uploading");btn.style.opacity="0.6";btn.style.pointerEvents="none"}
+if(allowedExts.indexOf(ext)<0){toast(t("fileTypeBlocked")+" ("+ext+")","error");if(input)input.value="";return}
+if(file.size>maxUploadMB*1024*1024){toast(t("fileTooLarge")+" ("+maxUploadMB+"MB)","error");if(input)input.value="";return}
+if(btn){btn.firstChild.textContent=t("uploading");btn.style.opacity="0.6";btn.style.pointerEvents="none";if(input)input.disabled=true}
+setTransferStatus(id,t("uploadPreparing"),0,"active");
 var fd=new FormData();fd.append("file",file);
-var token=localStorage.getItem("vibecast_token")||"";
-var xhr=new XMLHttpRequest();
-xhr.open("POST",API+"/sites/"+id+"/deploy");
-xhr.setRequestHeader("Authorization","Bearer "+token);
-xhr.setRequestHeader("Accept-Language",lang||"en");
-xhr.upload.onprogress=function(e){if(e.lengthComputable&&btn){var pct=Math.round(e.loaded/e.total*100);btn.firstChild.textContent=t("uploading")+" "+pct+"%"}};
+	var xhr=new XMLHttpRequest();
+	xhr.open("POST",API+"/sites/"+id+"/deploy");
+	xhr.setRequestHeader("Accept-Language",lang||"en");
+xhr.upload.onprogress=function(e){if(e.lengthComputable){var pct=Math.round(e.loaded/e.total*100);if(btn)btn.firstChild.textContent=t("uploading")+" "+pct+"%";setTransferStatus(id,t("uploading")+" "+formatSize(e.loaded)+" / "+formatSize(e.total),pct,"active")}};
+xhr.upload.onload=function(){if(btn)btn.firstChild.textContent=t("uploading");setTransferStatus(id,t("uploadProcessing"),null,"indeterminate")};
 xhr.onload=function(){
-if(btn){btn.firstChild.textContent=origText;btn.style.opacity="";btn.style.pointerEvents=""}
-try{var data=JSON.parse(xhr.responseText);if(xhr.status>=200&&xhr.status<300){toast(t("deployed"));loadSites()}else{toast(data.error||t("uploadFailed"),"error")}}catch(e){toast(t("networkError"),"error")}
+if(btn){btn.firstChild.textContent=origText;btn.style.opacity="";btn.style.pointerEvents="";if(input){input.disabled=false;input.value=""}}
+try{var data=JSON.parse(xhr.responseText);if(xhr.status>=200&&xhr.status<300){setTransferStatus(id,t("uploadComplete"),100,"success");toast(t("deployed"));hideTransferStatus(id,1400);setTimeout(loadSites,700)}else{var message=data.error||t("uploadFailed");setTransferStatus(id,message,100,"error");toast(message,"error");hideTransferStatus(id,3500)}}catch(e){setTransferStatus(id,t("networkError"),100,"error");toast(t("networkError"),"error");hideTransferStatus(id,3500)}
 };
-xhr.onerror=function(){if(btn){btn.firstChild.textContent=origText;btn.style.opacity="";btn.style.pointerEvents=""}toast(t("fileTooLarge")+" / "+t("networkError"),"error")};
+xhr.onerror=function(){if(btn){btn.firstChild.textContent=origText;btn.style.opacity="";btn.style.pointerEvents="";if(input){input.disabled=false;input.value=""}}setTransferStatus(id,t("networkError"),100,"error");toast(t("networkError"),"error");hideTransferStatus(id,3500)};
 xhr.send(fd);
 }
 function delSite(id){
@@ -562,7 +621,7 @@ renderOrgSection();
 function renderOrgSection(){
 var el=document.getElementById("org-section");if(!el)return;
 if(!orgInfo){
-el.innerHTML='<div class="org-empty"><div class="org-empty-panel"><div class="org-panel-title"><span class="org-panel-icon create"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'+t("orgCreate")+'</div><p class="org-panel-desc">'+t("orgCreateDesc")+'</p><input class="org-panel-input" id="org-create-name" placeholder="'+t("orgNamePh")+'"><button class="btn btn-primary" onclick="createOrg()">'+t("orgCreate")+'</button></div><div class="org-empty-panel"><div class="org-panel-title"><span class="org-panel-icon join"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3-.3 6-1.5 6-7a5.5 5.5 0 0 0-1.5-3.8 5.1 5.1 0 0 0-.1-3.8s-1.2-.3-3.8 1.4a13 13 0 0 0-7 0C5.2 3.3 4 3.6 4 3.6a5.1 5.1 0 0 0-.1 3.8A5.5 5.5 0 0 0 2.4 11c0 5.5 3 6.7 6 7a4.8 4.8 0 0 0-1 3.5V22"/></svg></span>'+t("orgJoin")+'</div><p class="org-panel-desc">'+t("orgJoinDesc")+'</p><input class="org-panel-input" id="org-join-code" placeholder="'+t("orgInviteCodePh")+'"><button class="btn btn-outline" style="border-color:#3b82f6;color:#3b82f6" onclick="joinOrg()">'+t("orgJoin")+'</button></div></div>';
+el.innerHTML='<div class="org-empty"><section class="org-empty-panel"><div class="org-panel-title"><span class="org-panel-icon create"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'+t("orgCreate")+'</div><p class="org-panel-desc">'+t("orgCreateDesc")+'</p><div class="org-panel-form"><input class="org-panel-input" id="org-create-name" placeholder="'+t("orgNamePh")+'" onkeydown="if(event.key===\'Enter\')createOrg()"><button class="btn btn-primary" onclick="createOrg()">'+t("orgCreate")+'</button></div></section><section class="org-empty-panel"><div class="org-panel-title"><span class="org-panel-icon join"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></span>'+t("orgJoin")+'</div><p class="org-panel-desc">'+t("orgJoinDesc")+'</p><div class="org-panel-form"><input class="org-panel-input" id="org-join-code" placeholder="'+t("orgInviteCodePh")+'" onkeydown="if(event.key===\'Enter\')joinOrg()"><button class="btn btn-outline" onclick="joinOrg()">'+t("orgJoin")+'</button></div></section></div>';
 return
 }
 var inviteCode=orgInfo.inviteCode||"";
@@ -570,14 +629,15 @@ var name=orgInfo.name||"";
 var isOwner=orgInfo.isOwner||false;
 var initials=name.substring(0,2).toUpperCase();
 var roleBadge=isOwner?'<span class="org-role-badge owner">'+t("orgOwner")+'</span>':'<span class="org-role-badge member">'+t("orgMember")+'</span>';
-var h='<div class="org-bound"><div class="org-bound-left"><div class="org-header-row"><div class="org-header"><div class="org-avatar">'+esc(initials)+'</div><div><div class="org-title">'+esc(name)+'</div>'+roleBadge+'</div></div>';
-if(isOwner){h+='<button class="btn btn-danger btn-sm org-delete-btn" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'};
-h+='</div>';
-if(isOwner){h+='<div class="org-invite-section"><div class="org-invite-toggle" onclick="var el=this.parentElement;el.classList.toggle(\'org-invite-collapsed\')"><label>'+t("orgInviteCode")+'</label><svg class="org-invite-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div><div class="org-invite-detail"><div class="org-invite-row"><code class="org-invite-code">'+esc(inviteCode)+'</code><button class="org-copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'+t("copy")+'</button></div></div></div>'}
-h+='</div></div><div class="org-bound-right"><div class="org-members-header"><h3>'+t("orgMembers")+'</h3><span class="org-members-count" id="org-members-count">—</span></div><div class="list-toolbar"><input type="text" id="org-member-search" placeholder="'+t("search")+'..." onkeydown="if(event.key===\'Enter\')searchOrgMembers()" value="'+esc(orgMemberSearch)+'"></div><div id="org-member-list"></div></div></div>';
+var h='<div class="org-bound"><div class="org-summary"><div class="org-header"><div class="org-avatar">'+esc(initials)+'</div><div><div class="org-title">'+esc(name)+'</div>'+roleBadge+'</div></div>';
+if(isOwner){h+='<div class="org-invite-section org-invite-collapsed"><button type="button" class="org-invite-toggle" aria-expanded="false" onclick="toggleOrgInvite(this)"><span>'+t("orgInviteCode")+'</span><svg class="org-invite-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="org-invite-detail"><div class="org-invite-row"><code class="org-invite-code">'+esc(inviteCode)+'</code><button type="button" class="org-copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')" title="'+t("copy")+'" aria-label="'+t("copy")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div></div>'}
+h+='<div class="org-summary-action">';
+if(isOwner){h+='<button class="btn btn-danger btn-sm" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'}
+h+='</div></div><section class="org-bound-right"><div class="org-members-header"><h3>'+t("orgMembers")+'</h3><span class="org-members-count" id="org-members-count">—</span></div><div class="org-member-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input type="text" id="org-member-search" placeholder="'+t("search")+'..." onkeydown="if(event.key===\'Enter\')searchOrgMembers()" value="'+esc(orgMemberSearch)+'"></div><div id="org-member-list"></div></section></div>';
 el.innerHTML=h;
 loadOrgMembers()
 }
+function toggleOrgInvite(btn){var section=btn.parentElement;section.classList.toggle("org-invite-collapsed");btn.setAttribute("aria-expanded",section.classList.contains("org-invite-collapsed")?"false":"true")}
 function orgMemberPageGo(p){orgMemberPage=p;loadOrgMembers()}
 function searchOrgMembers(){orgMemberSearch=document.getElementById("org-member-search").value;orgMemberPage=1;loadOrgMembers()}
 function loadOrgMembers(){
@@ -755,7 +815,7 @@ function toast(msg,type){type=type||"success";var el=document.createElement("div
 function togglePwd(btn){var inp=btn.parentElement.querySelector("input");if(!inp)return;var show=inp.type=="password";inp.type=show?"text":"password";btn.innerHTML=show?PWD_SHOW_ICON:PWD_HIDE_ICON}
 var PWD_SHOW_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 var PWD_HIDE_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-function getToken(){try{return localStorage.getItem("vibecast_token")}catch(e){return""}}
+function getToken(){return"cookie"}
 function clearToken(){try{localStorage.removeItem("vibecast_token")}catch(e){}}
 function customConfirm(msg,onConfirm){
 var o=document.createElement("div");o.className="modal-overlay";o.style.zIndex="300";
@@ -768,16 +828,14 @@ o.querySelector("#cf-yes").addEventListener("click",function(){cl();onConfirm()}
 }
 function api(path,opts){
 opts=opts||{};
-var token=localStorage.getItem("vibecast_token")||"";
-var headers={"Content-Type":"application/json","Accept-Language":lang||"en"};
-if(token)headers["Authorization"]="Bearer "+token;
-if(opts.headers)Object.assign(headers,opts.headers);
-return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
-if(r.status===401){try{localStorage.removeItem("vibecast_token")}catch(e){}location.href=BASE+"dashboard"}
+	var headers={"Content-Type":"application/json","Accept-Language":lang||"en"};
+	if(opts.headers)Object.assign(headers,opts.headers);
+	return fetch(API+path,Object.assign({},opts,{headers:headers,credentials:"same-origin"})).then(function(r){
+	if(r.status===401){clearToken();location.href=BASE+"dashboard"}
 return r.json().catch(function(){return{error:"network error"}}).then(function(data){if(!r.ok)throw new Error(data.error||"request failed");return data})
 })
 }
-function checkAuth(){if(!getToken())return Promise.reject(new Error("no token"));return api("/auth/me").then(function(d){if(!d.data||!d.data.isAdmin)throw new Error("not admin");return d.data}).catch(function(){clearToken();location.href=BASE+"dashboard"})}
+function checkAuth(){return api("/auth/me").then(function(d){if(!d.data||!d.data.isAdmin)throw new Error("not admin");return d.data}).catch(function(){clearToken();location.href=BASE+"dashboard"})}
 function doLogout(){api("/auth/logout",{method:"POST"}).then(function(){clearToken();location.href=BASE}).catch(function(){clearToken();location.href=BASE})}
 var adminTab="overview";
 function renderAdmin(){
@@ -1079,7 +1137,7 @@ function togglePwd(btn){var inp=btn.parentElement.querySelector("input");if(!inp
 </head>
 <body>
 <div class="card">
-<h1>` + iconLock + ` <span class="site-name">%s</span></h1>
+<h1>`+iconLock+` <span class="site-name">%s</span></h1>
 <p>This site is password-protected. Enter the password to continue.</p>
 <form method="POST" action="">
 <div class="pwd-wrap"><input type="password" id="password" name="password" placeholder="Password" autofocus required><button type="button" class="pwd-toggle" onclick="togglePwd(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div>
@@ -1128,7 +1186,7 @@ function togglePwd(btn){var inp=btn.parentElement.querySelector("input");if(!inp
 </head>
 <body>
 <div class="card">
-<h1>` + iconLock + ` <span class="site-name">%s</span></h1>
+<h1>`+iconLock+` <span class="site-name">%s</span></h1>
 <p>This site is password-protected. Enter the password to continue.</p>
 <div class="err">%s</div>
 <form method="POST" action="">

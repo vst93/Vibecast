@@ -258,47 +258,49 @@ func (s *Server) adminHandleSettings(w http.ResponseWriter, r *http.Request, use
 		writeJSON(w, 200, jsonResp{Data: settings})
 	case http.MethodPut:
 		var body struct {
-			OpenRegistration  bool   `json:"openRegistration"`
-			AllowPublicAccess bool   `json:"allowPublicAccess"`
-			DomainRestriction bool   `json:"domainRestriction"`
-			AllowedDomains    string `json:"allowedDomains"`
-			MaxUploadSize     int    `json:"maxUploadSize"`
-			MaxSitesPerUser   int    `json:"maxSitesPerUser"`
-			SiteBaseURL       string `json:"siteBaseUrl"`
-			}
+			OpenRegistration  *bool   `json:"openRegistration"`
+			AllowPublicAccess *bool   `json:"allowPublicAccess"`
+			DomainRestriction *bool   `json:"domainRestriction"`
+			AllowedDomains    *string `json:"allowedDomains"`
+			MaxUploadSize     *int    `json:"maxUploadSize"`
+			MaxSitesPerUser   *int    `json:"maxSitesPerUser"`
+			SiteBaseURL       *string `json:"siteBaseUrl"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
 			return
 		}
-		if err := db.SetSetting(s.database, "open_registration", strconv.FormatBool(body.OpenRegistration)); err != nil {
-			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
-			return
+		updates := make(map[string]string)
+		if body.OpenRegistration != nil {
+			updates["open_registration"] = strconv.FormatBool(*body.OpenRegistration)
 		}
-		if err := db.SetSetting(s.database, "allow_public_access", strconv.FormatBool(body.AllowPublicAccess)); err != nil {
-			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
-			return
+		if body.AllowPublicAccess != nil {
+			updates["allow_public_access"] = strconv.FormatBool(*body.AllowPublicAccess)
 		}
-		if err := db.SetSetting(s.database, "domain_restriction", strconv.FormatBool(body.DomainRestriction)); err != nil {
-			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
-			return
+		if body.DomainRestriction != nil {
+			updates["domain_restriction"] = strconv.FormatBool(*body.DomainRestriction)
 		}
-		if err := db.SetSetting(s.database, "allowed_domains", body.AllowedDomains); err != nil {
-			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
-			return
+		if body.AllowedDomains != nil {
+			updates["allowed_domains"] = *body.AllowedDomains
 		}
-		if body.MaxUploadSize > 0 {
-			if err := db.SetSetting(s.database, "max_upload_size", strconv.Itoa(body.MaxUploadSize)); err != nil {
-				writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
+		if body.MaxUploadSize != nil {
+			if *body.MaxUploadSize < 1 || *body.MaxUploadSize > 1024 {
+				writeJSON(w, 400, jsonResp{Error: "max upload size must be between 1 and 1024 MB"})
 				return
 			}
+			updates["max_upload_size"] = strconv.Itoa(*body.MaxUploadSize)
 		}
-		if body.MaxSitesPerUser >= 0 {
-			if err := db.SetSetting(s.database, "max_sites_per_user", strconv.Itoa(body.MaxSitesPerUser)); err != nil {
-				writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
+		if body.MaxSitesPerUser != nil {
+			if *body.MaxSitesPerUser < 0 || *body.MaxSitesPerUser > 10000 {
+				writeJSON(w, 400, jsonResp{Error: "max sites per user must be between 0 and 10000"})
 				return
 			}
+			updates["max_sites_per_user"] = strconv.Itoa(*body.MaxSitesPerUser)
 		}
-		if err := db.SetSetting(s.database, "site_base_url", normalizeSiteURL(body.SiteBaseURL)); err != nil {
+		if body.SiteBaseURL != nil {
+			updates["site_base_url"] = normalizeSiteURL(*body.SiteBaseURL)
+		}
+		if err := db.SetSettings(s.database, updates); err != nil {
 			writeJSON(w, 500, jsonResp{Error: tMsg(r, "update_settings_failed")})
 			return
 		}

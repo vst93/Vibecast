@@ -39,11 +39,11 @@ type Organization struct {
 }
 
 type OrgMember struct {
-	ID      int64
-	OrgID   int64
-	UserID  int64
-	Email   string // populated via JOIN
-	IsOwner bool   // true if this member is the org owner
+	ID       int64
+	OrgID    int64
+	UserID   int64
+	Email    string // populated via JOIN
+	IsOwner  bool   // true if this member is the org owner
 	JoinedAt time.Time
 }
 
@@ -206,6 +206,13 @@ func GetSession(db *sql.DB, token string) (*User, error) {
 
 func DeleteSession(db *sql.DB, token string) error {
 	_, err := db.Exec(`DELETE FROM sessions WHERE token = ?`, token)
+	return err
+}
+
+// DeleteUserSessions revokes every active session for a user, used after
+// password changes and other credential-reset events.
+func DeleteUserSessions(db *sql.DB, userID int64) error {
+	_, err := db.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID)
 	return err
 }
 
@@ -461,6 +468,11 @@ func CreateSiteSession(db *sql.DB, siteID int64, token string, expiresAt time.Ti
 	return err
 }
 
+func DeleteSiteSessions(db *sql.DB, siteID int64) error {
+	_, err := db.Exec(`DELETE FROM site_sessions WHERE site_id = ?`, siteID)
+	return err
+}
+
 func GetSiteSession(db *sql.DB, token string) (*Site, error) {
 	s := &Site{}
 	var orgOpen, orgPinned int
@@ -504,6 +516,24 @@ func SetSetting(db *sql.DB, key, value string) error {
 		key, value,
 	)
 	return err
+}
+
+func SetSettings(db *sql.DB, settings map[string]string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for key, value := range settings {
+		if _, err := tx.Exec(
+			`INSERT INTO settings (key, value) VALUES (?, ?)
+			 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+			key, value,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // GetSettingInt returns an integer setting with a default value.
@@ -766,7 +796,13 @@ func GetBatchVisitStats(db *sql.DB, siteIDs []int64) (map[int64]*VisitStats, err
 // --- Organizations ---
 
 func CreateOrganization(db *sql.DB, ownerID int64, name, inviteCode string) (*Organization, error) {
-	res, err := db.Exec(
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(
 		`INSERT INTO organizations (owner_id, invite_code, name) VALUES (?, ?, ?)`,
 		ownerID, inviteCode, name,
 	)
@@ -775,7 +811,12 @@ func CreateOrganization(db *sql.DB, ownerID int64, name, inviteCode string) (*Or
 	}
 	id, _ := res.LastInsertId()
 	// Owner is also a member
-	_, _ = db.Exec(`INSERT OR IGNORE INTO org_members (org_id, user_id) VALUES (?, ?)`, id, ownerID)
+	if _, err := tx.Exec(`INSERT INTO org_members (org_id, user_id) VALUES (?, ?)`, id, ownerID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 	return &Organization{ID: id, OwnerID: ownerID, InviteCode: inviteCode, Name: name}, nil
 }
 
@@ -858,7 +899,7 @@ func IsOrgMember(db *sql.DB, orgID, userID int64) (bool, error) {
 }
 
 func JoinOrganization(db *sql.DB, orgID, userID int64) error {
-	_, err := db.Exec(`INSERT OR IGNORE INTO org_members (org_id, user_id) VALUES (?, ?)`, orgID, userID)
+	_, err := db.Exec(`INSERT INTO org_members (org_id, user_id) VALUES (?, ?)`, orgID, userID)
 	return err
 }
 

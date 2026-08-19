@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	crand "crypto/rand"
@@ -24,10 +25,12 @@ type Config struct {
 
 // Server holds application state.
 type Server struct {
-	config     *Config
-	database   *sql.DB
-	version    string
-	httpServer *http.Server // set by main.go for graceful shutdown / restart
+	config      *Config
+	database    *sql.DB
+	version     string
+	httpServer  *http.Server  // set by main.go for graceful shutdown / restart
+	deployLocks sync.Map      // site ID -> *sync.Mutex; serializes deployments per site
+	downloadSem chan struct{} // bounds temporary ZIP generation across sites
 }
 
 // New creates a new Server instance.
@@ -39,7 +42,7 @@ func New(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	s := &Server{config: cfg, database: database, version: cfg.Version}
+	s := &Server{config: cfg, database: database, version: cfg.Version, downloadSem: make(chan struct{}, 2)}
 
 	// Start a background goroutine to clean up expired sessions every hour.
 	go s.sessionCleanupLoop()
@@ -62,6 +65,23 @@ func (s *Server) sessionCleanupLoop() {
 // Close closes the database connection.
 func (s *Server) Close() error {
 	return s.database.Close()
+}
+
+// lockSiteDeploy serializes replacement of one site's files while allowing
+// deployments for different sites to proceed independently.
+func (s *Server) lockSiteDeploy(siteID int64) func() {
+	value, _ := s.deployLocks.LoadOrStore(siteID, &sync.Mutex{})
+	mu := value.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
+func (s *Server) acquireDownloadSlot() func() {
+	if s.downloadSem == nil {
+		return func() {}
+	}
+	s.downloadSem <- struct{}{}
+	return func() { <-s.downloadSem }
 }
 
 // SetHTTPServer stores a reference to the running http.Server, used for
@@ -123,7 +143,7 @@ func (s *Server) Router() http.Handler {
 	// Landing page
 	mux.HandleFunc("/", s.handleIndex)
 
-	return s.recoverMiddleware(s.logMiddleware(s.bodyLimitMiddleware(s.adminDomainMiddleware(mux))))
+	return s.recoverMiddleware(s.logMiddleware(s.bodyLimitMiddleware(s.sameOriginMiddleware(s.adminDomainMiddleware(mux)))))
 }
 
 // adminDomainMiddleware blocks API and admin/dashboard routes from site content
@@ -151,6 +171,35 @@ func (s *Server) bodyLimitMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// sameOriginMiddleware rejects state-changing API requests from opaque or
+// foreign origins. Requests without Origin are allowed for non-browser API
+// clients; browser same-origin requests carry their normal origin.
+func (s *Server) sameOriginMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") &&
+			(r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
+			origin := r.Header.Get("Origin")
+			if origin == "null" || (origin != "" && !sameRequestOrigin(r, origin)) {
+				writeJSON(w, http.StatusForbidden, jsonResp{Error: "cross-origin request blocked"})
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func sameRequestOrigin(r *http.Request, origin string) bool {
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	host := r.Host
+	if forwardedHost := r.Header.Get("X-Forwarded-Host"); forwardedHost != "" {
+		host = strings.TrimSpace(strings.SplitN(forwardedHost, ",", 2)[0])
+	}
+	return strings.EqualFold(origin, scheme+"://"+host)
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {

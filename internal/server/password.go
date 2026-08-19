@@ -45,15 +45,13 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user is in the same org as site owner (org_open bypass)
-	if site.OrgOpen {
-		currentUser := auth.CurrentUser(r, s.database)
-		if currentUser != nil && s.sameOrgAsSiteOwner(site, currentUser.ID) {
-			// Same org member — skip password, redirect to site
-			w.Header().Set("Location", "../s/"+slug+"/")
-			w.WriteHeader(http.StatusSeeOther)
-			return
-		}
+	// Owners and authorized organization members do not need the public site
+	// password when they are already logged in.
+	if currentUser := auth.CurrentUser(r, s.database); currentUser != nil &&
+		(currentUser.ID == site.UserID || s.sameOrgAsSiteOwner(site, currentUser.ID)) {
+		w.Header().Set("Location", "../s/"+slug+"/")
+		w.WriteHeader(http.StatusSeeOther)
+		return
 	}
 
 	if r.Method == http.MethodGet {
@@ -122,12 +120,22 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 				},
 			})
 		} else {
-			// Form submission: set cookie and redirect (no token in URL)
+			// Form submission: keep one cookie per site. The previous root-scoped
+			// cookie allowed authenticating to one site to overwrite another.
 			secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 			http.SetCookie(w, &http.Cookie{
 				Name:     "site_token",
-				Value:    token,
+				Value:    "",
 				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				Secure:   secure,
+				SameSite: http.SameSiteLaxMode,
+			})
+			http.SetCookie(w, &http.Cookie{
+				Name:     "site_token",
+				Value:    token,
+				Path:     "/s/" + slug + "/",
 				MaxAge:   7 * 24 * 3600,
 				HttpOnly: true,
 				Secure:   secure,

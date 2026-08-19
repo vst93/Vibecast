@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +15,9 @@ import (
 	"vibecast/internal/auth"
 	"vibecast/internal/db"
 )
+
+//go:embed webassets/dashboard.png
+var dashboardScreenshot []byte
 
 // Config holds server configuration.
 type Config struct {
@@ -139,11 +143,18 @@ func (s *Server) Router() http.Handler {
 	// Dashboard UI
 	mux.HandleFunc("/dashboard", s.handleDashboard)
 	mux.HandleFunc("/dashboard/", s.handleDashboard)
+	mux.HandleFunc("/assets/dashboard.png", handleDashboardScreenshot)
 
 	// Landing page
 	mux.HandleFunc("/", s.handleIndex)
 
 	return s.recoverMiddleware(s.logMiddleware(s.bodyLimitMiddleware(s.sameOriginMiddleware(s.adminDomainMiddleware(mux)))))
+}
+
+func handleDashboardScreenshot(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, _ = w.Write(dashboardScreenshot)
 }
 
 // adminDomainMiddleware blocks API and admin/dashboard routes from site content
@@ -160,7 +171,7 @@ func (s *Server) adminDomainMiddleware(next http.Handler) http.Handler {
 const maxJSONBodySize = 1 << 20 // 1 MB
 
 // bodyLimitMiddleware wraps the handler with a request body size limit.
-// Only applies to POST/PUT/PATCH with JSON content type — multipart uploads
+// Only applies to POST/PUT/PATCH with JSON content type - multipart uploads
 // (deploy) are exempt since they use their own MaxBytesReader.
 func (s *Server) bodyLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -267,7 +278,7 @@ func slugify(s string) string {
 }
 
 // generateUniqueSlug generates a random 12-character slug.
-// Ignores the site name entirely — slugs are unguessable random strings.
+// Ignores the site name entirely - slugs are unguessable random strings.
 func (s *Server) generateUniqueSlug(_ string) (string, error) {
 	for i := 0; i < 30; i++ {
 		slug := randomSuffix(12)

@@ -1,93 +1,98 @@
+<div align="center">
+
 # Vibecast
 
-> Build with vibe. Cast instantly.
+**Build with vibe. Cast instantly.**
 
-A self-hosted, multi-user static site hosting platform built in pure Go.
-No Nginx, no external web server — one binary handles everything: authentication, site management, deployment, and static file serving.
+A lightweight, self-hosted platform for publishing static sites and shareable files.
 
-![Dashboard](docs/screenshots/dashboard.png)
+[![Go](https://img.shields.io/badge/Go-1.23%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/) [![Latest release](https://img.shields.io/github/v/release/vst93/Vibecast?display_name=tag)](https://github.com/vst93/Vibecast/releases/latest) [![License](https://img.shields.io/badge/license-MIT-16875b)](#license--开源协议)
+
+[English](#english) | [中文](#中文)
+
+</div>
+
+<img src="docs/screenshots/dashboard.png" alt="Vibecast dashboard with deployed public, protected, and organization sites" width="100%">
 
 ---
 
-[中文说明](#vibecast-中文说明)
+<a id="english"></a>
 
----
+## English
 
-## Features
+Vibecast packages authentication, site management, deployment, analytics, static file serving, and self-update into one Go binary. It uses SQLite for metadata and the local filesystem for deployed content. No Nginx, Node.js, CGO, or separate database server is required.
 
-### Deployment
+### Quick Start
 
-- **ZIP Deploy** — Upload a ZIP, auto-extract and deploy instantly
-- **Single File Upload** — Upload individual files without creating a ZIP
-- **Smart Extraction** — Strips junk paths (`__MACOSX`, `.git`, `.DS_Store`, `node_modules`, dotfiles)
-- **File Type Filtering** — Blocks dangerous extensions (`.exe`, `.sh`, `.cgi`, `.php`, etc.)
-- **Configurable Limits** — Admin-adjustable max upload size and per-user site count
-
-### Management
-
-- **Organizations** — Create or join an organization with an invite code. One org per user. Owners can manage members (search, kick). Sites can be set "open to org" — logged-in org members skip password authentication automatically
-- **Admin Panel** — User management, site oversight, storage cleanup, system settings
-- **Visit Stats** — Per-site daily / monthly / total visit counts
-- **One-Click Share** — Generate share text with site URL and password, copy to clipboard
-- **Password Protection** — Optional per-site password gate (7-day session cookie)
-- **Random Slugs** — Auto-generated unguessable URLs, no need to pick a slug
-
-### System
-
-- **Self-Update** — Update from the admin panel or CLI (`vibecast update`), with SHA256 verification and GitHub mirror fallback for China
-- **Service Registration** — Register as a system service with `vibecast setup` (Linux systemd / macOS launchd), then manage with standard `systemctl` / `launchctl` commands
-- **Timezone-Aware CLI** — CLI output auto-detects UTC+8 and switches to Chinese; all other timezones get English
-- **Reverse-Proxy Ready** — All URLs are relative, works behind any sub-path without config
-- **Zero External Dependencies** — Pure Go + SQLite, no CGO, no Nginx, no Node.js
-
-### UI / UX
-
-- **Dark / Light Theme** — Toggle with CSS variables, persisted per user
-- **Mobile Optimized** — Responsive layout, bottom nav bar, horizontal table scroll
-- **Bilingual EN / 中文** — Full i18n across UI, API errors, and CLI output
-- **SVG Captcha** — Math captcha rendered as SVG with noise and rotation
-
-## Screenshots
-
-### Dashboard
-
-Manage your sites — create, deploy, view file tree, toggle password, copy URL, share.
-
-![Dashboard](docs/screenshots/dashboard.png)
-
-### Admin Panel
-
-Full administrative control — stats, settings, user management, site oversight, cleanup, self-update.
-
-![Admin Panel](docs/screenshots/admin.png)
-
-## Installation
-
-### One-liner (Linux / macOS)
+Install the latest release on Linux or macOS:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+vibecast
 ```
 
-Or with wget:
+Open [http://localhost:8080/dashboard](http://localhost:8080/dashboard). The first registered user automatically becomes an administrator.
+
+To run Vibecast as a system service:
 
 ```bash
+vibecast setup
+```
+
+### What It Does
+
+| Area | Capabilities |
+| --- | --- |
+| Deploy | Upload ZIP archives or individual HTML, PDF, Office, image, media, and text files |
+| Protect | Add per-site passwords, seven-day access sessions, and organization-level access |
+| Manage | Browse files, edit site details, copy share links, and clean up deployed content |
+| Organize | Create invite-only organizations and pin shared sites for members |
+| Observe | Track visits for today, the current month, and all time |
+| Operate | Manage users, limits, registration, domains, updates, and storage from the admin panel |
+
+Additional platform features:
+
+- Random, hard-to-guess site slugs
+- Safe ZIP extraction with traversal protection and junk-file filtering
+- Configurable upload size and per-user site limits
+- Dangerous file type blocking
+- Light and dark themes with responsive desktop and mobile layouts
+- Complete English and Chinese UI, API errors, and CLI output
+- HttpOnly session cookies, bcrypt password hashing, same-origin checks, rate limits, and SVG captcha
+- SHA256-verified self-update with GitHub mirror fallback
+- Reverse proxy and sub-path support
+
+### Workflow
+
+1. Register at `/dashboard`.
+2. Create a site and optionally add a password or organization access.
+3. Upload a ZIP archive or a single file.
+4. Open the generated `/s/{slug}/` URL.
+5. Share the URL, or expand the site to inspect files and visit statistics.
+
+Administrators use `/admin` to manage users and sites, configure limits, control registration and public access, restrict email domains, clean orphaned storage, inspect runtime paths, and install updates.
+
+### Installation
+
+#### Install Script
+
+The installer detects Linux/macOS and amd64/arm64, downloads the matching asset, and installs it to `/usr/local/bin/vibecast`.
+
+```bash
+# curl
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+
+# wget
 wget -qO- https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
-```
 
-Options:
+# specific version
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --version 20260819-2
 
-```bash
-# Install a specific version
-curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --version 20260703-14
-
-# Install to a custom directory
+# custom install directory
 curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --dir /opt/vibecast
 ```
 
-The script auto-detects your OS and architecture (linux/darwin, amd64/arm64), downloads the matching binary from [Releases](../../releases), and installs it to `/usr/local/bin/vibecast`. GitHub mirror proxies are tried automatically for users in China.
-
-### Build from source
+#### Build From Source
 
 ```bash
 git clone https://github.com/vst93/Vibecast.git
@@ -96,39 +101,30 @@ make build
 ./bin/vibecast
 ```
 
-### Manual download
+Prebuilt binaries for Linux, macOS, and Windows are available from [GitHub Releases](https://github.com/vst93/Vibecast/releases/latest).
 
-Grab the binary for your platform from the [Releases](../../releases) page, make it executable, and run.
+### Data Paths
 
-## Quick Start
+The defaults are stored under the current user's home directory:
 
-```bash
-vibecast
+| Resource | Default |
+| --- | --- |
+| Site files | `~/data/sites` |
+| SQLite database | `~/data/vibecast.db` |
 
-# or with custom config
-vibecast --addr :3000 --storage ~/data/sites --db ~/data/vibecast.db
-```
+Relative data paths are also anchored to the current user's home. For example, `./data/vibecast.db` resolves to `~/data/vibecast.db`, regardless of the executable or service working directory. Explicit absolute paths remain unchanged.
 
-Open `http://localhost:8080/dashboard` — the first registered user becomes admin.
+`vibecast setup` writes absolute paths into the service definition. This keeps the same database and site storage in use across updates and restarts.
 
-## Service Management
+### Service Management
 
-Register vibecast as a system service so it starts automatically on boot and survives logout:
+Register or refresh the service definition:
 
 ```bash
 vibecast setup
 ```
 
-Data paths are anchored to the current user's home directory. Relative paths
-such as `./data/sites` are treated as `~/data/sites`, while explicit absolute
-paths remain unchanged. `setup` writes absolute paths into the service file, so
-updates and service restarts cannot switch to a database beside the executable.
-Existing service installations should run `vibecast setup` once after upgrading
-to refresh their service definition.
-
-After registration, manage the service with standard system commands:
-
-**Linux (systemd, user-level):**
+Linux uses a user-level systemd service:
 
 ```bash
 systemctl --user status vibecast
@@ -136,7 +132,7 @@ systemctl --user stop vibecast
 systemctl --user restart vibecast
 ```
 
-**macOS (launchd):**
+macOS uses a launchd daemon:
 
 ```bash
 sudo launchctl list | grep vibecast
@@ -144,173 +140,147 @@ sudo launchctl stop com.vibecast
 sudo launchctl start com.vibecast
 ```
 
-To remove the service:
+Remove the service with:
 
 ```bash
 vibecast uninstall
 ```
 
-> **Windows:** Service management is not supported. Use [nssm](https://nssm.cc) or Task Scheduler to register vibecast as a Windows service.
+Windows service registration is not built in. Use [NSSM](https://nssm.cc/) or Task Scheduler.
 
-## CLI
+### Updating
 
+Update from the admin panel under **System**, or from the command line:
+
+```bash
+vibecast update
 ```
+
+Vibecast selects the correct OS/architecture asset, downloads it, verifies its SHA256 checksum, and replaces the current binary.
+
+> [!IMPORTANT]
+> Existing services installed by a version older than `20260819-2` should perform this one-time migration from a terminal:
+>
+> ```bash
+> vibecast update
+> vibecast setup
+> ```
+>
+> This rewrites legacy relative data paths as absolute home-directory paths and restarts the service with the new definition. After this migration, future admin-panel updates can restart automatically without switching databases.
+
+On Windows, the running executable may need to be stopped before replacement.
+
+### CLI Reference
+
+```text
 Usage: vibecast [options] [command]
 
 Options:
   --addr <addr>      listen address (default ":8080", env VIBECAST_ADDR)
-  --storage <dir>    site files storage directory (default "~/data/sites", env VIBECAST_STORAGE)
+  --storage <dir>    site files directory (default "~/data/sites", env VIBECAST_STORAGE)
   --db <path>        SQLite database path (default "~/data/vibecast.db", env VIBECAST_DB)
 
 Commands:
   version, v         print version and exit
   update             check for updates and self-update
-  setup              register as a system service
+  setup              register or refresh the system service
   uninstall          remove the system service
-  help, h            show this help message
+  help, h            show help
 ```
 
-CLI output is timezone-aware: UTC+8 outputs Chinese, all other timezones output English.
+CLI messages automatically use Chinese in UTC+8 and English in other timezones.
 
-## Usage
+### Architecture
 
-1. **Register** at `/dashboard` — first user is auto-promoted to admin
-2. **Create a site** — just give it a name; a random slug is generated for you. Optionally set a password and toggle "Open to org members"
-3. **Deploy** — upload a ZIP or a single file
-4. **Visit** — your site goes live at `/s/{slug}/`
-5. **Share** — click the share button to copy a ready-to-paste message with URL and password
-6. **Organizations** — create an org or join one with an invite code. Org members can access "org-open" sites without a password
-7. **Manage** — expand any site to view its file tree and visit stats; admin panel at `/admin`
-
-Admins can toggle open registration, disable public access, restrict email domains, configure upload size and site limits, clean up orphaned directories, check for updates, and manage all users and sites from `/admin`.
-
-## Updating
-
-```bash
-# Check and update from the command line
-vibecast update
-
-# Or update from the admin panel → System → Check for Updates
+```text
+cmd/server/main.go        entry point, CLI, HTTP server, graceful restart
+internal/auth/            authentication and session helpers
+internal/db/              SQLite schema, migrations, models, and settings
+internal/storage/         ZIP extraction and file safety
+internal/server/          handlers, pages, static serving, updates, services, i18n
 ```
 
-The update system fetches the latest release from GitHub, verifies the asset matches your OS/arch, downloads via mirror proxies if needed, verifies SHA256 checksum, and replaces the running binary. On Linux it overwrites in place; on Windows you may need to stop the service first.
-
-## Configuration
-
-| Flag | Env Var | Default | Description |
-|------|---------|---------|-------------|
-| `--addr` | `VIBECAST_ADDR` | `:8080` | Listen address |
-| `--storage` | `VIBECAST_STORAGE` | `~/data/sites` | Site files storage directory |
-| `--db` | `VIBECAST_DB` | `~/data/vibecast.db` | SQLite database path |
-
-Additional settings (upload size limit, site limit per user, registration, public access, email domain restriction) are configurable at runtime from the admin panel.
-
-## Architecture
-
-```
-cmd/server/main.go        — Entry point, CLI flags, graceful shutdown, update CLI
-internal/db/              — SQLite schema, migrations, data models, settings
-internal/auth/            — Authentication, session management, captcha
-internal/storage/         — ZIP extraction, single file save, file type protection
-internal/server/          — HTTP handlers, routing, static serving, i18n, self-update, service management, all UI
-```
-
-## Tech Stack
-
-Go 1.23+ · SQLite · vanilla JS SPA · no build step
-
-## License
-
-MIT
+Tech stack: Go 1.23+, SQLite, vanilla JavaScript, inline HTML/CSS, no frontend build step.
 
 ---
 
-# Vibecast 中文说明
+<a id="中文"></a>
 
-> 随心构建，即刻发布。
+## 中文
 
-一个自托管的纯 Go 多用户静态站点托管平台。
-不依赖 Nginx 或任何外部 Web Server —— 一个二进制搞定一切：认证、站点管理、部署、静态文件服务。
+Vibecast 是一个轻量的自托管静态内容发布平台。认证、站点管理、文件部署、访问统计、静态文件服务和在线更新全部集成在一个 Go 二进制中；元数据保存在 SQLite，站点内容保存在本地文件系统。无需 Nginx、Node.js、CGO 或独立数据库服务。
 
-![Dashboard](docs/screenshots/dashboard.png)
+### 快速开始
 
----
-
-## 功能特性
-
-### 部署
-
-- **ZIP 部署** — 上传 ZIP，自动解压即时上线
-- **单文件上传** — 无需打包 ZIP，直接上传单个文件
-- **智能解压** — 自动剔除垃圾路径（`__MACOSX`、`.git`、`.DS_Store`、`node_modules`、 dotfiles）
-- **文件类型过滤** — 拦截危险扩展名（`.exe`、`.sh`、`.cgi`、`.php` 等）
-- **可配置限额** — 管理员可调整最大上传大小和每用户站点数
-
-### 管理
-
-- **组织** — 创建或加入组织。一个用户只能属于一个组织。创建者可管理成员（搜索、踢出）。站点可设为"对组织开放"，同一组织的已登录用户无需密码即可访问
-- **管理后台** — 用户管理、站点总览、存储清理、系统设置
-- **访问统计** — 每站点的今日 / 本月 / 总计访问量
-- **一键分享** — 生成包含站点 URL 和密码的分享文本，一键复制
-- **密码保护** — 可选的站点级密码门禁（7 天有效 Cookie）
-- **随机 Slug** — 自动生成不可猜测的 URL，无需手动填写
-
-### 系统
-
-- **自更新** — 从管理后台或命令行（`vibecast update`）更新，含 SHA256 校验和 GitHub 镜像加速
-- **服务注册** — `vibecast setup` 注册为系统服务（Linux systemd / macOS launchd），之后用标准 `systemctl` / `launchctl` 管理
-- **时区感知 CLI** — 命令行输出自动检测 UTC+8 切换中文，其他时区输出英文
-- **反向代理友好** — 所有 URL 均为相对路径，支持任意子路径部署，无需配置
-- **零外部依赖** — 纯 Go + SQLite，无需 CGO、Nginx、Node.js
-
-### 界面 / 体验
-
-- **深色 / 浅色主题** — CSS 变量切换，用户偏好持久化
-- **移动端优化** — 响应式布局，底部导航栏，表格横向滚动
-- **中英文双语** — UI、API 错误提示、命令行输出全面支持
-- **SVG 验证码** — 数学验证码，含噪点和旋转干扰
-
-## 截图
-
-### Dashboard 管理面板
-
-管理你的站点 — 创建、部署、查看文件树、切换密码、复制链接、分享。
-
-![Dashboard](docs/screenshots/dashboard.png)
-
-### Admin 管理后台
-
-完整的后台管理 — 统计、设置、用户管理、站点总览、存储清理、在线更新。
-
-![Admin Panel](docs/screenshots/admin.png)
-
-## 安装
-
-### 一键安装（Linux / macOS）
+在 Linux 或 macOS 安装最新版：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+vibecast
 ```
 
-或使用 wget：
+打开 [http://localhost:8080/dashboard](http://localhost:8080/dashboard)。第一个注册用户会自动成为管理员。
+
+注册为系统服务：
 
 ```bash
+vibecast setup
+```
+
+### 主要能力
+
+| 领域 | 功能 |
+| --- | --- |
+| 部署 | 上传 ZIP，或直接上传 HTML、PDF、Office、图片、音视频和文本文件 |
+| 保护 | 站点密码、7 天访问会话，以及组织成员免密码访问 |
+| 管理 | 浏览文件、编辑站点、复制分享链接、清理已部署内容 |
+| 组织 | 创建邀请码组织，并为成员钉选共享站点 |
+| 统计 | 查看站点今日、本月和累计访问量 |
+| 运维 | 在管理后台管理用户、限额、注册、域名、更新和存储 |
+
+平台还包括：
+
+- 自动生成难以猜测的随机 Slug
+- 防止路径穿越并过滤垃圾文件的安全 ZIP 解压
+- 可配置上传大小和每用户站点数
+- 危险文件类型拦截
+- 深色 / 浅色主题和响应式桌面、移动端布局
+- UI、API 错误和 CLI 的完整中英文支持
+- HttpOnly Session Cookie、bcrypt 密码哈希、同源校验、限流和 SVG 验证码
+- 带 SHA256 校验和 GitHub 镜像回退的自更新
+- 反向代理及子路径部署支持
+
+### 使用流程
+
+1. 在 `/dashboard` 注册。
+2. 创建站点，可选设置密码或组织访问权限。
+3. 上传 ZIP 或单个文件。
+4. 通过生成的 `/s/{slug}/` 地址访问站点。
+5. 分享链接，或展开站点查看文件与访问统计。
+
+管理员可在 `/admin` 管理用户和站点、配置限额、控制注册和公开访问、限制邮箱域名、清理孤立存储、查看运行路径并安装更新。
+
+### 安装
+
+#### 安装脚本
+
+脚本会识别 Linux/macOS 和 amd64/arm64，下载对应文件并安装到 `/usr/local/bin/vibecast`。
+
+```bash
+# curl
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
+
+# wget
 wget -qO- https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash
-```
 
-可选参数：
+# 指定版本
+curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --version 20260819-2
 
-```bash
-# 安装指定版本
-curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --version 20260703-14
-
-# 安装到自定义目录
+# 自定义安装目录
 curl -fsSL https://raw.githubusercontent.com/vst93/Vibecast/main/install.sh | bash -s -- --dir /opt/vibecast
 ```
 
-脚本自动检测操作系统和架构（linux/darwin，amd64/arm64），从 [Releases](../../releases) 下载对应二进制并安装到 `/usr/local/bin/vibecast`。国内用户自动尝试 GitHub 镜像代理。
-
-### 从源码编译
+#### 从源码编译
 
 ```bash
 git clone https://github.com/vst93/Vibecast.git
@@ -319,37 +289,30 @@ make build
 ./bin/vibecast
 ```
 
-### 手动下载
+Linux、macOS 和 Windows 的预编译文件可从 [GitHub Releases](https://github.com/vst93/Vibecast/releases/latest) 下载。
 
-从 [Releases](../../releases) 页面下载对应平台的二进制，赋予执行权限后运行。
+### 数据路径
 
-## 快速开始
+默认数据保存在当前用户的 home 目录：
 
-```bash
-vibecast
+| 资源 | 默认路径 |
+| --- | --- |
+| 站点文件 | `~/data/sites` |
+| SQLite 数据库 | `~/data/vibecast.db` |
 
-# 或指定配置
-vibecast --addr :3000 --storage ~/data/sites --db ~/data/vibecast.db
-```
+相对数据路径同样以当前用户的 home 为基准。例如，无论程序或服务的工作目录在哪里，`./data/vibecast.db` 都会解析为 `~/data/vibecast.db`。明确指定的绝对路径保持不变。
 
-打开 `http://localhost:8080/dashboard`，首个注册用户自动成为管理员。
+`vibecast setup` 会把绝对路径写入服务定义，确保更新和重启始终使用同一份数据库与站点文件。
 
-## 服务管理
+### 服务管理
 
-将 vibecast 注册为系统服务，开机自启、退出登录后持续运行：
+注册或刷新服务定义：
 
 ```bash
 vibecast setup
 ```
 
-数据路径统一以当前用户的 home 目录为基准。`./data/sites` 这类相对路径会按
-`~/data/sites` 处理，明确指定的绝对路径则保持不变。`setup` 会把绝对路径写入
-服务配置，因此更新或服务重启不会切换到可执行文件旁边的另一份数据库。已有服务
-安装在升级后应重新运行一次 `vibecast setup`，以刷新服务配置。
-
-注册完成后，使用标准系统命令管理服务：
-
-**Linux（systemd，用户级）：**
+Linux 使用用户级 systemd 服务：
 
 ```bash
 systemctl --user status vibecast
@@ -357,7 +320,7 @@ systemctl --user stop vibecast
 systemctl --user restart vibecast
 ```
 
-**macOS（launchd）：**
+macOS 使用 launchd daemon：
 
 ```bash
 sudo launchctl list | grep vibecast
@@ -371,75 +334,62 @@ sudo launchctl start com.vibecast
 vibecast uninstall
 ```
 
-> **Windows：** 不支持服务管理。请使用 [nssm](https://nssm.cc) 或任务计划程序注册为 Windows 服务。
+Windows 暂不内置服务注册，请使用 [NSSM](https://nssm.cc/) 或任务计划程序。
 
-## 命令行
+### 更新
 
+可在管理后台的 **系统** 页面更新，也可使用命令行：
+
+```bash
+vibecast update
 ```
+
+Vibecast 会选择匹配当前操作系统和架构的文件，下载并校验 SHA256，然后替换当前二进制。
+
+> [!IMPORTANT]
+> 使用早于 `20260819-2` 版本注册服务的现有安装，应在终端执行一次迁移：
+>
+> ```bash
+> vibecast update
+> vibecast setup
+> ```
+>
+> 这会把旧服务中的相对路径重写为 home 下的绝对路径，并按新定义重启服务。完成这次迁移后，后续通过管理后台更新即可自动重启，也不会切换到另一份数据库。
+
+Windows 可能需要先停止正在运行的程序，再替换二进制。
+
+### 命令行参考
+
+```text
 用法: vibecast [选项] [命令]
 
 选项:
   --addr <addr>      监听地址（默认 ":8080"，环境变量 VIBECAST_ADDR）
-  --storage <dir>    站点文件存储目录（默认 "~/data/sites"，环境变量 VIBECAST_STORAGE）
+  --storage <dir>    站点文件目录（默认 "~/data/sites"，环境变量 VIBECAST_STORAGE）
   --db <path>        SQLite 数据库路径（默认 "~/data/vibecast.db"，环境变量 VIBECAST_DB）
 
 命令:
   version, v         打印版本号
   update             检查更新并自更新
-  setup              注册为系统服务
+  setup              注册或刷新系统服务
   uninstall          卸载系统服务
-  help, h            显示帮助信息
+  help, h            显示帮助
 ```
 
-命令行输出按时区自动切换：UTC+8 输出中文，其他时区输出英文。
+CLI 会根据时区自动选择语言：UTC+8 输出中文，其他时区输出英文。
 
-## 使用方式
+### 项目结构
 
-1. **注册** — 在 `/dashboard` 注册，首用户自动成为管理员
-2. **创建站点** — 填个名字即可，系统自动生成随机 slug。可选设密码和"对组织开放"
-3. **部署** — 上传 ZIP 压缩包或单个文件
-4. **访问** — 站点上线地址为 `/s/{slug}/`
-5. **分享** — 点击分享按钮，复制包含 URL 和密码的分享文本
-6. **组织** — 创建组织或用邀请码加入，组织内成员可免密码访问"对组织开放"的站点
-7. **管理** — 点击站点展开查看文件树和访问统计；管理后台在 `/admin`
-
-管理员可在 `/admin` 开关注册、禁用公开访问、限制邮箱域名、配置上传大小和站点限额、清理孤立目录、检查更新，以及管理所有用户和站点。
-
-## 更新
-
-```bash
-# 命令行检查并更新
-vibecast update
-
-# 或在管理后台 → 系统 → 检查更新
+```text
+cmd/server/main.go        入口、CLI、HTTP 服务和优雅重启
+internal/auth/            认证与 Session 辅助逻辑
+internal/db/              SQLite Schema、迁移、模型和设置
+internal/storage/         ZIP 解压与文件安全
+internal/server/          Handler、页面、静态服务、更新、服务注册和 i18n
 ```
 
-更新系统从 GitHub 获取最新版本，校验资产与当前 OS/架构匹配，通过镜像代理下载（如需），验证 SHA256 校验和后替换正在运行的二进制文件。Linux 下可直接覆盖；Windows 下可能需要先停止服务。
+技术栈：Go 1.23+、SQLite、原生 JavaScript、内联 HTML/CSS，无前端构建步骤。
 
-## 配置项
-
-| 参数 | 环境变量 | 默认值 | 说明 |
-|------|----------|--------|------|
-| `--addr` | `VIBECAST_ADDR` | `:8080` | 监听地址 |
-| `--storage` | `VIBECAST_STORAGE` | `~/data/sites` | 站点文件存储目录 |
-| `--db` | `VIBECAST_DB` | `~/data/vibecast.db` | SQLite 数据库路径 |
-
-其余设置（上传大小限制、每用户站点限额、注册开关、公开访问、邮箱域名限制）可在管理后台运行时配置。
-
-## 架构
-
-```
-cmd/server/main.go        — 入口，CLI 参数，优雅关闭，更新命令行
-internal/db/              — SQLite schema、迁移、数据模型、设置
-internal/auth/            — 认证、Session 管理、验证码
-internal/storage/         — ZIP 解压、单文件保存、文件类型防护
-internal/server/          — HTTP Handler、路由、静态服务、i18n、自更新、服务管理、全部前端页面
-```
-
-## 技术栈
-
-Go 1.23+ · SQLite · 原生 JS 单页应用 · 无构建步骤
-
-## 开源协议
+## License / 开源协议
 
 MIT

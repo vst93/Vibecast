@@ -8,6 +8,7 @@ import (
 	neturl "net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -305,15 +306,113 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request, path string, 
 	http.ServeContent(w, r, filepath.Base(path), modTime, f)
 }
 
-// serveDirListing renders an nginx-style directory listing.
-// All hrefs are relative to the current page URL so they work behind
-// any reverse-proxy prefix without configuration.
+// dirSortField / dirSortOrder identify the directory listing sort criteria.
+type dirSortField string
+
+type dirSortOrder string
+
+const (
+	sortName     dirSortField = "name"
+	sortSize     dirSortField = "size"
+	sortCreated  dirSortField = "created"
+	sortModified dirSortField = "modified"
+
+	orderAsc  dirSortOrder = "asc"
+	orderDesc dirSortOrder = "desc"
+)
+
+// dirSort is the parsed sort request for a directory listing.
+type dirSort struct {
+	field dirSortField
+	order dirSortOrder
+}
+
+// parseDirSort extracts sort criteria from query params.
+// Default: created descending.
+func parseDirSort(r *http.Request) dirSort {
+	s := dirSort{field: sortCreated, order: orderDesc}
+	switch dirSortField(r.URL.Query().Get("sort")) {
+	case sortName:
+		s.field = sortName
+	case sortSize:
+		s.field = sortSize
+	case sortModified:
+		s.field = sortModified
+	}
+	if dirSortOrder(r.URL.Query().Get("order")) == orderAsc {
+		s.order = orderAsc
+	}
+	return s
+}
+
+// toggleOrder returns the order to use when clicking this column header:
+// clicking an already-sorted column flips the direction; clicking a new
+// column sorts it descending (except name, which sorts ascending first).
+func (s dirSort) toggleOrder(field dirSortField) dirSortOrder {
+	if s.field != field {
+		if field == sortName {
+			return orderAsc
+		}
+		return orderDesc
+	}
+	if s.order == orderAsc {
+		return orderDesc
+	}
+	return orderAsc
+}
+
+// dirEntryInfo is one row of the directory listing.
+type dirEntryInfo struct {
+	name        string
+	href        string
+	isDir       bool
+	size        string
+	sizeBytes   int64
+	created     time.Time
+	modified    time.Time
+	createdStr  string
+	modifiedStr string
+}
+
+// dirEntryLess compares two entries according to the sort criteria.
+func dirEntryLess(a, b dirEntryInfo, s dirSort) bool {
+	// Directories always come before files within the same sort.
+	if a.isDir != b.isDir {
+		return a.isDir
+	}
+	var cmp int
+	switch s.field {
+	case sortSize:
+		if a.sizeBytes != b.sizeBytes {
+			return a.sizeBytes < b.sizeBytes
+		}
+		return strings.ToLower(a.name) < strings.ToLower(b.name)
+	case sortModified:
+		cmp = a.modified.Compare(b.modified)
+	case sortCreated:
+		cmp = a.created.Compare(b.created)
+	default: // sortName
+		return strings.ToLower(a.name) < strings.ToLower(b.name)
+	}
+	if cmp != 0 {
+		return cmp < 0
+	}
+	return strings.ToLower(a.name) < strings.ToLower(b.name)
+}
+
+// serveDirListing renders an nginx-style directory listing with creation and
+// modification times. Columns are sortable via ?sort= / ?order= query params;
+// default sort is creation time descending. All hrefs are relative to the
+// current page URL so they work behind any reverse-proxy prefix without
+// configuration.
 func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath, slug, subPath string) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
+
+	sortBy := parseDirSort(r)
 
 	// Build breadcrumb using relative paths.
 	// Current page is at /s/{slug}/[sub/]  —  relative base is "./"
@@ -337,44 +436,111 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 		crumbs = append(crumbs, `<a href="`+html.EscapeString(rel)+`">`+html.EscapeString(p)+`</a>`+sep)
 	}
 
-	var b strings.Builder
-	b.WriteString(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">`)
-	b.WriteString(`<style>body{font-family:system-ui,sans-serif;background:`)
-	b.WriteString(`var(--ink,#0c1117);color:var(--text,#e6edf3);margin:0;padding:2rem}
-a{color:#39d353;text-decoration:none}a:hover{text-decoration:underline}
-h1{font-size:1.1rem;font-weight:600;margin-bottom:1rem}
-table{border-collapse:collapse;width:100%;max-width:800px}
-th,td{text-align:left;padding:6px 12px;border-bottom:1px solid #30363d;font-size:.85rem}
-th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
-.dir{font-weight:600}.size{color:#7d8590;text-align:right;font-family:monospace}</style>`)
-	b.WriteString(`</head><body><h1>`)
-	b.WriteString(strings.Join(crumbs, " / "))
-	b.WriteString(`</h1><table><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>`)
-
-	// ".." link for subdirectories
-	if subPath != "" {
-		b.WriteString(`<tr><td class="dir"><a href="../">../</a></td><td>-</td></tr>`)
+	// Column headers: clickable sortBy links with direction indicator.
+	// Sort params are relative to the current directory ("?sort=..." resolves
+	// against the current page URL, keeping any sub-path intact).
+	indicator := map[dirSortField]string{}
+	for _, f := range []dirSortField{sortName, sortSize, sortCreated, sortModified} {
+		if sortBy.field == f {
+			if sortBy.order == orderAsc {
+				indicator[f] = " ↑"
+			} else {
+				indicator[f] = " ↓"
+			}
+		}
+	}
+	sortHref := func(f dirSortField) string {
+		return "?sort=" + string(f) + "&order=" + string(sortBy.toggleOrder(f))
+	}
+	th := func(label string, f dirSortField) string {
+		return `<th><a class="sortBy" href="` + sortHref(f) + `">` + label + indicator[f] + `</a></th>`
 	}
 
+	// Collect rows
+	rows := make([]dirEntryInfo, 0, len(entries))
 	for _, e := range entries {
 		name := e.Name()
 		if strings.HasPrefix(name, ".") {
 			continue
 		}
 		info, _ := e.Info()
-		size := "-"
+		var sizeStr string
+		var sizeBytes int64
 		if !e.IsDir() && info != nil {
-			size = formatSize(info.Size())
+			sizeBytes = info.Size()
+			sizeStr = formatSize(sizeBytes)
+		} else {
+			sizeStr = "-"
+		}
+		var created, modified time.Time
+		if info != nil {
+			modified = info.ModTime()
+			created = fileBirthTime(dirPath, info)
 		}
 		displayName := name
 		href := "./" + name
-		cls := ""
 		if e.IsDir() {
 			displayName += "/"
 			href += "/"
-			cls = ` class="dir"`
 		}
-		b.WriteString(`<tr><td` + cls + `><a href="` + html.EscapeString(href) + `">` + html.EscapeString(displayName) + `</a></td><td class="size">` + size + `</td></tr>`)
+		// Preserve the current sortBy when navigating into subdirectories.
+		href += "?sort=" + string(sortBy.field) + "&order=" + string(sortBy.order)
+		rows = append(rows, dirEntryInfo{
+			name:        displayName,
+			href:        href,
+			isDir:       e.IsDir(),
+			size:        sizeStr,
+			sizeBytes:   sizeBytes,
+			created:     created,
+			modified:    modified,
+			createdStr:  formatTime(created),
+			modifiedStr: formatTime(modified),
+		})
+	}
+
+	// Sort: stable so entries with equal keys keep directory order.
+	// Descending only reverses the sort key — directories stay on top.
+	less := func(i, j int) bool { return dirEntryLess(rows[i], rows[j], sortBy) }
+	if sortBy.order == orderAsc {
+		sort.SliceStable(rows, less)
+	} else {
+		sort.SliceStable(rows, func(i, j int) bool {
+			a, b := rows[i], rows[j]
+			if a.isDir != b.isDir {
+				return a.isDir
+			}
+			return dirEntryLess(b, a, sortBy)
+		})
+	}
+
+	var b strings.Builder
+	b.WriteString(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">`)
+	b.WriteString(`<style>body{font-family:system-ui,sans-serif;background:`)
+	b.WriteString(`var(--ink,#0c1117);color:var(--text,#e6edf3);margin:0;padding:2rem}
+a{color:#39d353;text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:1.1rem;font-weight:600;margin-bottom:1rem}
+table{border-collapse:collapse;width:100%;max-width:900px}
+th,td{text-align:left;padding:6px 12px;border-bottom:1px solid #30363d;font-size:.85rem}
+th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
+th a{color:#7d8590}th a:hover{color:#e6edf3;text-decoration:none}
+.dir{font-weight:600}.size{color:#7d8590;text-align:right;font-family:monospace}
+.time{color:#7d8590;font-family:monospace;white-space:nowrap}</style>`)
+	b.WriteString(`</head><body><h1>`)
+	b.WriteString(strings.Join(crumbs, " / "))
+	b.WriteString(`</h1><table><thead><tr>`)
+	b.WriteString(th("Name", sortName))
+	b.WriteString(th("Size", sortSize))
+	b.WriteString(th("Created", sortCreated))
+	b.WriteString(th("Modified", sortModified))
+	b.WriteString(`</tr></thead><tbody>`)
+
+	// ".." link for subdirectories
+	if subPath != "" {
+		b.WriteString(`<tr><td class="dir"><a href="../">../</a></td><td class="size">-</td><td class="time">-</td><td class="time">-</td></tr>`)
+	}
+
+	for _, row := range rows {
+		b.WriteString(`<tr><td` + cls(&row) + `><a href="` + html.EscapeString(row.href) + `">` + html.EscapeString(row.name) + `</a></td><td class="size">` + row.size + `</td><td class="time">` + row.createdStr + `</td><td class="time">` + row.modifiedStr + `</td></tr>`)
 	}
 	b.WriteString(`</tbody></table></body></html>`)
 
@@ -382,6 +548,22 @@ th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
 	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	w.WriteHeader(200)
 	w.Write([]byte(b.String()))
+}
+
+// cls returns the row class for a directory entry.
+func cls(row *dirEntryInfo) string {
+	if row.isDir {
+		return ` class="dir"`
+	}
+	return ""
+}
+
+// formatTime renders a file timestamp for the listing.
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return "-"
+	}
+	return t.Format("2006-01-02 15:04")
 }
 
 // formatSize converts a byte count to a human-readable string.

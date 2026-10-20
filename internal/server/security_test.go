@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,5 +210,164 @@ func TestAdminSettingsPartialUpdatePreservesOmittedValues(t *testing.T) {
 	}
 	if got := db.GetSettingInt(s.database, "max_upload_size", -1); got != 100 {
 		t.Fatalf("max_upload_size was not updated: got %d", got)
+	}
+}
+
+// TestPasswordGateDeepLinkRedirectsWithSubPath guards the reported bug where
+// opening a nested page of a protected site landed on a 404 instead of the
+// password form: the old handler replied with the relative "../../p/{slug}",
+// which the browser resolved against the requested file.
+func TestPasswordGateDeepLinkRedirectsWithSubPath(t *testing.T) {
+	s := newTestServer(t)
+	_, site := createTestUserAndSite(t, s, true)
+	hash, err := auth.HashPassword("site-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpdateSite(s.database, site.ID, site.Name, site.Description, hash, "site-password", false, false); err != nil {
+		t.Fatal(err)
+	}
+	sub := filepath.Join(s.config.StorageDir, site.Slug, "docs")
+	if err := os.MkdirAll(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "page.html"), []byte("<!doctype html><title>doc</title>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/s/"+site.Slug+"/docs/page.html", nil)
+	recorder := httptest.NewRecorder()
+	s.staticHandler(recorder, req)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("expected redirect to the gate, got %d", recorder.Code)
+	}
+	location := recorder.Header().Get("Location")
+	want := "/p/" + site.Slug + "?next=docs%2Fpage.html"
+	if location != want {
+		t.Fatalf("deep link redirect must keep the requested page: got %q want %q", location, want)
+	}
+}
+
+// TestPasswordGateUnlockResumesRequestedPage verifies the return target carried
+// through ?next= is applied after a successful unlock.
+func TestPasswordGateUnlockResumesRequestedPage(t *testing.T) {
+	s := newTestServer(t)
+	_, site := createTestUserAndSite(t, s, true)
+	hash, err := auth.HashPassword("site-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpdateSite(s.database, site.ID, site.Name, site.Description, hash, "site-password", false, false); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/p/"+site.Slug+"?next=docs%2Fpage.html", strings.NewReader("password=site-password"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.passwordPageHandler(recorder, req)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("password login failed: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if got, want := recorder.Header().Get("Location"), "/s/"+site.Slug+"/docs/page.html"; got != want {
+		t.Fatalf("unlock did not resume the requested page: got %q want %q", got, want)
+	}
+}
+
+// TestPasswordGateRejectsForeignReturnTarget makes sure ?next= cannot be used as
+// an open redirect.
+func TestPasswordGateRejectsForeignReturnTarget(t *testing.T) {
+	s := newTestServer(t)
+	_, site := createTestUserAndSite(t, s, true)
+	hash, err := auth.HashPassword("site-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpdateSite(s.database, site.ID, site.Name, site.Description, hash, "site-password", false, false); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, next := range []string{"//evil.example/x", "https://evil.example/", "../../../etc/passwd"} {
+		body := "password=site-password"
+		req := httptest.NewRequest(http.MethodPost, "/p/"+site.Slug+"?next="+url.QueryEscape(next), strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		s.passwordPageHandler(recorder, req)
+
+		if recorder.Code != http.StatusSeeOther {
+			t.Fatalf("next=%q: unexpected status %d", next, recorder.Code)
+		}
+		location := recorder.Header().Get("Location")
+		if want := "/s/" + site.Slug + "/"; location != want {
+			t.Fatalf("next=%q must be dropped: got %q want %q", next, location, want)
+		}
+	}
+}
+
+// TestPasswordGateScopesCookieToProxyPrefix covers sub-path deployments: the
+// site cookie has to include the mount prefix or the browser never sends it
+// back and the password submission looks like it did nothing.
+func TestPasswordGateScopesCookieToProxyPrefix(t *testing.T) {
+	s := newTestServer(t)
+	_, site := createTestUserAndSite(t, s, true)
+	hash, err := auth.HashPassword("site-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpdateSite(s.database, site.ID, site.Name, site.Description, hash, "site-password", false, false); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/p/"+site.Slug, strings.NewReader("password=site-password"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Forwarded-Prefix", "/vibecast")
+	recorder := httptest.NewRecorder()
+	s.passwordPageHandler(recorder, req)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("password login failed: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if got, want := recorder.Header().Get("Location"), "/vibecast/s/"+site.Slug+"/"; got != want {
+		t.Fatalf("redirect ignored the mount prefix: got %q want %q", got, want)
+	}
+	var cookiePath string
+	for _, cookie := range recorder.Result().Cookies() {
+		if cookie.Name == "site_token" && cookie.Value != "" {
+			cookiePath = cookie.Path
+		}
+	}
+	if want := "/vibecast/s/" + site.Slug + "/"; cookiePath != want {
+		t.Fatalf("cookie scope ignored the mount prefix: got %q want %q", cookiePath, want)
+	}
+}
+
+// TestPasswordGateReportsFormErrors verifies a rejected password re-renders the
+// form with the error inline instead of failing silently.
+func TestPasswordGateReportsFormErrors(t *testing.T) {
+	s := newTestServer(t)
+	_, site := createTestUserAndSite(t, s, true)
+	hash, err := auth.HashPassword("site-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpdateSite(s.database, site.ID, site.Name, site.Description, hash, "site-password", false, false); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/p/"+site.Slug, strings.NewReader("password=nope"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.passwordPageHandler(recorder, req)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for a wrong password, got %d", recorder.Code)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, "Incorrect password") {
+		t.Fatal("wrong password did not render an inline error")
+	}
+	if !strings.Contains(body, `name="password"`) {
+		t.Fatal("wrong password did not re-render the form")
 	}
 }

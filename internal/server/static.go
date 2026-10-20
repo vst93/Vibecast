@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -137,6 +138,124 @@ func (s *Server) isHostAllowedForSites(r *http.Request) bool {
 	return getRequestHost(r) == siteHost
 }
 
+// sitePathPrefix returns the browser-visible path prefix that precedes the
+// /s/ or /p/ mount point. Serving from a domain root yields ""; a reverse proxy
+// mounted at /vibecast yields "/vibecast". Redirect targets and site cookie
+// paths must include this prefix, otherwise the browser is sent somewhere the
+// proxy will not forward to and its cookie is never sent back.
+//
+// The prefix is not visible in r.URL.Path once a proxy strips it, so it is
+// recovered from X-Forwarded-Prefix (the conventional signal) and, failing
+// that, from the Referer of the page that submitted the form.
+func sitePathPrefix(r *http.Request) string {
+	if prefix := r.Header.Get("X-Forwarded-Prefix"); prefix != "" {
+		return normalizeMountPrefix(prefix)
+	}
+	if prefix := r.Header.Get("X-Script-Name"); prefix != "" {
+		return normalizeMountPrefix(prefix)
+	}
+	if referer := r.Header.Get("Referer"); referer != "" {
+		if u, err := neturl.Parse(referer); err == nil {
+			refererPath := u.Path
+			for _, marker := range []string{"/s/", "/p/"} {
+				if idx := strings.Index(refererPath, marker); idx > 0 {
+					// Only trust the Referer when the app-level request path is
+					// a suffix of it, i.e. both describe the same route.
+					if strings.HasSuffix(refererPath, r.URL.Path) ||
+						strings.HasSuffix(refererPath, strings.TrimSuffix(r.URL.Path, "/")) {
+						return normalizeMountPrefix(refererPath[:idx])
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// normalizeMountPrefix cleans a mount prefix into "/a/b" form (or "").
+func normalizeMountPrefix(prefix string) string {
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" || prefix == "/" {
+		return ""
+	}
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+	if strings.Contains(prefix, "://") {
+		return ""
+	}
+	return strings.TrimRight(prefix, "/")
+}
+
+// siteContentPath returns the browser-visible path of a site's content root.
+func siteContentPath(prefix, slug string) string {
+	return prefix + "/s/" + slug + "/"
+}
+
+// passwordGatePath returns the browser-visible path of a site's password gate.
+func passwordGatePath(prefix, slug string) string {
+	return prefix + "/p/" + slug
+}
+
+// siteContentURL returns the content root plus an optional return target
+// (sub-path and query) carried through the gate.
+func siteContentURL(prefix, slug, next string) string {
+	return siteContentPath(prefix, slug) + next
+}
+
+// siteReturnTarget extracts the sub-path and query string a visitor asked for
+// below a site root, e.g. "docs/page.html?x=1". It is carried through the
+// password gate so the visitor resumes on the requested page after unlocking
+// instead of being dropped at the site root.
+func siteReturnTarget(pathParts []string, rawQuery string) string {
+	target := ""
+	if len(pathParts) > 1 {
+		target = strings.TrimPrefix(pathParts[1], "/")
+	}
+	if rawQuery != "" {
+		target += "?" + rawQuery
+	}
+	return target
+}
+
+// sanitizeSiteReturnTarget validates a caller-supplied return target before it
+// is appended to a site root. Only plain relative paths are accepted so the
+// password gate can never be used as an open redirect.
+func sanitizeSiteReturnTarget(target string) string {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return ""
+	}
+	path, query, hasQuery := strings.Cut(target, "?")
+	// Reject protocol-relative ("//host/x") and backslash-abusing forms; a
+	// leading "//" would be interpreted as another origin by browsers.
+	if strings.HasPrefix(path, "//") || strings.HasPrefix(path, "\\") || strings.Contains(path, "\\") {
+		return ""
+	}
+	path = strings.TrimLeft(path, "/")
+	if strings.Contains(path, "://") {
+		return ""
+	}
+	for _, seg := range strings.Split(path, "/") {
+		if seg == ".." {
+			return ""
+		}
+	}
+	if hasQuery && strings.Contains(query, "://") {
+		return ""
+	}
+	if path == "" {
+		if hasQuery {
+			return "?" + query
+		}
+		return ""
+	}
+	if hasQuery {
+		return path + "?" + query
+	}
+	return path
+}
+
 // staticHandler serves files from the site's storage directory.
 // Handles path safety, MIME detection, index.html fallback, SPA fallback, and password protection.
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
@@ -185,7 +304,15 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 			ss, err := db.GetSiteSession(s.database, token)
 			return err != nil || ss == nil || ss.ID != site.ID
 		}() {
-			w.Header().Set("Location", "../../p/"+slug)
+			// Redirect with an absolute path. A relative Location such as
+			// "../../p/{slug}" resolves against the requested file, so deep
+			// links (/s/{slug}/docs/page.html) and reverse-proxy mounts end
+			// up on a 404 instead of the password form.
+			location := passwordGatePath(sitePathPrefix(r), slug)
+			if next := siteReturnTarget(pathParts, r.URL.RawQuery); next != "" {
+				location += "?next=" + neturl.QueryEscape(next)
+			}
+			w.Header().Set("Location", location)
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
@@ -361,6 +488,58 @@ func (s dirSort) toggleOrder(field dirSortField) dirSortOrder {
 	return orderAsc
 }
 
+// dirListingCSS styles the auto-generated directory index. It follows the same
+// token set as the dashboard so a deployed folder listing looks like part of the
+// product, honours the light/dark system preference, and stays readable on
+// narrow screens.
+const dirListingCSS = `<style>
+:root{color-scheme:light dark;--ink:#f4f7f5;--surface:#fbfdfc;--surface-2:#eef3f0;--line:#cdd8d2;--text:#17211c;--dim:#5b6a62;--accent:#087f5b;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;--sans:"Avenir Next",Avenir,"Segoe UI",system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--ink:#0d1511;--surface:#131d18;--surface-2:#1b2922;--line:#2f463a;--text:#edf5f0;--dim:#9aaca2;--accent:#4ed6a0}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:100dvh;padding:clamp(16px,4vw,44px) clamp(12px,4vw,32px);-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.title-row{display:flex;align-items:center;gap:12px;min-width:0}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 36px;border-radius:9px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--accent)}
+.badge svg{width:17px;height:17px}
+.title-text{min-width:0}
+.eyebrow{font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+h1{font-family:var(--mono);font-size:clamp(.86rem,2.4vw,1rem);font-weight:600;line-height:1.4;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+h1 a{color:var(--accent)}
+h1 .sep{color:var(--dim);opacity:.55;padding:0 2px}
+a{color:var(--text);text-decoration:none}
+.meta{font-family:var(--mono);font-size:.7rem;color:var(--dim)}
+.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse;table-layout:auto}
+thead{background:var(--surface-2)}
+th,td{text-align:left;padding:9px 14px;font-size:.84rem;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-size:.66rem;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);font-weight:600;white-space:nowrap}
+th a{color:inherit}
+th a:hover{color:var(--accent)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+td.name{min-width:0}
+td.name a{display:inline-flex;align-items:center;gap:9px;font-weight:500;word-break:break-word}
+.ico{display:inline-flex;color:var(--dim);flex:0 0 auto}
+.ico svg{width:14px;height:14px}
+td.name.dir a{font-weight:650}
+td.name.dir .ico{color:var(--accent)}
+td.size{text-align:right;font-family:var(--mono);font-size:.78rem;color:var(--dim);white-space:nowrap}
+td.time{font-family:var(--mono);font-size:.76rem;color:var(--dim);white-space:nowrap}
+.parent-row td.name a{color:var(--dim);font-weight:500}
+td.empty{padding:40px 14px;text-align:center;color:var(--dim);font-size:.85rem}
+.foot{margin-top:16px;font-family:var(--mono);font-size:.68rem;color:var(--dim);text-align:center}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media(max-width:640px){
+ th,td{padding:9px 10px}
+ th:first-child,td:first-child{padding-left:12px}
+ td.time{display:none}
+ th:nth-child(3),th:nth-child(4){display:none}
+ .head{align-items:flex-start}
+ .meta{display:none}
+}
+</style>`
+
 // dirEntryInfo is one row of the directory listing.
 type dirEntryInfo struct {
 	name        string
@@ -417,24 +596,27 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 	// Build breadcrumb using relative paths.
 	// Current page is at /s/{slug}/[sub/]  —  relative base is "./"
 	// For parent levels we prepend "../" for each level up.
-	parts := strings.Split(strings.TrimSuffix(subPath, "/"), "/")
-	var crumbs []string
-	crumbs = append(crumbs, `<a href="./">/</a>`)
-	acc := ""
+	parts := strings.Split(strings.Trim(strings.TrimSuffix(subPath, "/"), "/"), "/")
+	// Root crumb links back to the site root. Inside a sub-directory the page
+	// lives at /s/{slug}/a/b/, so the root is two levels up, not "./".
+	rootHref := "./"
+	if depth := len(parts); depth > 0 && parts[0] != "" {
+		rootHref = strings.Repeat("../", depth)
+	}
+	crumbs := []string{`<a class="root" href="` + rootHref + `">/</a>`}
 	for i, p := range parts {
 		if p == "" {
 			continue
 		}
-		acc += p + "/"
-		// Build relative path: go up from current level to root, then down to acc
+		// Relative link back to this breadcrumb: climb from the current
+		// directory to the site root, then descend through the accumulated
+		// path segments only (not the full raw subPath, which would repeat
+		// prefixes for deeper levels).
 		levelsUp := len(parts) - 1 - i
-		rel := strings.Repeat("../", levelsUp) + acc
-		sep := ""
-		if i > 0 || subPath != "" {
-			sep = "/"
-		}
-		crumbs = append(crumbs, `<a href="`+html.EscapeString(rel)+`">`+html.EscapeString(p)+`</a>`+sep)
+		rel := strings.Repeat("../", levelsUp) + p + "/"
+		crumbs = append(crumbs, `<a href="`+html.EscapeString(rel)+`">`+html.EscapeString(p)+`</a>`)
 	}
+	// Trim a trailing slash from "/": the joined trail reads "/ assets" otherwise.
 
 	// Column headers: clickable sortBy links with direction indicator.
 	// Sort params are relative to the current directory ("?sort=..." resolves
@@ -514,20 +696,21 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 	}
 
 	var b strings.Builder
-	b.WriteString(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">`)
-	b.WriteString(`<style>body{font-family:system-ui,sans-serif;background:`)
-	b.WriteString(`var(--ink,#0c1117);color:var(--text,#e6edf3);margin:0;padding:2rem}
-a{color:#39d353;text-decoration:none}a:hover{text-decoration:underline}
-h1{font-size:1.1rem;font-weight:600;margin-bottom:1rem}
-table{border-collapse:collapse;width:100%;max-width:900px}
-th,td{text-align:left;padding:6px 12px;border-bottom:1px solid #30363d;font-size:.85rem}
-th{color:#7d8590;font-size:.75rem;text-transform:uppercase;font-weight:600}
-th a{color:#7d8590}th a:hover{color:#e6edf3;text-decoration:none}
-.dir{font-weight:600}.size{color:#7d8590;text-align:right;font-family:monospace}
-.time{color:#7d8590;font-family:monospace;white-space:nowrap}</style>`)
-	b.WriteString(`</head><body><h1>`)
-	b.WriteString(strings.Join(crumbs, " / "))
-	b.WriteString(`</h1><table><thead><tr>`)
+	b.WriteString(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">`)
+	b.WriteString(`<meta name="color-scheme" content="light dark">`)
+	b.WriteString(logoFavicon)
+	b.WriteString(`<title>Index of /` + html.EscapeString(strings.Trim(strings.TrimSuffix(subPath, "/"), "/")) + `</title>`)
+	b.WriteString(dirListingCSS)
+	b.WriteString(`</head><body><div class="wrap"><header class="head"><div class="title-row"><span class="badge">` + iconFolder + `</span><div class="title-text"><div class="eyebrow">Index of</div><h1>`)
+	// Trail reads "/" at the site root and "/ assets / sub" below it, so the
+	// separator only appears between nested parts.
+	b.WriteString(crumbs[0])
+	if len(crumbs) > 1 {
+		b.WriteString(`<span class="sep"> </span>`)
+		b.WriteString(strings.Join(crumbs[1:], `<span class="sep">/</span>`))
+	}
+	b.WriteString(`</h1></div></div><div class="meta">` + strconv.Itoa(len(rows)) + ` item(s)</div></header>`)
+	b.WriteString(`<div class="table-wrap"><table><thead><tr>`)
 	b.WriteString(th("Name", sortName))
 	b.WriteString(th("Size", sortSize))
 	b.WriteString(th("Created", sortCreated))
@@ -536,13 +719,20 @@ th a{color:#7d8590}th a:hover{color:#e6edf3;text-decoration:none}
 
 	// ".." link for subdirectories
 	if subPath != "" {
-		b.WriteString(`<tr><td class="dir"><a href="../">../</a></td><td class="size">-</td><td class="time">-</td><td class="time">-</td></tr>`)
+		b.WriteString(`<tr class="parent-row"><td class="name"><a href="../"><span class="ico">` + iconFolder + `</span>../</a></td><td class="size">-</td><td class="time">-</td><td class="time">-</td></tr>`)
 	}
 
 	for _, row := range rows {
-		b.WriteString(`<tr><td` + cls(&row) + `><a href="` + html.EscapeString(row.href) + `">` + html.EscapeString(row.name) + `</a></td><td class="size">` + row.size + `</td><td class="time">` + row.createdStr + `</td><td class="time">` + row.modifiedStr + `</td></tr>`)
+		icon := iconFile
+		if row.isDir {
+			icon = iconFolder
+		}
+		b.WriteString(`<tr><td class="name` + cls(&row) + `"><a href="` + html.EscapeString(row.href) + `"><span class="ico">` + icon + `</span>` + html.EscapeString(row.name) + `</a></td><td class="size">` + row.size + `</td><td class="time">` + row.createdStr + `</td><td class="time">` + row.modifiedStr + `</td></tr>`)
 	}
-	b.WriteString(`</tbody></table></body></html>`)
+	if len(rows) == 0 {
+		b.WriteString(`<tr><td colspan="4" class="empty">This folder is empty.</td></tr>`)
+	}
+	b.WriteString(`</tbody></table></div><footer class="foot">Served by Vibecast</footer></div></body></html>`)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
@@ -550,10 +740,10 @@ th a{color:#7d8590}th a:hover{color:#e6edf3;text-decoration:none}
 	w.Write([]byte(b.String()))
 }
 
-// cls returns the row class for a directory entry.
+// cls returns the extra cell class for a directory entry.
 func cls(row *dirEntryInfo) string {
 	if row.isDir {
-		return ` class="dir"`
+		return " dir"
 	}
 	return ""
 }

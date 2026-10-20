@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -12,8 +11,11 @@ import (
 )
 
 // passwordPageHandler shows the password gate page and processes password submissions.
-// GET /p/{slug}  → show password form
-// POST /p/{slug} → validate password, return token (JSON) or redirect with ?token=
+// GET  /p/{slug}  → show password form
+// POST /p/{slug}  → validate password, return token (JSON) or redirect with cookie
+//
+// A ?next= parameter carries the sub-path the visitor originally requested, so
+// deep links into a protected site resume at the right page after unlocking.
 func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Domain isolation: if site_access_domains is configured, only allow
 	// password gate to be accessed from those domains.
@@ -38,10 +40,15 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	prefix := sitePathPrefix(r)
+	next := sanitizeSiteReturnTarget(r.URL.Query().Get("next"))
+	contentPath := siteContentURL(prefix, slug, next)
+
 	if site.Password == "" {
-		// Not protected — redirect to site (relative path, browser resolves with proxy prefix)
-		w.Header().Set("Location", "../s/"+slug+"/")
-		w.WriteHeader(http.StatusSeeOther)
+		// Not protected — straight to the site (absolute path keeps any
+		// reverse-proxy prefix intact).
+		redirectSeeOther(w, contentPath)
 		return
 	}
 
@@ -49,103 +56,143 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	// password when they are already logged in.
 	if currentUser := auth.CurrentUser(r, s.database); currentUser != nil &&
 		(currentUser.ID == site.UserID || s.sameOrgAsSiteOwner(site, currentUser.ID)) {
-		w.Header().Set("Location", "../s/"+slug+"/")
-		w.WriteHeader(http.StatusSeeOther)
+		redirectSeeOther(w, contentPath)
 		return
 	}
 
-	if r.Method == http.MethodGet {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, passwordPageHTML(slug, site.Name))
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		// Rate limit password attempts to prevent brute force
-		if !authRateLimiter.allow(clientIP(r)) {
-			contentType := r.Header.Get("Content-Type")
-			if strings.Contains(contentType, "application/json") {
-				writeJSON(w, 429, jsonResp{Error: "Too many attempts. Please try again later."})
-			} else {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.WriteHeader(http.StatusTooManyRequests)
-				fmt.Fprint(w, passwordPageHTMLWithErr(slug, site.Name, "Too many attempts. Please try again later."))
-			}
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		// A valid site cookie should not show the form again — send the
+		// visitor straight through, e.g. after a bookmark or a back button.
+		if s.hasValidSiteSession(r, site) {
+			redirectSeeOther(w, contentPath)
 			return
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write([]byte(passwordPageHTML(slug, site.Name, next, "")))
+	case http.MethodPost:
+		s.handlePasswordSubmit(w, r, site, slug, next)
 
+	default:
+		w.Header().Set("Allow", "GET, HEAD, POST")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handlePasswordSubmit validates a submitted password and issues a site session.
+func (s *Server) handlePasswordSubmit(w http.ResponseWriter, r *http.Request, site *db.Site, slug, next string) {
+	isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
+
+	rateLimited := func() {
+		errMsg := "Too many attempts. Please try again later."
+		if isJSON {
+			writeJSON(w, http.StatusTooManyRequests, jsonResp{Error: errMsg})
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(passwordPageHTML(slug, site.Name, next, errMsg)))
+	}
+	if !authRateLimiter.allow(clientIP(r)) {
+		rateLimited()
+		return
+	}
+
+	var password string
+	if isJSON {
 		var body struct {
 			Password string `json:"password"`
 		}
-		contentType := r.Header.Get("Content-Type")
-		if strings.Contains(contentType, "application/json") {
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeJSON(w, 400, jsonResp{Error: tMsg(r, "invalid_json")})
-				return
-			}
-		} else {
-			// Form submission
-			r.ParseForm()
-			body.Password = r.FormValue("password")
-		}
-
-		if !auth.CheckPassword(site.Password, body.Password) {
-			// Password page always uses English — it's a public-facing page
-			errMsg := "Incorrect password"
-			if strings.Contains(contentType, "application/json") {
-				writeJSON(w, 401, jsonResp{Error: errMsg})
-			} else {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprint(w, passwordPageHTMLWithErr(slug, site.Name, errMsg))
-			}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, jsonResp{Error: tMsg(r, "invalid_json")})
 			return
 		}
-
-		// Create site session
-		token := auth.GenerateToken()
-		expires := time.Now().Add(7 * 24 * time.Hour)
-		if err := db.CreateSiteSession(s.database, site.ID, token, expires); err != nil {
-			http.Error(w, "Internal error", http.StatusInternalServerError)
+		password = body.Password
+	} else {
+		// ParseForm covers both application/x-www-form-urlencoded and
+		// multipart bodies. A parse failure used to be ignored, which made
+		// the submission look unresponsive; report it instead.
+		if err := r.ParseForm(); err != nil {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(passwordPageHTML(slug, site.Name, next, "Could not read the submitted form. Please try again.")))
 			return
 		}
+		password = r.FormValue("password")
+	}
 
-		if strings.Contains(contentType, "application/json") {
-			// Return token for API clients
-			writeJSON(w, 200, jsonResp{
-				Message: "authenticated",
-				Data: map[string]interface{}{
-					"token": token,
-					"url":   fmt.Sprintf("s/%s/", slug),
-				},
-			})
-		} else {
-			// Form submission: keep one cookie per site. The previous root-scoped
-			// cookie allowed authenticating to one site to overwrite another.
-			secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-			http.SetCookie(w, &http.Cookie{
-				Name:     "site_token",
-				Value:    "",
-				Path:     "/",
-				MaxAge:   -1,
-				HttpOnly: true,
-				Secure:   secure,
-				SameSite: http.SameSiteLaxMode,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Name:     "site_token",
-				Value:    token,
-				Path:     "/s/" + slug + "/",
-				MaxAge:   7 * 24 * 3600,
-				HttpOnly: true,
-				Secure:   secure,
-				SameSite: http.SameSiteLaxMode,
-			})
-			w.Header().Set("Location", "../s/"+slug+"/")
-			w.WriteHeader(http.StatusSeeOther)
+	if !auth.CheckPassword(site.Password, password) {
+		// The password page is public-facing and always English.
+		errMsg := "Incorrect password"
+		if isJSON {
+			writeJSON(w, http.StatusUnauthorized, jsonResp{Error: errMsg})
+			return
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(passwordPageHTML(slug, site.Name, next, errMsg)))
 		return
 	}
 
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	// Create site session.
+	token := auth.GenerateToken()
+	expires := time.Now().Add(7 * 24 * time.Hour)
+	if err := db.CreateSiteSession(s.database, site.ID, token, expires); err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if isJSON {
+		// Return token for API clients.
+		writeJSON(w, http.StatusOK, jsonResp{
+			Message: "authenticated",
+			Data: map[string]interface{}{
+				"token": token,
+				"url":   "s/" + slug + "/" + next,
+			},
+		})
+		return
+	}
+
+	// Form submission: keep one cookie per site and scope it to the full path
+	// the browser actually uses, including any reverse-proxy prefix. A
+	// root-scoped cookie let one unlocked site overwrite another, while a
+	// cookie scoped without the proxy prefix is never sent back and the gate
+	// appears to ignore a correct password.
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	cookiePath := siteContentPath(sitePathPrefix(r), slug)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "site_token",
+		Value:    token,
+		Path:     cookiePath,
+		MaxAge:   7 * 24 * 3600,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	redirectSeeOther(w, siteContentURL(sitePathPrefix(r), slug, next))
+}
+
+// hasValidSiteSession reports whether the request carries an unexpired site
+// session token for this exact site.
+func (s *Server) hasValidSiteSession(r *http.Request, site *db.Site) bool {
+	token := auth.GetSiteToken(r)
+	if token == "" {
+		return false
+	}
+	session, err := db.GetSiteSession(s.database, token)
+	if err != nil || session == nil {
+		return false
+	}
+	return session.ID == site.ID
+}
+
+// redirectSeeOther sends a 303 See Other to an absolute path.
+func redirectSeeOther(w http.ResponseWriter, location string) {
+	w.Header().Set("Location", location)
+	w.WriteHeader(http.StatusSeeOther)
 }

@@ -181,14 +181,17 @@ func TestSitePasswordCookieIsScopedPerSite(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("password login failed: %d %s", recorder.Code, recorder.Body.String())
 	}
+	// Cookies are scoped per site by name with Path "/", so they survive any
+	// reverse-proxy mount point instead of relying on a path prefix the server
+	// cannot always see.
 	var scoped bool
 	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "site_token" && cookie.Value != "" && cookie.Path == "/s/"+site.Slug+"/" {
+		if cookie.Name == auth.SiteCookieName(site.Slug) && cookie.Value != "" && cookie.Path == "/" {
 			scoped = true
 		}
 	}
 	if !scoped {
-		t.Fatal("site access cookie was not scoped to its site path")
+		t.Fatal("site access cookie was not scoped to its site")
 	}
 }
 
@@ -242,8 +245,11 @@ func TestPasswordGateDeepLinkRedirectsWithSubPath(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("expected redirect to the gate, got %d", recorder.Code)
 	}
+	// The redirect is relative so it keeps working behind a proxy prefix the
+	// server cannot see. From /s/{slug}/docs/page.html the gate is three
+	// levels up.
 	location := recorder.Header().Get("Location")
-	want := "/p/" + site.Slug + "?next=docs%2Fpage.html"
+	want := "../../../p/" + site.Slug + "?next=docs%2Fpage.html"
 	if location != want {
 		t.Fatalf("deep link redirect must keep the requested page: got %q want %q", location, want)
 	}
@@ -270,7 +276,7 @@ func TestPasswordGateUnlockResumesRequestedPage(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("password login failed: %d %s", recorder.Code, recorder.Body.String())
 	}
-	if got, want := recorder.Header().Get("Location"), "/s/"+site.Slug+"/docs/page.html"; got != want {
+	if got, want := recorder.Header().Get("Location"), "../s/"+site.Slug+"/docs/page.html"; got != want {
 		t.Fatalf("unlock did not resume the requested page: got %q want %q", got, want)
 	}
 }
@@ -299,16 +305,18 @@ func TestPasswordGateRejectsForeignReturnTarget(t *testing.T) {
 			t.Fatalf("next=%q: unexpected status %d", next, recorder.Code)
 		}
 		location := recorder.Header().Get("Location")
-		if want := "/s/" + site.Slug + "/"; location != want {
+		if want := "../s/" + site.Slug + "/"; location != want {
 			t.Fatalf("next=%q must be dropped: got %q want %q", next, location, want)
 		}
 	}
 }
 
-// TestPasswordGateScopesCookieToProxyPrefix covers sub-path deployments: the
-// site cookie has to include the mount prefix or the browser never sends it
-// back and the password submission looks like it did nothing.
-func TestPasswordGateScopesCookieToProxyPrefix(t *testing.T) {
+// TestPasswordGateWorksUnderProxyPrefix covers sub-path deployments where the
+// proxy strips the mount point before forwarding. The server never learns the
+// prefix (a fresh navigation carries no Referer and often no
+// X-Forwarded-Prefix), so redirects must stay relative and the site cookie must
+// not depend on a path prefix — otherwise a correct password looks ignored.
+func TestPasswordGateWorksUnderProxyPrefix(t *testing.T) {
 	s := newTestServer(t)
 	_, site := createTestUserAndSite(t, s, true)
 	hash, err := auth.HashPassword("site-password")
@@ -319,26 +327,67 @@ func TestPasswordGateScopesCookieToProxyPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The proxy forwards /v/p/{slug} as /p/{slug}: no prefix headers, no Referer.
 	req := httptest.NewRequest(http.MethodPost, "/p/"+site.Slug, strings.NewReader("password=site-password"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("X-Forwarded-Prefix", "/vibecast")
 	recorder := httptest.NewRecorder()
 	s.passwordPageHandler(recorder, req)
 
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("password login failed: %d %s", recorder.Code, recorder.Body.String())
 	}
-	if got, want := recorder.Header().Get("Location"), "/vibecast/s/"+site.Slug+"/"; got != want {
-		t.Fatalf("redirect ignored the mount prefix: got %q want %q", got, want)
+	// Relative to /p/{slug}, one level up reaches the mount root the browser
+	// used, so the proxy prefix is preserved without the server knowing it.
+	if got, want := recorder.Header().Get("Location"), "../s/"+site.Slug+"/"; got != want {
+		t.Fatalf("redirect must stay relative for proxy mounts: got %q want %q", got, want)
 	}
-	var cookiePath string
-	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "site_token" && cookie.Value != "" {
-			cookiePath = cookie.Path
+
+	var cookie *http.Cookie
+	for _, c := range recorder.Result().Cookies() {
+		if c.Name == auth.SiteCookieName(site.Slug) && c.Value != "" {
+			cookie = c
 		}
 	}
-	if want := "/vibecast/s/" + site.Slug + "/"; cookiePath != want {
-		t.Fatalf("cookie scope ignored the mount prefix: got %q want %q", cookiePath, want)
+	if cookie == nil {
+		t.Fatal("site access cookie was not set")
+	}
+	if cookie.Path != "/" {
+		t.Fatalf("site cookie must not depend on a path prefix: got Path %q", cookie.Path)
+	}
+
+	// The token must be accepted on a later request to the mounted content path.
+	// Simulate what the browser sends: the same cookie, request path as the
+	// proxy forwards it.
+	docDir := filepath.Join(s.config.StorageDir, site.Slug)
+	if err := os.MkdirAll(docDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	getReq := httptest.NewRequest(http.MethodGet, "/s/"+site.Slug+"/", nil)
+	getReq.AddCookie(cookie)
+	getRec := httptest.NewRecorder()
+	s.staticHandler(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("unlocked site should serve content, got %d", getRec.Code)
+	}
+}
+
+// TestPasswordGateRedirectStaysRelativeForAnyMountDepth makes sure the climb
+// depth is derived from the app-level path, so it works at a domain root, under
+// one prefix, and under nested prefixes alike.
+func TestPasswordGateRedirectStaysRelativeForAnyMountDepth(t *testing.T) {
+	cases := []struct {
+		appPath string
+		want    string
+	}{
+		{"/s/abc/", "../../p/abc"},
+		{"/s/abc", "../p/abc"},
+		{"/s/abc/docs/page.html", "../../../p/abc"},
+		{"/s/abc/a/b/c.html", "../../../../p/abc"},
+	}
+	for _, tc := range cases {
+		if got := relativePasswordGateURL(tc.appPath, "abc", ""); got != tc.want {
+			t.Fatalf("%s: got %q want %q", tc.appPath, got, tc.want)
+		}
 	}
 }
 
@@ -369,5 +418,42 @@ func TestPasswordGateReportsFormErrors(t *testing.T) {
 	}
 	if !strings.Contains(body, `name="password"`) {
 		t.Fatal("wrong password did not re-render the form")
+	}
+}
+
+// TestLegacySiteCookieCannotUnlockAnotherSite guards the backward-compatibility
+// path: the old cookie name is not site-scoped, so a token minted for one site
+// must never unlock a different one.
+func TestLegacySiteCookieCannotUnlockAnotherSite(t *testing.T) {
+	s := newTestServer(t)
+	_, site := createTestUserAndSite(t, s, true)
+	hash, err := auth.HashPassword("site-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpdateSite(s.database, site.ID, site.Name, site.Description, hash, "site-password", false, false); err != nil {
+		t.Fatal(err)
+	}
+
+	other, err := db.CreateSite(s.database, site.UserID, "other-site", "Other", "", hash, "site-password", false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A valid session, but for a different site.
+	token := auth.GenerateToken()
+	if err := db.CreateSiteSession(s.database, other.ID, token, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/s/"+site.Slug+"/", nil)
+	req.AddCookie(&http.Cookie{Name: "site_token", Value: token})
+	recorder := httptest.NewRecorder()
+	s.staticHandler(recorder, req)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("a token for another site must not unlock this one, got %d", recorder.Code)
+	}
+	if loc := recorder.Header().Get("Location"); !strings.Contains(loc, "/p/"+site.Slug) {
+		t.Fatalf("expected a redirect to the gate, got %q", loc)
 	}
 }

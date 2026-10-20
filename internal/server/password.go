@@ -41,14 +41,13 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prefix := sitePathPrefix(r)
 	next := sanitizeSiteReturnTarget(r.URL.Query().Get("next"))
-	contentPath := siteContentURL(prefix, slug, next)
+	// Redirects climb back to the mounted root relatively, so they keep working
+	// behind a reverse-proxy prefix the server cannot see.
+	contentURL := relativeSiteContentURL(r.URL.Path, slug, next)
 
 	if site.Password == "" {
-		// Not protected — straight to the site (absolute path keeps any
-		// reverse-proxy prefix intact).
-		redirectSeeOther(w, contentPath)
+		redirectSeeOther(w, contentURL)
 		return
 	}
 
@@ -56,7 +55,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	// password when they are already logged in.
 	if currentUser := auth.CurrentUser(r, s.database); currentUser != nil &&
 		(currentUser.ID == site.UserID || s.sameOrgAsSiteOwner(site, currentUser.ID)) {
-		redirectSeeOther(w, contentPath)
+		redirectSeeOther(w, contentURL)
 		return
 	}
 
@@ -65,7 +64,7 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 		// A valid site cookie should not show the form again — send the
 		// visitor straight through, e.g. after a bookmark or a back button.
 		if s.hasValidSiteSession(r, site) {
-			redirectSeeOther(w, contentPath)
+			redirectSeeOther(w, contentURL)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -158,29 +157,38 @@ func (s *Server) handlePasswordSubmit(w http.ResponseWriter, r *http.Request, si
 		return
 	}
 
-	// Form submission: keep one cookie per site and scope it to the full path
-	// the browser actually uses, including any reverse-proxy prefix. A
-	// root-scoped cookie let one unlocked site overwrite another, while a
-	// cookie scoped without the proxy prefix is never sent back and the gate
-	// appears to ignore a correct password.
+	// One cookie per site, named after the slug. Naming keeps sites from
+	// overwriting each other without relying on Path scoping, which cannot work
+	// behind a proxy prefix: a cookie scoped to "/s/{slug}/" is never sent back
+	// for "/v/s/{slug}/", so a correct password would look like it was ignored.
 	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-	cookiePath := siteContentPath(sitePathPrefix(r), slug)
 	http.SetCookie(w, &http.Cookie{
-		Name:     "site_token",
+		Name:     auth.SiteCookieName(slug),
 		Value:    token,
-		Path:     cookiePath,
+		Path:     "/",
 		MaxAge:   7 * 24 * 3600,
 		HttpOnly: true,
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
-	redirectSeeOther(w, siteContentURL(sitePathPrefix(r), slug, next))
+	// Drop a legacy root-scoped cookie from older versions so it cannot shadow
+	// the per-site cookie.
+	http.SetCookie(w, &http.Cookie{
+		Name:     "site_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	redirectSeeOther(w, relativeSiteContentURL(r.URL.Path, slug, next))
 }
 
 // hasValidSiteSession reports whether the request carries an unexpired site
 // session token for this exact site.
 func (s *Server) hasValidSiteSession(r *http.Request, site *db.Site) bool {
-	token := auth.GetSiteToken(r)
+	token := auth.GetSiteToken(r, site.Slug)
 	if token == "" {
 		return false
 	}

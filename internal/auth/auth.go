@@ -65,17 +65,36 @@ func GetSessionToken(r *http.Request) string {
 	return ""
 }
 
-// GetSiteToken extracts the site access token from the Authorization header
-// or the site_token cookie (set by the password gate).
+// SiteCookieName returns the cookie name that holds a site's access token.
+//
+// Cookies are scoped per site by NAME rather than by Path on purpose. Path has
+// to be an absolute prefix, which the server cannot know when a reverse proxy
+// strips the mount point (e.g. serving /v/s/{slug}/ as /s/{slug}/): a cookie
+// scoped to "/s/{slug}/" is never sent back for "/v/s/{slug}/", so a correct
+// password would bounce the visitor straight back to the gate. A per-site name
+// with Path="/" works behind any mount, and still keeps one site from
+// overwriting another's token.
+func SiteCookieName(slug string) string {
+	return "site_token_" + slug
+}
+
+// GetSiteToken extracts the site access token from the Authorization header or
+// from the per-site cookie set by the password gate.
 // NOTE: does NOT use vibecast_session cookie — that's a user login token, not a site token.
-func GetSiteToken(r *http.Request) string {
+func GetSiteToken(r *http.Request, slug string) string {
 	// Try Authorization header first (API clients)
 	if token := getTokenFromHeader(r); token != "" {
 		return token
 	}
-	// Try site_token cookie (browser navigation — set by password gate)
-	if cookie, err := r.Cookie("site_token"); err == nil && cookie.Value != "" {
-		return cookie.Value
+	// Per-site cookie (browser navigation — set by password gate)
+	if c, err := r.Cookie(SiteCookieName(slug)); err == nil && c.Value != "" {
+		return c.Value
+	}
+	// Legacy cookie from earlier versions. It is not site-scoped, so callers
+	// must verify the resolved session belongs to the requested site before
+	// granting access (both staticHandler and hasValidSiteSession do).
+	if c, err := r.Cookie("site_token"); err == nil && c.Value != "" {
+		return c.Value
 	}
 	return ""
 }

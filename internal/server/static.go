@@ -138,69 +138,51 @@ func (s *Server) isHostAllowedForSites(r *http.Request) bool {
 	return getRequestHost(r) == siteHost
 }
 
-// sitePathPrefix returns the browser-visible path prefix that precedes the
-// /s/ or /p/ mount point. Serving from a domain root yields ""; a reverse proxy
-// mounted at /vibecast yields "/vibecast". Redirect targets and site cookie
-// paths must include this prefix, otherwise the browser is sent somewhere the
-// proxy will not forward to and its cookie is never sent back.
+// relativeHop returns the ".." prefix that climbs from the given app-level
+// request path back to the mounted root.
 //
-// The prefix is not visible in r.URL.Path once a proxy strips it, so it is
-// recovered from X-Forwarded-Prefix (the conventional signal) and, failing
-// that, from the Referer of the page that submitted the form.
-func sitePathPrefix(r *http.Request) string {
-	if prefix := r.Header.Get("X-Forwarded-Prefix"); prefix != "" {
-		return normalizeMountPrefix(prefix)
-	}
-	if prefix := r.Header.Get("X-Script-Name"); prefix != "" {
-		return normalizeMountPrefix(prefix)
-	}
-	if referer := r.Header.Get("Referer"); referer != "" {
-		if u, err := neturl.Parse(referer); err == nil {
-			refererPath := u.Path
-			for _, marker := range []string{"/s/", "/p/"} {
-				if idx := strings.Index(refererPath, marker); idx > 0 {
-					// Only trust the Referer when the app-level request path is
-					// a suffix of it, i.e. both describe the same route.
-					if strings.HasSuffix(refererPath, r.URL.Path) ||
-						strings.HasSuffix(refererPath, strings.TrimSuffix(r.URL.Path, "/")) {
-						return normalizeMountPrefix(refererPath[:idx])
-					}
-				}
-			}
+// Redirects between /s/ and /p/ must work even when the service is mounted
+// below a proxy prefix such as /v. The prefix is invisible to the server
+// whenever the proxy strips it: a fresh browser navigation carries no Referer,
+// and X-Forwarded-Prefix is only present if the proxy was configured to send
+// it. Emitting a relative Location sidesteps the problem entirely — the depth
+// is computed from the app-level path (which the server always knows) and the
+// browser re-applies whatever prefix it used to reach us.
+//
+// At a domain root the climb lands on "/", so /v/s/{slug}/ and /s/{slug}/
+// both resolve correctly.
+func relativeHop(appPath string) string {
+	// Resolution is relative to the directory of the request URL, so a path
+	// that does not end in "/" contributes one level less.
+	depth := 0
+	for _, seg := range strings.Split(appPath, "/") {
+		if seg != "" {
+			depth++
 		}
 	}
-	return ""
-}
-
-// normalizeMountPrefix cleans a mount prefix into "/a/b" form (or "").
-func normalizeMountPrefix(prefix string) string {
-	prefix = strings.TrimSpace(prefix)
-	if prefix == "" || prefix == "/" {
-		return ""
+	if appPath == "" || !strings.HasSuffix(appPath, "/") {
+		depth--
 	}
-	if !strings.HasPrefix(prefix, "/") {
-		prefix = "/" + prefix
+	if depth < 0 {
+		depth = 0
 	}
-	if strings.Contains(prefix, "://") {
-		return ""
+	return strings.Repeat("../", depth)
+}
+
+// relativeSiteContentURL builds a Location that climbs to the mounted root and
+// then descends to the site content, optionally carrying a return target.
+func relativeSiteContentURL(appPath, slug, next string) string {
+	return relativeHop(appPath) + "s/" + slug + "/" + next
+}
+
+// relativePasswordGateURL builds a Location that climbs to the mounted root and
+// then descends to the password gate, optionally carrying a return target.
+func relativePasswordGateURL(appPath, slug, next string) string {
+	location := relativeHop(appPath) + "p/" + slug
+	if next != "" {
+		location += "?next=" + neturl.QueryEscape(next)
 	}
-	return strings.TrimRight(prefix, "/")
-}
-
-// siteContentPath returns the browser-visible path of a site's content root.
-func siteContentPath(prefix, slug string) string {
-	return prefix + "/s/" + slug + "/"
-}
-
-// passwordGatePath returns the browser-visible path of a site's password gate.
-func passwordGatePath(prefix, slug string) string {
-	return prefix + "/p/" + slug
-}
-
-// siteContentURL returns the content root plus an optional return target
-// (sub-path and query) carried through the gate.
-func siteContentURL(prefix, slug, next string) string {
-	return siteContentPath(prefix, slug) + next
+	return location
 }
 
 // siteReturnTarget extracts the sub-path and query string a visitor asked for
@@ -299,20 +281,17 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 			goto serveSite
 		}
 
-		token := auth.GetSiteToken(r)
+		token := auth.GetSiteToken(r, slug)
 		if token == "" || func() bool {
 			ss, err := db.GetSiteSession(s.database, token)
 			return err != nil || ss == nil || ss.ID != site.ID
 		}() {
-			// Redirect with an absolute path. A relative Location such as
-			// "../../p/{slug}" resolves against the requested file, so deep
-			// links (/s/{slug}/docs/page.html) and reverse-proxy mounts end
-			// up on a 404 instead of the password form.
-			location := passwordGatePath(sitePathPrefix(r), slug)
-			if next := siteReturnTarget(pathParts, r.URL.RawQuery); next != "" {
-				location += "?next=" + neturl.QueryEscape(next)
-			}
-			w.Header().Set("Location", location)
+			// Climb back to the mounted root with a relative Location. The
+			// hop count comes from the app-level path, so this works for deep
+			// links and for any reverse-proxy prefix without the server having
+			// to know what that prefix is.
+			next := siteReturnTarget(pathParts, r.URL.RawQuery)
+			w.Header().Set("Location", relativePasswordGateURL(r.URL.Path, slug, next))
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}

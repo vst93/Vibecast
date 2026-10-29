@@ -595,3 +595,32 @@ func reservePath(dir, pattern string) (string, error) {
 func DeleteSiteDir(baseDir, slug string) error {
 	return os.RemoveAll(filepath.Join(baseDir, slug))
 }
+
+// DeleteEntry removes a single file inside root. Directories are refused so a
+// caller can never wipe a subtree by accident, and the resolved path must stay
+// inside root.
+func DeleteEntry(root, relPath string) error {
+	clean := filepath.Clean("/" + filepath.ToSlash(relPath))
+	if clean == "/" || clean == "." {
+		return errors.New("empty path")
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve storage root: %w", err)
+	}
+	absFull, err := filepath.Abs(filepath.Join(absRoot, clean))
+	if err != nil {
+		return fmt.Errorf("resolve entry path: %w", err)
+	}
+	if !strings.HasPrefix(absFull, absRoot+string(os.PathSeparator)) {
+		return errors.New("path escapes storage root")
+	}
+	info, err := os.Stat(absFull)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return errors.New("refusing to delete a directory")
+	}
+	return os.Remove(absFull)
+}

@@ -75,6 +75,14 @@ gh release list --limit=3
   `grid-template-rows:0fr→1fr` collapse does not leak padding. Files render into `#files-<id>`.
 - Modals: open with `openModal(id)` / close with `closeModal(id)` — they handle focus, Esc and focus return.
 - Visitor-facing errors use `visitorErrorPageHTML` (never plain `http.Error` for site visitors).
+- Single-file delete: `DELETE /api/sites/{id}/files?path=<relative>`; without `path` the whole site
+  directory is cleared. Paths are resolved by `storage.DeleteEntry`, which refuses directories and
+  paths outside the site root.
+- File list styles (`.file-list/.file-row/.file-del`) live in `uiComponentsCSS` because both the
+  dashboard detail and the admin site detail render them.
+- Nav height is the `--nav-h` token (52px). Anything sticky (sidebar, admin nav) must derive from it.
+- Brand/ GitHub references stay quiet: text footers and the admin system tab only. Repo URL is
+  `projectRepoURL`.
 
 ## Common Pitfalls
 

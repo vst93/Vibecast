@@ -477,43 +477,41 @@ func (s dirSort) toggleOrder(field dirSortField) dirSortOrder {
 // product, honours the light/dark system preference, and stays readable on
 // narrow screens.
 const dirListingCSS = `<style>
-:root{color-scheme:light dark;--ink:#f4f7f5;--surface:#fbfdfc;--surface-2:#eef3f0;--line:#cdd8d2;--text:#17211c;--dim:#5b6a62;--accent:#087f5b;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;--sans:"Avenir Next",Avenir,"Segoe UI",system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--ink:#0d1511;--surface:#131d18;--surface-2:#1b2922;--line:#2f463a;--text:#edf5f0;--dim:#9aaca2;--accent:#4ed6a0}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--sans);background:var(--ink);color:var(--text);min-height:100dvh;padding:clamp(16px,4vw,44px) clamp(12px,4vw,32px);-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;padding:clamp(16px,4vw,40px) clamp(12px,4vw,32px)}
 .wrap{max-width:960px;margin:0 auto}
-.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .title-row{display:flex;align-items:center;gap:12px;min-width:0}
-.badge{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 36px;border-radius:9px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--accent)}
-.badge svg{width:17px;height:17px}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 34px;border-radius:var(--r-md);background:var(--accent-soft);color:var(--accent-ink)}
+.badge svg{width:16px;height:16px}
 .title-text{min-width:0}
-.eyebrow{font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
-h1{font-family:var(--mono);font-size:clamp(.86rem,2.4vw,1rem);font-weight:600;line-height:1.4;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.eyebrow{font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+h1{font-family:var(--ff-mono);font-size:clamp(.875rem,2.4vw,1rem);font-weight:600;line-height:1.4;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
 h1 a{color:var(--accent)}
-h1 .sep{color:var(--dim);opacity:.55;padding:0 2px}
-a{color:var(--text);text-decoration:none}
-.meta{font-family:var(--mono);font-size:.7rem;color:var(--dim)}
-.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+h1 .sep{color:var(--dim-2);padding:0 2px}
+.meta{font-family:var(--ff-mono);font-size:var(--fs-xs);color:var(--dim);font-variant-numeric:tabular-nums}
+.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm)}
 table{width:100%;border-collapse:collapse;table-layout:auto}
 thead{background:var(--surface-2)}
-th,td{text-align:left;padding:9px 14px;font-size:.84rem;border-bottom:1px solid var(--line)}
-th{font-family:var(--mono);font-size:.66rem;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);font-weight:600;white-space:nowrap}
+th,td{text-align:left;padding:9px 12px;font-size:var(--fs-sm);border-bottom:1px solid var(--line)}
+th{font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:600;white-space:nowrap}
 th a{color:inherit}
-th a:hover{color:var(--accent)}
+.sort-dir{display:inline-block;margin-left:5px;color:var(--accent);font-size:.6875rem;transform:translateY(-1px)}
+@media(hover:hover) and (pointer:fine){th a:hover{color:var(--accent)}}
 tbody tr:last-child td{border-bottom:0}
-tbody tr:hover{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+@media(hover:hover) and (pointer:fine){tbody tr:hover{background:color-mix(in srgb,var(--surface-2) 55%,var(--surface))}}
 td.name{min-width:0}
-td.name a{display:inline-flex;align-items:center;gap:9px;font-weight:500;word-break:break-word}
+td.name a{display:inline-flex;align-items:center;gap:8px;font-weight:500;word-break:break-word}
 .ico{display:inline-flex;color:var(--dim);flex:0 0 auto}
 .ico svg{width:14px;height:14px}
-td.name.dir a{font-weight:650}
+td.name.dir a{font-weight:600}
 td.name.dir .ico{color:var(--accent)}
-td.size{text-align:right;font-family:var(--mono);font-size:.78rem;color:var(--dim);white-space:nowrap}
-td.time{font-family:var(--mono);font-size:.76rem;color:var(--dim);white-space:nowrap}
+td.size{text-align:right;font-family:var(--ff-mono);font-size:.75rem;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+td.time{font-family:var(--ff-mono);font-size:.75rem;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
 .parent-row td.name a{color:var(--dim);font-weight:500}
-td.empty{padding:40px 14px;text-align:center;color:var(--dim);font-size:.85rem}
-.foot{margin-top:16px;font-family:var(--mono);font-size:.68rem;color:var(--dim);text-align:center}
-a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+td.empty{padding:38px 14px;text-align:center;color:var(--dim);font-size:var(--fs-sm)}
+.dir-foot{margin-top:14px;font-family:var(--ff-mono);font-size:.6875rem;color:var(--dim);text-align:center}
+.dir-foot a{color:inherit;text-decoration:none;border-bottom:1px solid transparent;transition:color var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+@media(hover:hover) and (pointer:fine){.dir-foot a:hover{color:var(--accent);border-bottom-color:color-mix(in srgb,var(--accent) 40%,transparent)}}
 @media(max-width:640px){
  th,td{padding:9px 10px}
  th:first-child,td:first-child{padding-left:12px}
@@ -609,9 +607,9 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 	for _, f := range []dirSortField{sortName, sortSize, sortCreated, sortModified} {
 		if sortBy.field == f {
 			if sortBy.order == orderAsc {
-				indicator[f] = " ↑"
+				indicator[f] = `<span class="sort-dir">↑</span>`
 			} else {
-				indicator[f] = " ↓"
+				indicator[f] = `<span class="sort-dir">↓</span>`
 			}
 		}
 	}
@@ -684,6 +682,7 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 	b.WriteString(`<meta name="color-scheme" content="light dark">`)
 	b.WriteString(logoFavicon)
 	b.WriteString(`<title>Index of /` + html.EscapeString(strings.Trim(strings.TrimSuffix(subPath, "/"), "/")) + `</title>`)
+	b.WriteString(`<style>` + uiTokensCSS + `</style>`)
 	b.WriteString(dirListingCSS)
 	b.WriteString(`</head><body><div class="wrap"><header class="head"><div class="title-row"><span class="badge">` + iconFolder + `</span><div class="title-text"><div class="eyebrow">Index of</div><h1>`)
 	// Trail reads "/" at the site root and "/ assets / sub" below it, so the
@@ -716,7 +715,7 @@ func (s *Server) serveDirListing(w http.ResponseWriter, r *http.Request, dirPath
 	if len(rows) == 0 {
 		b.WriteString(`<tr><td colspan="4" class="empty">This folder is empty.</td></tr>`)
 	}
-	b.WriteString(`</tbody></table></div><footer class="foot">Served by Vibecast</footer></div></body></html>`)
+	b.WriteString(`</tbody></table></div><footer class="dir-foot">Served by <a href="` + projectRepoURL + `" target="_blank" rel="noopener">Vibecast</a></footer></div></body></html>`)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, must-revalidate")

@@ -18,6 +18,11 @@ const logoIconLarge = `<svg viewBox="0 0 128 128" width="48" height="48" style="
 // logoIconMedium is the inline SVG logo for auth card display.
 const logoIconMedium = `<svg viewBox="0 0 128 128" width="32" height="32" style="vertical-align:middle;margin-right:8px;flex-shrink:0"><rect x="8" y="8" width="112" height="112" rx="24" fill="#00e5a0"/><polyline points="38,43 64,97 90,43" fill="none" stroke="#0a0a0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="31" r="6" fill="#0a0a0c"/></svg>`
 
+// projectRepoURL is the canonical source of the project. It is referenced from
+// quiet "about" spots only (visitor footers, admin system tab), never as a
+// promotional banner.
+const projectRepoURL = "https://github.com/vst93/Vibecast"
+
 // Icon constants - flat stroke style, 24x24 viewBox, stroke-width=2.
 // Using display:inline-flex for proper vertical alignment inside flex containers
 const iconMoon = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-flex;align-self:center;flex-shrink:0"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`
@@ -47,6 +52,8 @@ const iconUsers = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const iconGlobe = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z"/></svg>`
 const iconShield = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>`
 const iconSearch = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`
+const iconX = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`
+const iconGithub = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48l-.01-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.85-2.35 4.69-4.58 4.94.36.31.68.92.68 1.85l-.01 2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>`
 const iconInbox = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5.5 5h13l2.5 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z"/></svg>`
 
 // iconLockLarge is the oversized lock used as the password gate badge.
@@ -96,7 +103,7 @@ var landingPageHTML = `<!DOCTYPE html>
 <div class="app-fold">
 <div class="app-row is-open"><span class="dot pub"></span><b>Northstar Docs</b><span class="chip pub" data-i="mPublic">Public</span><span class="app-url">/s/ijzz8ddzj6xh/</span><span class="app-visits" data-i="mVisitsC">326 visits</span><span class="app-cta" data-i="mUpload">Upload</span></div>
 <div class="app-files">
-<div class="app-files-head"><span data-i="mFiles">Files</span><span class="app-mono" data-i="mFilesMeta">4 files · 212 KB</span><span class="app-btn" data-i="mZip">Download ZIP</span></div>
+<div class="app-files-head"><span data-i="mFiles">Files</span><span class="app-mono" data-i="mFilesMeta">4 files · 212 KB</span></div>
 <div class="app-file app-mono"><span>index.html</span><span>63 B</span></div>
 <div class="app-file app-mono"><span>assets/app.css</span><span>12 KB</span></div>
 <div class="app-file app-mono"><span>assets/guide.pdf</span><span>200 KB</span></div>
@@ -161,8 +168,8 @@ Object.assign(i18n.en,{close:"Close",downloadZip:"Download ZIP",clearFiles:"Clea
 Object.assign(i18n.zh,{close:"关闭",downloadZip:"下载 ZIP",clearFiles:"清空文件",clearFilesConfirm:"确定清空该站点的全部 {count} 个文件（{size}）吗？此操作不可撤销。",filesCleared:"站点文件已清空",noFilesToClear:"没有可清空的文件",preparingDownload:"正在打包 ZIP...",downloadingFile:"正在下载 {size}",downloadReady:"ZIP 下载已就绪",downloadFailed:"下载失败",uploadPreparing:"正在准备上传...",uploadProcessing:"正在处理文件并检查站点总大小...",uploadComplete:"上传完成",fileSummary:"{count} 个文件 · {size}",deployHintDetailed:"单个文件和 ZIP 压缩包均不得超过 {size} MB。上传只覆盖路径相同的文件，其他文件保持不变；ZIP 解压后按路径合并。合并后的站点文件总大小也不得超过 {size} MB。"});
 Object.assign(i18n.en,{menu:"Menu",expandCreate:"Expand",collapseCreate:"Collapse"});
 Object.assign(i18n.zh,{menu:"菜单",expandCreate:"展开",collapseCreate:"收起"});
-Object.assign(i18n.en,{toggleTheme:"Toggle theme",copyPassword:"Copy password",openSite:"Open site in a new tab",siteActions:"Site actions",visitsCount:"{count} visits",visitsOne:"1 visit",noMatch:"No sites match your search",noMatchHint:"Try a shorter name, or clear the search field.",noSitesTitle:"No sites yet",noSitesHint:"Create your first site in the panel, then upload a ZIP or a single file.",clearSearch:"Clear search",orgPinnedJoinHint:"Create or join an organization to share sites and see pinned ones.",orgCta:"Create or join",orgPinnedEmptyTitle:"Nothing pinned yet",showPassword:"Show password",hidePassword:"Hide password",updateReady:"Update ready",statSitesNote:"of {max} allowed",statUsersNote:"registered accounts",statAdminsNote:"with admin access"});
-Object.assign(i18n.zh,{toggleTheme:"切换主题",copyPassword:"复制密码",openSite:"在新标签页打开站点",siteActions:"站点操作",visitsCount:"{count} 次访问",visitsOne:"1 次访问",noMatch:"没有匹配的站点",noMatchHint:"换一个更短的关键词，或清空搜索框。",noSitesTitle:"还没有站点",noSitesHint:"先在左侧面板创建站点，然后上传 ZIP 包或单个文件。",clearSearch:"清空搜索",orgPinnedJoinHint:"创建或加入组织后，即可共享站点并查看钉选内容。",orgCta:"创建或加入",orgPinnedEmptyTitle:"还没有钉选站点",showPassword:"显示密码",hidePassword:"隐藏密码",updateReady:"更新已就绪",statSitesNote:"上限 {max} 个",statUsersNote:"已注册账号",statAdminsNote:"拥有管理权限"});
+Object.assign(i18n.en,{toggleTheme:"Toggle theme",copyPassword:"Copy password",openSite:"Open site in a new tab",siteActions:"Site actions",visitsCount:"{count} visits",visitsOne:"1 visit",noMatch:"No sites match your search",noMatchHint:"Try a shorter name, or clear the search field.",noSitesTitle:"No sites yet",noSitesHint:"Create your first site in the panel, then upload a ZIP or a single file.",clearSearch:"Clear search",deleteFileConfirm:"Delete {name}? Only this file is removed from the site.",fileDeleted:"File deleted",orgPinnedJoinHint:"Create or join an organization to share sites and see pinned ones.",orgCta:"Create or join",orgPinnedEmptyTitle:"Nothing pinned yet",showPassword:"Show password",hidePassword:"Hide password",updateReady:"Update ready",statSitesNote:"of {max} allowed",statUsersNote:"registered accounts",statAdminsNote:"with admin access"});
+Object.assign(i18n.zh,{toggleTheme:"切换主题",copyPassword:"复制密码",openSite:"在新标签页打开站点",siteActions:"站点操作",visitsCount:"{count} 次访问",visitsOne:"1 次访问",noMatch:"没有匹配的站点",noMatchHint:"换一个更短的关键词，或清空搜索框。",noSitesTitle:"还没有站点",noSitesHint:"先在左侧面板创建站点，然后上传 ZIP 包或单个文件。",clearSearch:"清空搜索",deleteFileConfirm:"确定删除 {name} 吗？仅移除该文件，站点其他内容不变。",fileDeleted:"文件已删除",orgPinnedJoinHint:"创建或加入组织后，即可共享站点并查看钉选内容。",orgCta:"创建或加入",orgPinnedEmptyTitle:"还没有钉选站点",showPassword:"显示密码",hidePassword:"隐藏密码",updateReady:"更新已就绪",statSitesNote:"上限 {max} 个",statUsersNote:"已注册账号",statAdminsNote:"拥有管理权限"});
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}if(currentUser)renderDashboard();else renderAuth();}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -313,8 +320,9 @@ var tp=Math.ceil(orgPinnedTotal/sitePerPage)||1,pg=paginationHtml(orgPinnedPage,
 var toolbar='<div class="list-toolbar"><input type="text" id="site-search" placeholder="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchOrgPinned()" value="'+esc(orgPinnedSearch)+'"></div>';
 if(!sites.length){el.innerHTML=toolbar+'<div class="empty"><span class="empty-icon">` + iconInbox + `</span><strong>'+t("orgPinnedEmptyTitle")+'</strong><span>'+t("noOrgPinned")+'</span></div>'+pg;return}
 var h=toolbar;
-for(var i=0;i<sites.length;i++){var s=sites[i];var desc=s.description?'<div style="font-size:.75rem;color:var(--dim);margin-top:.2rem">'+esc(s.description)+'</div>':'';
-h+='<div class="org-pinned-item"><div class="pinned-head"><div class="pinned-name"><span class="badge badge-pinned">'+t("orgPinnedBadge")+'</span><div><div>'+esc(s.name)+'</div>'+desc+'</div></div><div class="pinned-actions"><a class="btn btn-sm btn-outline" href="'+esc(s.url)+'" target="_blank">'+t("visit")+'</a></div></div></div>'}
+for(var i=0;i<sites.length;i++){var s=sites[i];
+var desc=s.description?'<span class="pinned-desc">'+esc(s.description)+'</span>':'';
+h+='<div class="org-pinned-item"><span class="badge badge-pinned">'+t("orgPinnedBadge")+'</span><div class="pinned-text"><div class="pinned-title"><span class="pinned-name" title="'+esc(s.name)+'">'+esc(s.name)+'</span>'+desc+'</div></div><span class="pinned-url" title="'+esc(s.url)+'">'+esc(s.url)+'</span><div class="pinned-actions"><a class="btn btn-outline btn-sm" href="'+esc(s.url)+'" target="_blank" rel="noopener">'+t("visit")+'</a></div></div>'}
 h+=pg;el.innerHTML=h}).catch(function(e){var el=document.getElementById("site-tab-content");if(!el)return;
 if(!orgInfo){el.innerHTML='<div class="empty"><span class="empty-icon">` + iconUsers + `</span><strong>'+t("noOrg")+'</strong><span>'+t("orgPinnedJoinHint")+'</span><button type="button" class="btn btn-outline btn-sm" onclick="openOrgModal()">'+t("orgCta")+'</button></div>';return}
 el.innerHTML='<div class="empty"><span class="empty-icon">` + iconInbox + `</span><strong>'+t("orgPinnedEmptyTitle")+'</strong><span>'+esc(e.message)+'</span><button type="button" class="btn btn-outline btn-sm" onclick="loadOrgPinnedSites()">'+t("confirm")+'</button></div>'})
@@ -333,6 +341,9 @@ var filtered=!!siteSearch;
 var title=filtered?t("noMatch"):t("noSitesTitle");
 var hint=filtered?t("noMatchHint"):t("noSitesHint");
 return '<div class="empty"><span class="empty-icon">` + iconInbox + `</span><strong>'+esc(title)+'</strong><span>'+esc(hint)+'</span>'+(filtered?'<button class="btn btn-outline btn-sm" onclick="clearSiteSearch()">'+t("clearSearch")+'</button>':'')+'</div>'
+}
+function sitePath(u){
+try{var p=new URL(u,location.origin);return p.pathname+(p.search||"")}catch(e){return u||""}
 }
 function siteRowHtml(s){
 var dot="",badge="";
@@ -374,7 +385,7 @@ return '<li class="site-item" id="site-'+s.id+'">'
   +'<div class="site-head" role="button" tabindex="0" aria-expanded="false" aria-controls="detail-'+s.id+'" onclick="toggleDetail('+s.id+')" onkeydown="siteHeadKey(event,'+s.id+')">'
   +'<span class="site-chevron" aria-hidden="true">` + iconChevronRight + `</span>'
   +'<div class="site-main"><div class="site-title"><span class="status-dot '+dot+'" aria-hidden="true"></span><span class="site-name" title="'+esc(s.name)+'">'+esc(s.name)+'</span>'+badge+'</div>'
-  +'<div class="site-sub"><a class="site-url" href="'+esc(s.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="'+t("openSite")+'"><span class="url-text">'+esc(s.url)+'</span>` + iconExternal + `</a>'
+  +'<div class="site-sub"><a class="site-url" href="'+esc(s.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="'+esc(s.url)+'"><span class="url-text"><span class="url-full">'+esc(s.url)+'</span><span class="url-path">'+esc(sitePath(s.url))+'</span></span>` + iconExternal + `</a>'
   +'<span class="sep" aria-hidden="true">·</span><span class="site-visits" title="'+esc(visTitle)+'">'+esc(visText)+'</span></div></div>'
   +'<div class="site-actions"><label class="btn btn-primary btn-sm upload-btn" id="upload-btn-'+s.id+'" onclick="event.stopPropagation()">'+t("deployBtn")+'<input type="file" accept=".zip,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf,.txt,.csv,.json,.xml,.html,.htm,.css,.js,.mjs,.svg,.png,.jpg,.jpeg,.gif,.webp,.avif,.ico,.mp4,.webm,.mp3,.ogg,.wav,.flac,.wasm,.woff,.woff2,.ttf,.otf,.eot,.webmanifest" onchange="deploy('+s.id+',this.files[0])"></label>'+menu+'</div>'
   +'</div>'+detail+'</li>'
@@ -411,8 +422,9 @@ var item=document.getElementById("site-"+id);
 if(item){item.classList.toggle("is-open",open);var head=item.querySelector(".site-head");if(head)head.setAttribute("aria-expanded",open?"true":"false")}
 if(open){loadFileTree(id);loadSitePwd(id)}
 }
-function loadFileTree(id){
-api("/sites/"+id+"/files").then(function(d){
+function loadFileTree(id,preload){
+var req=preload?Promise.resolve({data:preload}):api("/sites/"+id+"/files");
+req.then(function(d){
 var data=d.data||{},files=Array.isArray(data)?data:(data.items||[]);
 var fileCount=typeof data.fileCount==="number"?data.fileCount:files.filter(function(f){return!f.dir}).length;
 var totalSize=typeof data.totalSize==="number"?data.totalSize:files.reduce(function(n,f){return n+(f.dir?0:(f.size||0))},0);
@@ -426,12 +438,23 @@ h+='</div>';
 if(!files.length){h+='<div class="file-empty">` + iconFile + `'+t("noFiles")+'</div>'}
 else{h+='<div class="file-list">';
 for(var i=0;i<files.length;i++){var f=files[i],icon=f.dir?'` + iconFolder + `':'` + iconFile + `',sz=f.dir?"—":formatSize(f.size);
-h+='<div class="file-row'+(f.dir?" file-dir":"")+'"><span class="file-icon">'+icon+'</span><span class="file-name">'+esc(f.name)+(f.dir?"/":"")+'</span><span class="file-size">'+sz+'</span></div>'}
+var del=f.dir?'<span></span>':'<button type="button" class="file-del" title="'+t("delete")+'" aria-label="'+t("delete")+' '+esc(f.name)+'" onclick="event.stopPropagation();deleteSiteFile('+id+',\''+esc(f.name)+'\')">` + iconX + `</button>';
+h+='<div class="file-row'+(f.dir?" file-dir":"")+'"><span class="file-icon">'+icon+'</span><span class="file-name" title="'+esc(f.name)+'">'+esc(f.name)+(f.dir?"/":"")+'</span><span class="file-size">'+sz+'</span>'+del+'</div>'}
 h+='</div>'}
 h+='</div>';
 host.innerHTML=h}).catch(function(e){var host=document.getElementById("files-"+id);if(host)host.innerHTML='<div class="file-empty">'+esc(e.message)+'</div>'})
 }
 function formatSize(n){if(n<1024)return n+" B";if(n<1048576)return(n/1024).toFixed(1)+" KB";if(n<1073741824)return(n/1048576).toFixed(1)+" MB";return(n/1073741824).toFixed(1)+" GB"}
+function deleteSiteFile(id,path){
+var msg=t("deleteFileConfirm").replace("{name}",path);
+customConfirm(msg,function(){
+api("/sites/"+id+"/files?path="+encodeURIComponent(path),{method:"DELETE"}).then(function(d){
+toast(t("fileDeleted"));
+var data=(d&&d.data)||{};
+loadFileTree(id,data);
+}).catch(function(e){toast(e.message,"error")})
+},{confirmLabel:t("delete")})
+}
 function clearSiteFiles(id){
 api("/sites/"+id+"/files").then(function(d){var data=d.data||{},count=data.fileCount||0,total=data.totalSize||0;if(!count){toast(t("noFilesToClear"),"error");return}var msg=t("clearFilesConfirm").replace("{count}",count).replace("{size}",formatSize(total));customConfirm(msg,function(){api("/sites/"+id+"/files",{method:"DELETE"}).then(function(){toast(t("filesCleared"));loadFileTree(id)}).catch(function(e){toast(e.message,"error")})})}).catch(function(e){toast(e.message,"error")})
 }
@@ -530,9 +553,9 @@ var isOwner=orgInfo.isOwner||false;
 var initials=name.substring(0,2).toUpperCase();
 var roleBadge=isOwner?'<span class="org-role-badge owner">'+t("orgOwner")+'</span>':'<span class="org-role-badge member">'+t("orgMember")+'</span>';
 var h='<div class="org-bound"><div class="org-summary"><div class="org-header"><div class="org-avatar">'+esc(initials)+'</div><div><div class="org-title">'+esc(name)+'</div>'+roleBadge+'</div></div>';
-if(isOwner){h+='<div class="org-invite-section org-invite-collapsed"><button type="button" class="org-invite-toggle" aria-expanded="false" onclick="toggleOrgInvite(this)"><span>'+t("orgInviteCode")+'</span><svg class="org-invite-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="org-invite-detail"><div class="org-invite-row"><code class="org-invite-code">'+esc(inviteCode)+'</code><button type="button" class="org-copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')" title="'+t("copy")+'" aria-label="'+t("copy")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div></div>'}
+if(isOwner){h+='<div class="org-invite-section"><button type="button" class="org-invite-toggle" aria-expanded="true" onclick="toggleOrgInvite(this)"><span>'+t("orgInviteCode")+'</span><svg class="org-invite-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="org-invite-detail"><div class="org-invite-row"><code class="org-invite-code">'+esc(inviteCode)+'</code><button type="button" class="org-copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')" title="'+t("copy")+'" aria-label="'+t("copy")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div></div>'}
 h+='<div class="org-summary-action">';
-if(isOwner){h+='<button class="btn btn-danger btn-sm" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'}
+if(isOwner){h+='<button class="btn btn-outline btn-sm org-danger-btn" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'}
 h+='</div></div><section class="org-bound-right"><div class="org-members-header"><h3>'+t("orgMembers")+'</h3><span class="org-members-count" id="org-members-count">-</span></div><div class="org-member-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input type="text" id="org-member-search" placeholder="'+t("search")+'..." onkeydown="if(event.key===\'Enter\')searchOrgMembers()" value="'+esc(orgMemberSearch)+'"></div><div id="org-member-list"></div></section></div>';
 el.innerHTML=h;
 loadOrgMembers()
@@ -607,8 +630,8 @@ var lang="en";
 var userPage=1,userPerPage=10,userTotal=0,userSearch="";
 var adminSitePage=1,adminSitePerPage=10,adminSiteTotal=0,adminSiteSearch="";
 var i18n={en:{overview:"Overview",settings:"Settings",users:"Users",allSites:"All Sites",userCount:"Users",siteCount:"Sites",adminCount:"Admins",openReg:"Open Registration",openRegDesc:"When enabled, anyone can register a new account.",publicAccess:"Public Site Access",publicAccessDesc:"When disabled, all deployed sites return 403 to visitors.",dashboard:"Dashboard",logout:"Logout",role:"Role",created:"Created",actions:"Actions",promote:"Promote",demote:"Demote",delete:"Delete",deleteUserConfirm:"Delete this user and all their sites?",deleteSiteConfirm:"Delete this site?",name:"Name",slug:"Slug",owner:"Owner",protected:"Protected",public:"Public",password:"Password",storagePath:"Storage",url:"URL",noUsers:"No users",noSites:"No sites",updated:"Updated",deleted:"Deleted",roleUpdated:"Role updated",userDeleted:"User deleted",siteDeleted:"Site deleted",settingsSaved:"Settings saved",none:"None",accessDisabled:"Disabled",search:"Search",searchUsersPh:"Search users...",searchSitesPh:"Search sites...",prev:"Prev",next:"Next",page:"Page",of:"of",ownerEmail:"Owner",domainRestriction:"Email Domain Restriction",domainRestrictionDesc:"Only allow registration from specified domains (one per line).",save:"Save",cancel:"Cancel",confirm:"Confirm",cleanup:"Storage Cleanup",cleanupDesc:"Remove orphaned directories that exist on disk but have no corresponding site in the database.",checkOrphans:"Check for Orphans",noOrphans:"No orphaned directories found",orphanFound:"Orphaned directories found",confirmDelete:"Delete All",cleanupConfirmWarning:"Delete all orphaned directories? This cannot be undone.",cleanupDone:"Cleanup complete",scanning:"Scanning...",files:"Files",noFiles:"No files",visits:"Visits",visitsToday:"Today",visitsMonth:"Month",visitsTotal:"Total",systemUpdate:"System Update",updateCheck:"Check for Updates",updateAvailable:"Update Available",updateToDate:"Up to Date",currentVersion:"Current Version",latestVersion:"Latest Version",updateNow:"Update Now",updating:"Updating...",updateSuccess:"Update successful! Please restart vibecast.",updateFailed:"Update failed",noUpdate:"You are running the latest version.",checkingUpdate:"Checking...",releaseNotes:"Release Notes",viewRelease:"View on GitHub",updateRestart:"Restart Now",updateRestarting:"Restarting...",updateRestartSuccess:"Server is restarting. Page will reload automatically.",updateRestartFailed:"Server did not come back online. Please refresh manually.",updateInProgress:"Update already in progress",updateVerifyFailed:"Checksum verification failed",updateNoChecksum:"No checksum available (skipped verification)",updateDownloadProgress:"Downloading",updateVerifying:"Verifying checksum...",updateInstalling:"Installing...",systemInfo:"System Info",systemInfoDesc:"Runtime environment and resource paths",tabOverview:"Overview",tabUsers:"Users",tabSites:"Sites",tabSettings:"Settings",tabMaintenance:"Maintenance",tabSystem:"System",siVersion:"Version",siStoragePath:"Storage Path",siDbPath:"Database Path",siListenAddr:"Listen Address",siGoVersion:"Go Runtime",siPlatform:"Platform",siStartTime:"Started At",siUptime:"Uptime",siLanURLs:"LAN Access URLs",maxUploadSize:"Max Upload Size (MB)",maxUploadSizeDesc:"Maximum file size for uploads. Default: 50 MB.",maxSitesPerUser:"Max Sites per User",maxSitesPerUserDesc:"Maximum number of sites each user can create. Set to 0 for unlimited.",siteBaseUrl:"Site Base URL",siteBaseUrlDesc:"Configure a dedicated domain for serving uploaded site content (e.g. https://sites.example.com). Isolates user-uploaded HTML from the admin domain to prevent cookie/session injection. Include http:// or https:// (defaults to https if omitted).",siteBaseUrlWarn:"Not configured - uploaded sites share the same domain as the admin panel. This is a security risk: user-uploaded HTML could access admin cookies and sessions. Configure a separate domain for site content (e.g. https://sites.example.com).",siteBaseUrlPh:"https://sites.example.com"},zh:{overview:"概览",settings:"设置",users:"用户",allSites:"所有站点",userCount:"用户数",siteCount:"站点数",adminCount:"管理员数",openReg:"开放注册",openRegDesc:"启用后，任何人都可以注册新账号。",publicAccess:"公开访问",publicAccessDesc:"禁用后，所有已部署站点对访客返回 403。",dashboard:"仪表盘",logout:"退出",role:"角色",created:"创建时间",actions:"操作",promote:"提升",demote:"降级",delete:"删除",deleteUserConfirm:"删除该用户及其所有站点？",deleteSiteConfirm:"删除此站点？",name:"名称",slug:"Slug",owner:"所有者",protected:"已加密",public:"公开",password:"密码",storagePath:"存储",url:"URL",noUsers:"暂无用户",noSites:"暂无站点",updated:"已更新",deleted:"已删除",roleUpdated:"角色已更新",userDeleted:"用户已删除",siteDeleted:"站点已删除",settingsSaved:"设置已保存",none:"无",accessDisabled:"已禁用",search:"搜索",searchUsersPh:"搜索用户...",searchSitesPh:"搜索站点...",prev:"上一页",next:"下一页",page:"第",of:"页 共",ownerEmail:"所有者",domainRestriction:"邮箱域名限制",domainRestrictionDesc:"仅允许指定域名的邮箱注册（每行一个）。",save:"保存",cancel:"取消",confirm:"确认",cleanup:"存储清理",cleanupDesc:"删除磁盘上存在但数据库中无对应站点的孤立目录。",checkOrphans:"检查孤立目录",noOrphans:"未发现孤立目录",orphanFound:"发现孤立目录",confirmDelete:"全部删除",cleanupConfirmWarning:"确认删除所有孤立目录？此操作不可撤销。",cleanupDone:"清理完成",scanning:"扫描中...",files:"文件",noFiles:"暂无文件",visits:"访问",visitsToday:"今日",visitsMonth:"本月",visitsTotal:"总计",systemUpdate:"系统更新",updateCheck:"检查更新",updateAvailable:"有可用更新",updateToDate:"已是最新版本",currentVersion:"当前版本",latestVersion:"最新版本",updateNow:"立即更新",updating:"更新中...",updateSuccess:"更新成功！请重启 vibecast。",updateFailed:"更新失败",noUpdate:"当前已是最新版本。",checkingUpdate:"检查中...",releaseNotes:"更新日志",viewRelease:"在 GitHub 查看",updateRestart:"立即重启",updateRestarting:"正在重启...",updateRestartSuccess:"服务器正在重启，页面将自动刷新。",updateRestartFailed:"服务器未在30秒内恢复，请手动刷新页面。",updateInProgress:"更新正在进行中",updateVerifyFailed:"校验和验证失败",updateNoChecksum:"无校验和（已跳过验证）",updateDownloadProgress:"下载中",updateVerifying:"正在校验...",updateInstalling:"正在安装...",systemInfo:"系统信息",systemInfoDesc:"运行环境与资源路径",tabOverview:"概览",tabUsers:"用户",tabSites:"站点",tabSettings:"设置",tabMaintenance:"维护",tabSystem:"系统",siVersion:"版本",siStoragePath:"存储路径",siDbPath:"数据库路径",siListenAddr:"监听地址",siGoVersion:"Go 运行时",siPlatform:"平台",siStartTime:"启动时间",siUptime:"运行时长",siLanURLs:"内网访问地址",maxUploadSize:"最大上传大小 (MB)",maxUploadSizeDesc:"上传文件的最大大小。默认：50 MB。",maxSitesPerUser:"每用户站点上限",maxSitesPerUserDesc:"每个用户可创建的最大站点数。设为 0 则不限制。",siteBaseUrl:"站点访问地址",siteBaseUrlDesc:"配置专用域名来提供上传站点内容（如 https://sites.example.com）。将用户上传的 HTML 与管理面板域名隔离，防止 Cookie/Session 注入。需带 http:// 或 https:// 协议（省略默认 https）。",siteBaseUrlWarn:"未配置 - 上传的站点与管理面板共用同一域名。存在安全风险：用户上传的 HTML 可能访问管理员的 Cookie 和会话。建议为站点内容配置独立域名（如 https://sites.example.com）。",siteBaseUrlPh:"https://sites.example.com"}};
-Object.assign(i18n.en,{adminPanel:"Admin",recentSites:"Latest sites",roleAdmin:"Admin",roleUser:"User",access:"Access",statUsersNote:"registered accounts",statSitesNote:"of {max} per user allowed",statAdminsNote:"full access",toggleTheme:"Toggle theme",noMatch:"Nothing matches your search",email:"Email",files:"Files"});
-Object.assign(i18n.zh,{adminPanel:"管理",recentSites:"最新站点",roleAdmin:"管理员",roleUser:"普通用户",access:"访问控制",statUsersNote:"已注册账号",statSitesNote:"每用户上限 {max} 个",statAdminsNote:"拥有完整权限",toggleTheme:"切换主题",noMatch:"没有匹配结果",email:"邮箱",files:"文件"});
+Object.assign(i18n.en,{adminPanel:"Admin",recentSites:"Latest sites",roleAdmin:"Admin",roleUser:"User",access:"Access",sourceRepo:"Source code on GitHub",statUsersNote:"registered accounts",statSitesNote:"of {max} per user allowed",statAdminsNote:"full access",toggleTheme:"Toggle theme",noMatch:"Nothing matches your search",email:"Email",files:"Files"});
+Object.assign(i18n.zh,{adminPanel:"管理",recentSites:"最新站点",roleAdmin:"管理员",roleUser:"普通用户",access:"访问控制",sourceRepo:"源码（GitHub）",statUsersNote:"已注册账号",statSitesNote:"每用户上限 {max} 个",statAdminsNote:"拥有完整权限",toggleTheme:"切换主题",noMatch:"没有匹配结果",email:"邮箱",files:"文件"});
 function t(k){return(i18n[lang]||i18n.en)[k]||(i18n.en[k]||k)}
 function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}renderAdmin()}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -671,7 +694,7 @@ document.getElementById("app").innerHTML='<nav class="navbar"><div class="logo">
 +'<div class="admin-tab-content" id="tab-sites"><div class="card"><div class="card-header"><h2>'+t("allSites")+'</h2></div><div class="card-body"><div class="list-toolbar"><input type="text" id="admin-site-search" placeholder="'+t("searchSitesPh")+'" aria-label="'+t("searchSitesPh")+'" onkeydown="if(event.key===\'Enter\')searchAdminSites()" value="'+esc(adminSiteSearch)+'"></div><div id="sites"></div></div></div></div>'
 +'<div class="admin-tab-content" id="tab-settings"><div class="card"><div class="card-header"><h2>'+t("settings")+'</h2></div><div class="card-body"><div id="settings"></div></div></div></div>'
 +'<div class="admin-tab-content" id="tab-maintenance"><div class="card"><div class="card-header"><h2>'+t("cleanup")+'</h2></div><div class="card-body"><div id="cleanup-section"><p class="tab-desc">'+t("cleanupDesc")+'</p><button type="button" class="btn btn-outline" onclick="checkCleanup()">'+t("checkOrphans")+'</button><div id="cleanup-result" class="result-box"></div></div></div></div></div>'
-+'<div class="admin-tab-content" id="tab-system"><div class="card"><div class="card-header"><h2>'+t("systemInfo")+'</h2></div><div class="card-body"><div id="sysinfo" class="info-grid"></div><div class="update-inline"><div id="update-section"><p>'+t("currentVersion")+': <span id="update-current-ver" class="ver-inline">-</span></p><button type="button" class="btn btn-outline" id="update-check-btn" onclick="checkUpdate()">'+t("updateCheck")+'</button><div id="update-result" class="result-box"></div></div></div></div></div>'
++'<div class="admin-tab-content" id="tab-system"><div class="card"><div class="card-header"><h2>'+t("systemInfo")+'</h2></div><div class="card-body"><div id="sysinfo" class="info-grid"></div><div class="info-about"><a class="about-link" href="` + projectRepoURL + `" target="_blank" rel="noopener">` + iconGithub + `<span>'+t("sourceRepo")+'</span></a></div><div class="update-inline"><div id="update-section"><p>'+t("currentVersion")+': <span id="update-current-ver" class="ver-inline">-</span></p><button type="button" class="btn btn-outline" id="update-check-btn" onclick="checkUpdate()">'+t("updateCheck")+'</button><div id="update-result" class="result-box"></div></div></div></div></div>'
 +'</div></div>';
 switchTab(adminTab);
 loadStats();loadSettings();loadUsers();loadSites();loadSystemInfo();
@@ -872,7 +895,7 @@ else{b='<span class="badge badge-public">'+t("public")+'</span>'}
 if(s.orgOpen){b+=' <span class="badge badge-org">'+t("orgBadge")+'</span>'}
 var vs=s.visits||{today:0,month:0,total:0};
 h+='<tr class="site-row" id="row-'+s.id+'" onclick="adminToggleDetail('+s.id+')">'
-+'<td><div class="cell-strong">'+esc(s.name)+'</div><a class="cell-link" href="'+esc(s.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+esc(s.slug)+'</a></td>'
++'<td><div class="cell-lead"><span class="row-caret" aria-hidden="true">` + iconChevronRight + `</span><div class="cell-lead-text"><div class="cell-strong">'+esc(s.name)+'</div><a class="cell-link" href="'+esc(s.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+esc(s.slug)+'</a></div></div></td>'
 +'<td class="cell-email col-hide-sm" title="'+esc(s.ownerEmail||"")+'">'+esc(s.ownerEmail||"—")+'</td>'
 +'<td>'+b+'</td>'
 +'<td class="num col-hide-sm" title="'+t("visitsToday")+' '+vs.today+' · '+t("visitsMonth")+' '+vs.month+'">'+vs.total+'</td>'
@@ -883,7 +906,7 @@ h+='</tbody></table></div>'+pg;el.innerHTML=h}).catch(function(e){toast(e.messag
 function delSite(id){customConfirm(t("deleteSiteConfirm"),function(){api("/admin/sites/"+id,{method:"DELETE"}).then(function(){toast(t("siteDeleted"));loadSites();loadStats()}).catch(function(e){toast(e.message,"error")})})}
 function formatSize(n){if(n<1024)return n+" B";if(n<1048576)return(n/1024).toFixed(1)+" KB";if(n<1073741824)return(n/1048576).toFixed(1)+" MB";return(n/1073741824).toFixed(1)+" GB"}
 function adminToggleDetail(id){var r=document.getElementById("row-"+id);var d=document.getElementById("detail-"+id);if(!r||!d)return;var wasShown=d.classList.contains("show");d.classList.toggle("show");r.classList.toggle("expanded");if(!wasShown){adminLoadFileTree(id);adminLoadSitePwd(id)}}
-function adminLoadFileTree(id){api("/admin/sites/"+id+"/files").then(function(d){var files=d.data||[];var el=document.getElementById("detail-"+id);if(!el)return;var td=el.querySelector("td");if(!td)return;
+function adminLoadFileTree(id){api("/admin/sites/"+id+"/files").then(function(d){var data=d.data||{},files=Array.isArray(data)?data:(data.items||[]);var el=document.getElementById("detail-"+id);if(!el)return;var td=el.querySelector("td");if(!td)return;
 var pwd=el.querySelector(".admin-detail-body");
 var h='<div class="admin-detail-body"><div class="detail-label">'+t("files")+'</div>';
 if(!files.length){h+='<div class="file-empty">` + iconFile + `'+t("noFiles")+'</div></div>';td.innerHTML=h;return}
@@ -913,7 +936,7 @@ var isOwner=orgInfo.isOwner||false;
 var h='<div class="org-info"><div class="org-name">'+esc(name)+'</div>';
 if(isOwner){h+='<div class="org-invite"><label>'+t("orgInviteCode")+'</label><div class="invite-row"><code class="invite-code">'+esc(inviteCode)+'</code><button class="copy-btn" onclick="copyText(\''+esc(inviteCode)+'\')" title="'+t("copy")+'"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div>'}
 h+='</div><div class="org-actions">';
-if(isOwner){h+='<button class="btn btn-danger btn-sm" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}
+if(isOwner){h+='<button class="btn btn-outline btn-sm org-danger-btn" onclick="deleteOrg()">'+t("orgDelete")+'</button>'}
 else{h+='<button class="btn btn-outline btn-sm" onclick="leaveOrg()">'+t("orgLeave")+'</button>'}
 h+='</div><div class="org-members-section"><h3>'+t("orgMembers")+'</h3><div class="list-toolbar"><input type="text" id="org-member-search" placeholder="'+t("search")+'..." onkeydown="if(event.key===\'Enter\')searchOrgMembers()" value="'+esc(orgMemberSearch)+'"></div><div id="org-member-list"></div></div>';
 el.innerHTML=h;
@@ -1000,7 +1023,7 @@ document.addEventListener("DOMContentLoaded",function(){var f=document.querySele
 <div class="field"><input type="password" name="password" placeholder="Access password" aria-label="Access password" autofocus required autocomplete="current-password"><button type="button" class="toggle" onclick="togglePwd(this)" aria-label="Show password" aria-pressed="false">`+pwdIconHidden+`</button></div>
 <button type="submit" class="submit">Enter site</button>
 </form>
-<div class="foot">Secured by Vibecast</div>
+<div class="foot">Secured by <a href="`+projectRepoURL+`" target="_blank" rel="noopener">Vibecast</a></div>
 </main>
 </body>
 </html>`, logoFavicon, escHTML(siteName), css, pwdIconShown, pwdIconHidden, escHTML(siteName), errBlock, escHTML(action))
@@ -1042,7 +1065,7 @@ body{display:grid;grid-template-rows:1fr auto;min-height:100dvh;padding:24px;bac
 <p>%s</p>
 <a class="err-cta" href="/">Open Vibecast</a>
 </main></div>
-<div class="err-foot">Served by Vibecast</div>
+<div class="err-foot">Served by <a href="`+projectRepoURL+`" target="_blank" rel="noopener">Vibecast</a></div>
 </body>
 </html>`, logoFavicon, escHTML(title), uiTokensCSS, iconAlert, status, escHTML(title), escHTML(detail))
 }

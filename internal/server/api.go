@@ -328,7 +328,13 @@ func (s *Server) handleSite(w http.ResponseWriter, r *http.Request, user *db.Use
 		case http.MethodGet:
 			s.siteFileTree(w, r, site)
 		case http.MethodDelete:
-			s.clearSiteFiles(w, r, site)
+			// ?path=<relative file> deletes one file; without it the whole
+			// site directory is cleared.
+			if target := strings.TrimSpace(r.URL.Query().Get("path")); target != "" {
+				s.deleteSiteFile(w, r, site, target)
+			} else {
+				s.clearSiteFiles(w, r, site)
+			}
 		default:
 			writeJSON(w, 405, jsonResp{Error: tMsg(r, "method_not_allowed")})
 		}
@@ -796,6 +802,35 @@ func (s *Server) siteFileTree(w http.ResponseWriter, r *http.Request, site *db.S
 		"items":     files,
 		"fileCount": fileCount,
 		"totalSize": totalSize,
+	}})
+}
+
+// deleteSiteFile removes a single file from a site. Sites can be large, so
+// callers address one path at a time instead of re-uploading the whole tree.
+func (s *Server) deleteSiteFile(w http.ResponseWriter, r *http.Request, site *db.Site, relPath string) {
+	unlock := s.lockSiteDeploy(site.ID)
+	defer unlock()
+
+	siteDir := filepath.Join(s.config.StorageDir, site.Slug)
+	if err := storage.DeleteEntry(siteDir, relPath); err != nil {
+		writeJSON(w, 400, jsonResp{Error: tMsg(r, "delete_file_failed")})
+		return
+	}
+	files, totalSize, err := storage.ListFiles(siteDir)
+	if err != nil {
+		writeJSON(w, 500, jsonResp{Error: tMsg(r, "internal_error")})
+		return
+	}
+	fileCount := 0
+	for _, file := range files {
+		if !file.Dir {
+			fileCount++
+		}
+	}
+	writeJSON(w, 200, jsonResp{Message: "file deleted", Data: map[string]interface{}{
+		"fileCount": fileCount,
+		"totalSize": totalSize,
+		"items":     files,
 	}})
 }
 

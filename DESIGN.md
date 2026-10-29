@@ -68,14 +68,20 @@
 - **站点行**：`chevron | 状态点 + 名称 + 徽标 | 地址 + 访问数 | 上传 + 溢出菜单`。
   整行可点开展开，`role=button` + `aria-expanded` + Enter/Space；行内链接与按钮
   `stopPropagation`。地址是真 `<a target=_blank>`，不再单设「访问」按钮
-  （同一意图只有一个入口）。
+  （同一意图只有一个入口）。桌面显示完整 URL，≤720px 只显示 `/s/<slug>/` 路径，
+  避免截断后看不出是哪个站点（完整地址保留在 `title` 与链接目标里）。
 - **溢出菜单**：`<details class="row-menu">` + `<summary aria-label>`；复制链接、复制密码、
   分享、编辑、下载 ZIP、清空文件、删除。点击外部或 Esc 关闭。删除永远在菜单最底部。
 - **详情面板**：`grid-template-rows 0fr→1fr` 展开（padding 放在 `.detail-inner`，
   外层 `.detail-clip` 负责裁剪，否则收起时漏出 32px）。内容顺序：规格网格 → 两个开关 → 文件列表。
 - **文件列表**：等宽、行高 32px、大小右对齐；空态用虚线框 + 说明。
+  单个文件删除是**低权重操作**：`×` 只在行 hover / `:focus-within` 时出现（触屏常驻 0.55 透明度），
+  点击后弹确认框并只删该文件；「清空文件」仍在溢出菜单里，两者不并存于同一视觉层。
 - **表格**（管理端）：11px 大写字距表头、行 hover、数字列 `tabular-nums` 右对齐、
   操作列只放文字幽灵按钮；≤720px 隐藏 ID/时间/访问量等次要列，把徽标下沉到主单元格。
+  可展开的站点行左侧有 `row-caret`（展开时旋转 90°），文件明细复用共享的文件列表样式。
+- **滚动模型**：组织管理弹窗里只有成员列表滚动，标题、组织摘要、邀请码、搜索框固定；
+  桌面并列滚动区各自 `overscroll-behavior: contain`，不把滚动传给相邻区域。
 - **开关**：`button[role=switch][aria-checked]`（管理端）或 `label>input[type=checkbox]`
   + `.switch-track`（表单）。只有 400/700 两档字重可用。
 - **弹窗**：`role=dialog` + `aria-modal` + `aria-labelledby`；打开聚焦第一个输入/按钮，
@@ -83,11 +89,16 @@
 - **Toast**：`#toast-host[aria-live=polite]`，右下角堆叠，3 秒消失。
 - **错误页**：访客侧 403/404 用 `visitorErrorPageHTML`，含错误码、原因、下一步行动，
   不再返回裸文本。
+- **品牌出现方式**：只在「关于」类位置克制出现——访客页脚 `Served by Vibecast`、
+  密码门 `Secured by Vibecast`、目录列表页脚、管理端系统信息页的 `Source code on GitHub`。
+  名称本身是到 `https://github.com/vst93/Vibecast` 的低干扰链接（继承文字色，hover 才出现
+  accent 与下划线）。不做固定浮条、不做宣传横幅。
 
 ## 6. 布局
 
 | 断点 | 行为 |
 |---|---|
+| 全部 | 顶栏 52px（`--nav-h`），落地页导航 60px |
 | ≥1025px | 320px 侧栏（sticky，自带滚动）+ 主列表 |
 | ≤1024px | 单列；创建面板折叠为「展开」 |
 | ≤720px | 导航收进汉堡菜单；站点行动作独占一行；表格隐藏次要列 |
@@ -124,4 +135,7 @@
   修复品牌字样间距、补齐主题切换。
 - 访客侧 403/404 改成品牌化错误页；密码门改用共享 token。
 - 无障碍：焦点环、Esc 关闭弹窗/菜单、`aria-expanded`、`aria-live`、
-  图标按钮 `aria-label`、对比度全部达标。
+  图标按钮 `aria-label`、对比度全部达标（208 个采样点，亮/暗均 ≥4.5:1）。
+- 收尾：顶栏 60→52px；组织弹窗只滚动成员列表；组织钉选行改为单行、访问按钮靠行尾；
+  修复管理端站点明细误报"暂无文件"；新增单文件删除（`DELETE /api/sites/{id}/files?path=`）；
+  访客页脚与系统信息页增加克制的 GitHub 链接。

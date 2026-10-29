@@ -13,7 +13,11 @@ internal/db/         - SQLite schema, migrations, models
 internal/auth/       - JWT auth middleware
 ```
 
-- Frontend HTML/CSS/JS is **inline** in `internal/server/pages.go` (~150KB+). Edit carefully.
+- Page markup + inline JS lives in `internal/server/pages.go` (~200KB). Edit carefully.
+- All CSS lives in `internal/server/ui_css.go`, layered as: `uiTokensCSS` (palette/type/a11y reset)
+  → `uiComponentsCSS` (navbar, buttons, forms, cards, tables, modals, toasts, menus)
+  → page layer (`uiDashboardCSS`, `uiAdminCSS`, `uiLandingCSS`, `uiGateCSS`).
+  Read `DESIGN.md` before changing UI.
 - DB migrations use `ALTER TABLE ADD COLUMN ... DEFAULT` with errors silently ignored. **Never use DROP TABLE** — updates must preserve existing data.
 
 ## Build & Run
@@ -56,15 +60,26 @@ gh release list --limit=3
 
 ## Key Conventions
 
-- i18n: All UI strings must be added to both `en` and `zh` in the i18n object in pages.go
-- CSS: Dashboard and admin have separate `<style>` blocks — changes may need to be applied to both
-- Password toggle: Default icon is slashed-eye (hidden state); `togglePwd` swaps to open-eye when visible
-- Site detail layout: Two-column grid (`detail-grid`), file list spans full width (`grid-column: 1/-1`)
-- `loadFileTree` targets `.detail-grid` (not `.detail-inner`) so file section stays inside the grid
+- i18n: all UI strings go in both `en` and `zh`. Dashboard and admin each have their own i18n
+  object; add keys with `Object.assign(i18n.en,{...});Object.assign(i18n.zh,{...})` after the
+  literal to avoid brace mistakes.
+- CSS: never append "override layer" styles — add tokens/components in `ui_css.go` instead.
+  Dashboard and admin share `uiComponentsCSS`, so a fix there applies to both.
+- Fonts: keep `--ff-sans` starting with concrete families (`-apple-system`, `Segoe UI`, `Noto Sans`,
+  `Arial`). Do **not** lead with `system-ui`/`ui-sans-serif` — fontconfig resolves them to a serif
+  face at weight 600 on Linux and silently turns the whole UI serif.
+- Password toggle: slashed eye = hidden; `togglePwd` swaps icon and keeps `aria-label`/`aria-pressed` in sync.
+- Site row: `[chevron] [status + name + badges] [url + visits] [Upload] [overflow menu]`.
+  Head is `role="button"` with `aria-expanded`; inner links/buttons call `stopPropagation`.
+- Site detail: `.detail-clip` (overflow hidden) wraps `.detail-inner` (padding) so the
+  `grid-template-rows:0fr→1fr` collapse does not leak padding. Files render into `#files-<id>`.
+- Modals: open with `openModal(id)` / close with `closeModal(id)` — they handle focus, Esc and focus return.
+- Visitor-facing errors use `visitorErrorPageHTML` (never plain `http.Error` for site visitors).
 
 ## Common Pitfalls
 
 - **i18n braces**: When adding keys, ensure `en:{...}` closes with single `}` before `,zh:{...}`. Extra `}` causes JS syntax error → blank page.
 - **String escaping in Go template literals**: Avoid complex regex/quote escaping in inline onclick handlers. Pass IDs only, fetch data via API instead.
-- **CSS replace_all**: `pages.go` has duplicate CSS blocks (dashboard + admin). Use `replace_all=true` or provide unique context.
+- **CSS edits**: styles are in `ui_css.go`; long single-line rules mean you often need unique context or `replace_all`.
+- **Stale binary**: after editing Go templates, rebuild (`go build -o bin/vibecast ./cmd/server`) and restart before screenshotting — served HTML comes from the compiled binary.
 - **DB path**: Use `/home/tar/` or project directory, NOT `/tmp` (tmpfs causes SQLite I/O errors).

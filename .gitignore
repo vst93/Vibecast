@@ -8,3 +8,4 @@ data/
 static-host
 vibecast
 bin/
+.uitest/

@@ -20,7 +20,8 @@ func (s *Server) passwordPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Domain isolation: if site_access_domains is configured, only allow
 	// password gate to be accessed from those domains.
 	if !s.isHostAllowedForSites(r) {
-		http.Error(w, "Forbidden: site content is not accessible from this domain", http.StatusForbidden)
+		writeVisitorError(w, http.StatusForbidden, "This address does not serve site content",
+			"Uploaded sites are served from a separate domain. Open the link you were given, or ask the owner for it.")
 		return
 	}
 

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"html"
+	"io"
 	"mime"
 	"net/http"
 	neturl "net/url"
@@ -244,7 +245,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	// Domain isolation: if site_access_domains is configured, only allow
 	// site content to be served from those domains.
 	if !s.isHostAllowedForSites(r) {
-		http.Error(w, "Forbidden: site content is not accessible from this domain", http.StatusForbidden)
+		writeVisitorError(w, http.StatusForbidden, "This address does not serve site content",
+			"Uploaded sites are served from a separate domain. Open the link you were given, or ask the owner for it.")
 		return
 	}
 
@@ -252,7 +254,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/s/"), "/", 2)
 	slug := pathParts[0]
 	if slug == "" {
-		http.NotFound(w, r)
+		writeVisitorError(w, http.StatusNotFound, "Site not found",
+			"This link does not point to a deployed site. Check the address, or ask the owner for a new link.")
 		return
 	}
 
@@ -262,13 +265,15 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if site == nil {
-		http.NotFound(w, r)
+		writeVisitorError(w, http.StatusNotFound, "Site not found",
+			"This link does not point to a deployed site. It may have been deleted, or the address may be mistyped.")
 		return
 	}
 
 	// If public access is disabled, only password-protected sites can be accessed
 	if !db.GetSettingBool(s.database, "allow_public_access", true) && site.Password == "" {
-		http.Error(w, "Public access is disabled", http.StatusForbidden)
+		writeVisitorError(w, http.StatusForbidden, "Public access is paused",
+			"The owner has temporarily closed public access to deployed sites. Try again later.")
 		return
 	}
 
@@ -747,4 +752,12 @@ func formatSize(n int64) string {
 		return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))
 	}
 	return fmt.Sprintf("%.1f GB", float64(n)/(1024*1024*1024))
+}
+
+// writeVisitorError renders the branded error page for public site visitors.
+func writeVisitorError(w http.ResponseWriter, status int, title, detail string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_, _ = io.WriteString(w, visitorErrorPageHTML(status, title, detail))
 }
